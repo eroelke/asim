@@ -1,0 +1,69 @@
+% rv2oe.m 
+%   convert inertial position and velocity vectors to orbital elements
+%
+% Aeroassist Simulation source code
+%
+% Developed by:
+%   Space Systems Design Lab
+%   Daniel Guggenheim School of Aerospace Engineering
+%   Georgia Institute of Technology
+%
+% Inputs:
+%   rv - double(6x1), multi, rv vector, i.e. [R;V]
+%   mu - double(1), gravitational parameter for attracting body
+%   
+% Outputs:
+%   oe - double(6x1), misc, vector of orbital elements
+%     oe(1) = semi-major axis (sma)
+%     oe(2) = eccentricity magnitude (ecc)
+%     oe(3) = inclination (inc)
+%     oe(4) = argument of periapsis (apr)
+%     oe(5) = longitude of ascending node (lan)
+%     oe(6) = true anomaly angle (taa)
+%
+% Major Revision History:
+%   *Created 16 SEP 2010, Z.R.Putnam
+%   *14 AUG 2012, Z.R.Putnam, added to asim repository
+%
+
+function [oe] = rv2oe(rv, mu)
+%#codegen
+
+% Initialize output
+oe = double(zeros(6,1));
+
+% Seperate vectors
+r_IJK = rv(1:3);
+v_IJK = rv(4:6);
+
+% Compute intermediate quantites
+r = norm(r_IJK); % position magnitude
+v = norm(v_IJK); % velocity magnitude
+h_IJK = cross(r_IJK,v_IJK); % angular momentum
+h = norm(h_IJK); % angular momentum magnitude
+e_IJK = cross(v_IJK,h_IJK)/mu - r_IJK/r; % eccentricity vector
+n_IJK = cross([0;0;1],h_IJK)/norm(cross([0;0;1],h_IJK)); % normal vector
+
+% Compute orbital elements
+sma = -mu / (2*(v^2/2-mu/r)); % semi-major axis
+ecc = norm(e_IJK); % eccentricity
+inc = acos(dot(h_IJK,[0;0;1])/h); % inclination
+apr = acos(dot(n_IJK,e_IJK)/ecc); % argument of periapsis
+if e_IJK(3) < 0
+    apr = 2*pi - apr; 
+end
+lan = atan2(n_IJK(2),n_IJK(1)); % longitude of ascending node
+taa = acos(dot(r_IJK,e_IJK)/(r*ecc)); % true anomaly
+if dot(r_IJK,v_IJK) < 0
+    taa = 2*pi - taa;
+end
+
+% Create output array
+oe(1) = sma;
+oe(2) = ecc;
+oe(3) = inc;
+oe(4) = apr;
+oe(5) = lan;
+oe(6) = taa;
+
+end % rv2oe()

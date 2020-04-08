@@ -1,0 +1,5 @@
+codegen/
+./main1_mex.mexw64
+*.asv
+*.mat
+setup.m

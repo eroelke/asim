@@ -1,0 +1,494 @@
+/*=============================================
+ASIM: Aeroassist SIMulation
+=============================================*/
+Version 1.0
+
+/*======Written=By======*/
+	Evan Roelke
+	Entry systems Design Laboratory (EsDL)
+	Colorado Center of Astrodynamics Research (CCAR)
+	University of Colorado Boulder
+	
+/*======ASIM=Credits======*/
+	Entry systems Design Lab, CU Boulder
+	Space Systems Design Lab, Georgia Tech
+	
+/*=======
+==About==
+=======*/
+/*======Description======*/
+	ASIM Simulates re-entry flight mechanics of arbitrary-shaped vehicles and aerodynamics using a 
+3DOF, 4th-order Runge-Kutta integrator. Input structures are defined to allow user to define their own trajectory
+parameters, vehicle parameters, GNC laws, and simulation settings.
+	It can be compiled into C/C++ with the "mex compiler." You will need to download MinGW and run mex -setup, then
+build_mex.m. Note that future edits to any function called from main.m will require re-running build_mex to re-compile
+the new code into C. One caveat of compiling to C is that every variable needs to be defined with a size and on every
+path of every function. Here are some common data types:
+	int8 - signed 8-bit integer
+	uint8 - unsigned 8-bit integer (max value 255): Perfect for flags or switch statement parameters
+	double - 64 bit value, floating point precision: default variable type
+	logical - boolean value, true or false. great for flags	
+	
+/*======How=To=Compile=====*/
+1. Install The Matlab Coder toolbox
+2. Download a matlab-compatable compiler. MinGW is a standard choice.
+3. If MinGW is installed correctly, you should be able to run "mex -setup". The default code is C, you can customize the compiler language by typing, eg. "mex -setup C++" to compile into C++
+4. run "build_mex" to compile all code stemming from main1.m
+5. If you add any files into the main simulation (eg. guidance laws), you can add the directive, "%#codegen" underneath the function definition to allow the compiler to check this file for errors before compiling.
+
+/*======Directories======*/
+src/codegen: compiled files. do not change anything
+src/data: data tables for aerodynamics/atmospheric parameters
+	src/data/aero_data: mach-dependent cl/cd tables for various sphere cones, some aoa dependent tables
+	src/data/atm_data: GRAM output atmospheric data tables. *_mc tables typically most up to date.
+src/gnc: guidance, navigation, and control structure definitions and algorithm functions
+	src/gnc/*: specific structure defines and functions for each type of gnc option
+src/scripts: standalone scripts or functions to run asim. Typically split by planet and gnc function.
+	src/scripts/*: scripts to run specific guidance options.
+src/sim: simulation tools, such as the main trajectory integration and data storage functions.
+src/tools: extra scripts to help run certain trade studies or data extrapolation, etc.
+src/utils: variety of functions called within the main asim loop. Mainly regarding calculating specific parameters, such as latitude/longitude.
+
+/*======How=To=Run======*/
+1. define_in.m will create a default simulation input structure
+	planet: Earth, atm_mode = 1 (no winds, exponential atmosphere)
+	vehicle: 45deg sphere cone, 2m backshell radius, 0.5m nose radius
+	aero: cd = 1.05, cl = 0, aoa = 0, aero_mode = 0 (const. cl/cd)
+	x0: h_atm = 150km, v_atm = 10km/s, fpa_atm = -5deg, [lat,lon,az_atm] = [0,0,90]
+	guid: none
+	nav: perfect knowledge
+	ctrl: none
+	
+	Note: default_in also works, but defines some extra paramters such as bank rate, that you will have to overwrite.
+2. Alter all input structure with your own values, tables, etc. See Section 2.1 for Input Structures
+3. run "out = main1.m" (matlab) or main1_mex.m (compiled)
+	output data structure can be found in Section 2.3: output data structures
+
+/*======Section 1: Frames======*/
+N:{O,x,y,z}: inertial frame ( identical to planet-center inertial (PCI) )
+	-axes have origin at planet center, do not rotate or accelerate in space
+PCPF{O,xg,yg,zg}: planet-centered, planet-fixed frame
+	-axes rotate with planet
+	eg. v_N = d/dt (r_N) + cross(wP,r_N)
+PCPF_WR:{O,xE,yN,zD}: wind-relative, planet-relative frame
+	-dynamic pressure is calculated from velocity relative to the planet's rotation and wind
+	-NED frame (North-East-Down)
+	-frame-relative vector math: v_sc/wind = v_sc/planet - v_wind/planet (aka v_sc/planet + v_planet/wind)
+	
+/*======Section 2: Data Structures======*/
+=Section 2.1: Input Data Structure:
+Input Data structures contain all entry state, vehicle state, and guidance/control/navigation (GNC) laws required to run the simulation.
+The input structure is as follows:
+	in.s		Simulation Settings (Section 2.1.1)
+	in.v		Vehicle Settings (Section 2.1.2)
+	in.p		Planet Model Settings (Section 2.1.3)
+	in.c		Simulation Constants (Section 2.1.4)
+
+====Section 2.1.1: Simulation Inputs; in.s
+		in.s.data_rate: data storate rate, Hz
+		in.s.term: termination conditions
+		in.s.traj: trajectory simulation settings
+		
+========Section 2.1.1.1: Termination Conditions
+			in.s.term.and: condition A, B, C, etc must be met to conclude the simulation (rarely used)
+			in.s.term.or: condition A or B or C must be met to end the simulation
+			
+			There are up to 5 AND and 5 OR condition types possible. The structure is as follows
+			
+			and/or.type: (int8 5x1
+				0: equality condition
+				1: inequality condition
+			and/or.var: (int8 5x1), termination variable index
+				1: altitude
+				2: mass
+				3: mach number
+				4: planet-fixed velocity magnitude (vel_pp_mag)
+				5: scaled energy
+			and/or.value: (int8 5x1), value to terminate at
+			and/or.direction: (int8 5x1), direction of termination
+				-1: negative crossing
+				+1: positive crossing
+				
+			Example:
+				in.s.term.or.type(1) = int8(0); 		% equality condition
+				in.s.term.or.var(1) = uint8(1); 		% termination mode (altitude)
+				in.s.term.or.value(1) = 0; 				% terminate at 0m altitude
+				in.s.term.or.direction(1) = int8(-1); 	% negative crossing (surface impact)
+			Example:	
+				in.s.term.or.type(2) = int8(0); 		% equality condition
+				in.s.term.or.var(2) = uint8(1); 		% termination mode (altitude)
+				in.s.term.or.value(2) = 150e3; 			% terminate at 150 km
+				in.s.term.or.direction(2) = int8(1); 	% positive crossing (re-exiting atmosphere)
+		
+========Section 2.1.1.2: Trajectory Input Settings, in.s.traj		
+		in.s.traj.rate: trajectory integration rate, Hz
+		in.s.traj.t_ini: initial simulation time, s
+		in.s.traj.t_max: maximum simulation time, s
+		in.s.traj.aoa_ini: initial angle of attack, rad
+		in.s.traj.bank_ini: initial bank angle, rad
+		in.s.traj.ssa_ini: initial side-slip angle, rad
+		in.s.traj.lat: initial latitude, rad
+		in.s.traj.lon: initial longitude, rad
+		in.s.traj.alt: initial altitude, m
+		in.s.traj.gamma_pp: initial planet-relative flight-path angle, rad
+		in.s.traj.az: initial azimuth, rad
+		in.s.traj.dr_ini: initial downrange, m
+		in.s.traj.cr_ini: initial crossrange, m
+		in.s.traj.vel_pp_mag: initial planet-relative, planet-fixed (PCPF) velocity, m/s
+		in.s.traj.r_pci_ini: initial inertial position vector, m, [3x1]
+		in.s.traj.v_pci_ini: initial inertial velocity vector, m/s, [3x1]
+		
+			Typically, one can define alt, lat, long, az, vel_pp_mag, t_ini, and t_max, 
+		then call LLAVFA2RV_I to convert to r_pci_ini and v_pci_ini.
+		
+		Example:
+		[in.s.traj.r_pci_ini, in.s.traj.v_pci_ini] = LLAVFA2RV_I( ...
+			in.s.traj.lat, in.s.traj.lon, in.s.traj.alt, ...
+			in.s.traj.gamma_pp, in.s.traj.az, in.s.traj.vel_pp_mag, ...
+			in.p.omega, in.s.traj.t_ini, 0, in.p.r_e, in.p.r_p);
+		
+====Section 2.1.2: Vehicle Inputs; in.v
+	in.v.aero: Aerodynamic Properties
+	in.v.gnc: Guidance, Navigation, and Control Settings
+	in.v.prop: Propulsion Settings
+	in.v.decel: Deceleration Settings
+	in.v.mp: Mass properties
+
+========Section 2.1.2.1: Aerodynamic Properties, in.v.aero
+		in.v.aero.mode: hypersonic aero coefficient mode (uint8)
+			1: constant aerodynamic coefficients, cl & cd (default)
+			2: mach-dependent tables, [mach cl cd]
+			3: dream chaser aero
+			4: full dream chaser model
+			5: analytic coefficients, as func of rn,rc,delta_c,aoa
+		in.v.aero.dc_mode: dream chaser mode
+		in.v.aero.r_cg: initial position of center of gravity, m, [3x1]
+		in.v.aero.r_cp: initial position of center of pressure, m, [3x1]
+		in.v.aero.aoa: initial angle of attack, rad
+		in.v.aero.cl: initial lift coefficient
+		in.v.aero.cd: initial drag coefficient
+		in.v.aero.area_ref: initial reference area (m2)
+		in.v.aero.chord_ref: initial chord reference length, m. Used in dream chaser
+		in.v.aero.span_ref: initial span reference length, m. User in dream chaser
+		in.v.aero.table: [100x3] table of [mach cl cd] for aero_mode(2)
+		in.v.aero.dc: dream chaser structure
+		in.v.aero.dc_unc: another dream chaser structure
+		in.v.aero.dc_act: a third dream chaser structure
+		in.v.aero.delta_c: cone half-angle, rad, only used in aero_mode(5)
+		in.v.aero.nose_radius: sphere code nose radius for heating, m
+		
+========Section 2.1.2.2: GNC Properties, in.v.gnc
+			in.v.gnc.g: Guidance Settings
+			in.v.gnc.n: Navigation Settings
+			in.v.gnc.c: Control Settings
+
+============Section 2.1.2.2.1: Guidance Input Settings, in.v.gnc.g
+				in.v.gnc.g.p: Global Guidance Inputs
+					in.v.gnc.g.p.Kflag: Density Corrector Flag, uint8. Used for atmospheric estimation in Monte Carlo sims
+					in.v.gnc.g.p.K_bounds: Density Corrector bounds, 2x1 [low_bound high_bound].
+					in.v.gnc.g.p.K_gain: Density Corrector gain value. 0.1 is typical
+					in.v.gnc.g.p.atm_mode: Atmospheric Estimation Mode Toggle. Currently only used for dej_n guidance, uint8
+					in.v.gnc.g.p.aoa_mode: angle of attack guidance mode, uint8
+					in.v.gnc.g.p.bank_mode: bank angle modulation guidance mode, uint8
+					in.v.gnc.g.p.prop_mode: propulsive guidance mode, uint8
+					in.v.gnc.g.p.dm_mode: drag-modulation guidance mode, uint8
+					in.v.gnc.g.p.rate: guidance call rate, Hz
+					in.v.gnc.g.p.tgt_lat: Target latitude (rad)
+					in.v.gnc.g.p.tgt_lon: Target longitude (rad)
+					in.v.gnc.g.p.const_aoa: constant angle of attack value, rad
+					in.v.gnc.g.p.const_bank: constant bank angle, rad
+					in.v.gnc.g.p.const_bank_rate: constant bank angle rate, rad/s
+					in.v.gnc.g.p.aoa_schedule: 100x2 schedule of angle of attack vs. mach (guidance
+					in.v.gnc.g.p.aoa_sched_len:
+					in.v.gnc.g.p.bank_schedule:
+					in.v.gnc.g.p.bank_sched_len:
+					in.v.gnc.g.p.energy_trigger_lambda:
+					in.v.gnc.g.p.energy_trigger_h0:
+					in.v.gnc.g.p.energy_trigger_v0:
+					in.v.gnc.g.p.energy_trigger_hfloor:
+					
+					
+					in.v.gnc.g.p.K:	density corrector settings					
+					in.v.gnc.g.p.aoa: angle of attack modulation settings
+					in.v.gnc.g.p.bank: bank-angle modulation settings
+					in.v.gnc.g.p.zeta: energy trigger settings (used for scaled energy termination conditions)
+					
+					in.v.gnc.g.p.aoa.aoa_mode
+					in.v.gnc.g.p.aoa.const_aoa
+					in.v.gnc.g.p.aoa.aoa_schedule
+					in.v.gnc.g.p.aoa.aoa_sched_len
+					
+					in.v.gnc.g.p.bank.bank_mode
+					in.v.gnc.g.p.bank.const_bank
+					in.v.gnc.g.p.bank.const_bank_rate
+					in.v.gnc.g.p.bank.bank_schedule
+					in.v.gnc.g.p.bank.bank_sched_len
+					
+					in.v.gnc.g.p.zeta.energy_trigger_lambda
+					in.v.gnc.g.p.zeta.energy_trigger_h0
+					in.v.gnc.g.p.zeta.energy_trigger_v0
+					in.v.gnc.g.p.zeta.energy_trigger_hfloor
+					
+					The rest of the guidance structure are inputs specific
+				to each guidance mode itself:
+				
+				in.v.gnc.g.p_msl: Mars Sciency Laboratory Bank-Angle Modulation
+				in.v.gnc.g.p_dej_n: n-event, discrete-event jettison drag modulation
+				in.v.gnc.g.sej_a: 1 or 2 stage jettison drag modulation
+				in.v.gnc.g.p_dcfj: deceleration curve fit jettison, single stage
+				in.v.gnc.g.p_manual: manual jettison time
+				in.v.gnc.g.p_cvdma: continuously-variable drag modulation
+				in.v.gnc.g.p_adm: analytical drag modulation (allen-eggers solution)
+				in.v.gnc.g.p_gt: gravity-turn
+				in.v.gnc.g.pd: predictive guidance for aerocapture
+				
+				-see define_g_[guidance].m for specifics of each guidance structure
+				
+============Section 2.1.2.2.2: Adding a New Guidance Mode
+				This is, in all fairness, a shitshow of a process. Here are the steps:
+					1. open define_in.m
+					2. scroll down to ~line 148 where it says g = struct( ...
+						-this structure loads the inputs to your guidance structures
+					3. add " 'p_[guidance_name]', guid.[guidance_name].p, ... " to the structure
+						-this adds the guidance inputs to the overall input structure
+					4. open define_guid.m
+					5. scroll down to "Algorithm-Specific data structures", ~line 70
+						-you'll notice something like [guidance_name] = define_g_[guid_name]
+					6. add in " [guid_name] = define_g_[guidance_name];
+						-this will add your new specific guidance structure to the guidance system
+					7. just below that section, there is a section titled "Construct combined data structure"
+					8. add to this structure your new guidance name
+						" '[g_name]', [guid_name], ... ", where [guid_name] is the outputs of step 6.
+					9. create a matlab file, 'define_g_[guidance_name].m'
+						-this file defines the parameter, state, and inputs to the guidance function
+						-this file should have the header along the lines of " g_[guid_name] = define_g_[guid_name]() "
+						-inside, you should define 3 structures:
+							p: input parameter structure -> this will be the simulation guidance inputs (see Sec. 2.2.3.1)
+							s: state structure that tracks data during the simulation
+							i: inputs from the navigation computer
+						-after defining these structures, finalize the function by defining the overall structure, 
+							g_[guid_name] = struct( ...
+								'i', i, ...    
+								's', s, ...
+								'p', p );
+					10. assign an unused 'guidance mode' to your guidance system of the appropriate type
+						10.i. open guidance.m
+						10.ii. There are different types of guidance modes (see Sec. 2.2.3.1)
+							1. bank_mode: bank-angle modulation, eg. lift-modulation aerocapture
+							2. aoa_mode: angle-of-attack guidance
+							3. propulsive guidance
+							4. drag-modulated aerocaptre (dma) guidance
+					11. assign this guidance to your input struct via in.v.gnc.g.p.[guid_mode] = uint8( [mode_num] );
+					12. 
+					
+============Section 2.1.2.2.3: Navigation Input Settings, in.v.gnc.n.p
+	in.v.gnc.n.p.mode
+	in.v.gnc.n.p.seed
+	in.v.gnc.n.p.rate
+	in.v.gnc.n.p.tau
+	in.v.gnc.n.p.r_e
+	in.v.gnc.n.p.r_p
+	in.v.gnc.n.p.omega
+	in.v.gnc.n.p.P_SS
+
+============Section 2.1.2.2.4: Control Input Settings, in.v.gnc.c.p
+	in.v.gnc.c.p.aoa_mode
+	in.v.gnc.c.p.bank_mode
+	in.v.gnc.c.p.decel_mode
+	in.v.gnc.c.p.rate
+	in.v.gnc.c.p.aoa_rate_lim
+	in.v.gnc.c.p.aoa_accel_lim
+	in.v.gnc.c.p.bank_rate_lim
+	in.v.gnc.c.p.bank_accel_lim1
+	in.v.gnc.c.p.bank_accel_lim2
+	in.v.gnc.c.p.bank_accel_dynp1
+	in.v.gnc.c.p.bank_accel_dynp2
+	in.v.gnc.c.p.decel_v_box
+	
+	TO DO:
+	in.v.gnc.c.p_aoa: angle of attack control settings
+	in.v.gnc.c.p_bank: bank angle control settings
+	in.v.gnc.c.p_dma: drag-modulation aerocapture settings (cvdma)
+	
+
+========Section 2.1.2.3: Propulsion Properties, in.v.prop
+	in.v.prop.main: main propulsion system
+	in.v.prop.rcs: reaction control system prop system
+	
+=============Section 2.1.2.3.1: Main Propulsion Systems, in.v.prop.main
+		in.v.prop.main.isp: Specific Impulse, s
+		in.v.prop.main.thrust_max: maximum possible thrust, N
+		
+=============Section 2.1.2.3.2: RCS Systems, in.v.prop.rcs
+		in.v.prop.rcs.isp: Specific Impulse, s
+		in.v.prop.rcs.thrust_max: maximum possible thrust, N		
+
+========Section 2.1.2.4: Decelerator Settings, in.v.decel
+	in.v.decel.mode
+	in.v.decel.d
+	in.v.decel.cd
+	in.v.decel.K
+	in.v.decel.table
+
+========Section 2.1.2.5: Mass Properties, in.v.mp
+	in.v.mp.mode
+	in.v.mp.m_ini
+	in.v.mp.m_ini_mainful
+	in.v.mp.m_ini_rcsfuel
+	in.v.mp.m_jettison
+	in.v.mp.cg
+	in.v.mp.delta_cg
+	in.v.mp.t1
+	in.v.mp.t2
+
+
+====Section 2.1.3: Planet Model, in.p
+		in.p.planet:	planet index
+			1 = venus
+			2 = earth
+			3 = mars
+			4 = jupiter
+			5 = saturn
+			6 = titan
+			7 = uranus
+			8 = neptune
+		in.p.r_e:		equatorial radius, m
+		in.p.r_p:		polar radius, m
+		in.p.r_m:		mean radius, m
+		in.p.mass:		planet mass, kg
+		in.p.mu:		planet gravitational constant, m3/s2
+		in.p.g0:		planet surface gravity, m/s2
+		in.p.j2:		j2 harmonic
+		in.p.k:			sutton-graves constant, kg^(0.5/m)
+		in.p.omega:		angular velocity
+		in.p.atm:		atmospheric data array (1000 x 7)
+			[altitude(m), density(kg/m3), pressure(Pa), temp(K), windE(m/s), windN(m/s), windV(m/s)]
+
+
+====Section 2.1.4: Simulation Constants, in.c
+	-defines constants used in various sections of the simulation
+	-requires no setup, so they will be ignored here
+	
+=Section 2.2: Simulation Structures
+	ASIM employs several structures that track data throughout the simulation, but are not defined with the input structures, specifically.
+They are often used for data storage purposes as well as toggling events on and off. These structures include:
+	guid: Guidance Trajectory Structure
+	nav: Navigation Trajectory Structure
+	ctrl: Control Trajectory Structure
+	veh: Vehicle Trajectory Structure
+	ttvec: Time Vector (preallocated for compilation reasons)
+	calcs_curr: Current Time Step Trajectory Structure
+	calcs_prev: Previous Time Step Trajectory Structure (used for termination condition checks)
+	dat: Output Data Structure, stored from store_dat.m
+	
+====Section 2.2.1: Guidance Structure, guid
+	The guidance structure tracks guidance parameters associated with each guidance mode
+	
+=Section 2.3: Output Data Structure
+	The output structure includes parameters stored throughout the simulation, originally preallocated in initialize.m
+and then stored in store_dat. Any of these outputs can be stopped by commenting out both the allocation in initialize.m
+and then in store_dat.m. Remember to re-compile the code after making any changes. The overall structure is as follows:
+	out.traj: Trajectory Outputs
+	out.g: Guidance outputs
+	out.veh: Vehicle Data outputs
+	out.term: Termination conditions output
+		
+====Section 2.3.1: Trajectory Output Data, out.traj
+		out.traj.pos_ii: inertial position vector, [3x1] m
+		out.traj.pos_ii_mag: inertial position magnitude, m
+		out.traj.vel_ii: inertial velocity vector, [3x1] m/s
+		out.traj.vel_ii_mag: inertial velocity magnitude, m/s
+		out.traj.alt: current altitude, m
+		out.traj.rho: atmospheric density, kg/m3
+		out.traj.mass: current vehicle mass, kg
+		out.traj.force_ii: total inertial force vector, [3x1] N
+		out.traj.thrust_ii: inertial thrust force vector, [3x1] N
+		out.traj.thrust_pp: planet-relative thrust force vector, [3x1] N
+		out.traj.thrust_pp_mag: thrust force magnitude, N
+		out.traj.pos_pp: planet-relative position vector, [3x1] m
+		out.traj.pos_pp_mag: planet-relative position magnitude, m
+		out.traj.V_pf_pci: planet-fixed velocity vector, [3x1] m/s
+		out.traj.vel_pp: planet-relative velocity vector, [3x1] m/s
+		out.traj.vel_pp_mag: current planet-relative velocity magnitude, m/s
+		out.traj.gamma_ii: inertial fligth path angle, rad
+		out.traj.gamma_pp: current planet-relative flight path angle, rad
+		out.traj.g_loading: current g load (relative to earth-g)
+		out.traj.mach: current mach number
+		out.traj.aoa: current angle of attack, rad
+		out.traj.bank: current bank angle, rad
+		out.traj.bank_rate: bank rate, rad/s
+		out.traj.bank_accel: bank angle acceleration, rad/s2
+		out.traj.ssa: side slip angle, rad
+		out.traj.cmd_aoa: commanded angle of attack (from control)
+		out.traj.cmd_bank: commanded bank angle (from control)
+		out.traj.gravity_ii: gravity force, N, [3x1]
+		out.traj.drag_ii: drag force, N, [3x1]
+		out.traj.lift_ii: lift force, N, [3x1]
+		out.traj.drag_ii_mag: drag force magnitude, N
+		out.traj.lift_ii_mag: lift force magnitude, N
+		out.traj.decel_drag_ii: decelerator inertial drag force vector, N [3x1]
+		out.traj.cl: lift coefficient
+		out.traj.cd: drag coefficient
+		out.traj.cd_decel: decelerator drag coefficient
+		out.traj.LoD: lift-to-drag ratio
+		out.traj.q: dynamic pressure, N/m2
+		out.traj.azi_pp: azimuth, rad
+		out.traj.downrange: downrange, m
+		out.traj.crossrange: crossrange, m
+		out.traj.heat_rate: stagnation-point heat rate, W/m2
+		out.traj.lat: latitude, rad
+		out.traj.lon: longitude, rad
+		out.traj.cg: center of gravity position, m, [3x1]
+		out.traj.time: time, s
+		out.traj.prop_mass: propellant mass, kg
+		
+====Section 2.3.2: Guidance Output Structure, out.g
+		The guidance output structure incudes general guidance parameters as well as 
+	Guidance mode-specific structures. Due to compilation necessities, every guidance mode is
+	stored in the output data structure, although data is only allocated and saved for the current 
+	guidance mode. The structure elements are all required to exist, however they are all set to 
+	NaN in initialize.m given the guidance mode(s) from the input structure.
+		
+		The following are general guidance parameters stored at each data time step:
+			out.g.K_dens: current density variation estimate, nd
+			out.g.rho_est: current time step density estimate, kg/m3
+		
+		The following are guidance mode-specific structures. Note that the guidance structure
+	defines, eg. define_g_dej_n.m are not inherently related to the outputs, although the [guidance].s
+	parameters are typically the only values worth saving.
+	
+		out.g.adm
+		out.g.msl
+		out.g.dcfj
+		out.g.pd
+		out.g.dej_n
+		out.g.cvdma
+		out.g.sej_e
+		
+		Check store_dat.m to see what each guidance structure outputs. The outputs can also be changed
+	via initialize.m.
+	
+========Section 2.3.3: Add More Guidance Outputs
+		To output a guidance variable from the guidance function that doesn't exist, you need to add the 
+	variable to the [guid].s structure inside define_g_[guid].m, change guid_[func].m to output that 
+	variable, add it to initialize.m in the correct structure, and then add a line saving that parameter
+	inside store_dat.m
+		To add a new guidance mode to the output data structure, open initialize.m and inside the switch
+	statements for each mode, initialize the output structure in the correct guidance mode and switch mode
+	based on the size of the variable (eg. ldat1 is Nx1). Then go into store dat and save those values from
+	the guidance trajectory structure, guid.[guid].s inside the same switch statements.
+	
+====Section 2.3.3: Vehicle output data structure
+		This structure stores all of the vehicle parameters. It is as follows:
+		
+		out.veh.area_ref: reference area, m2
+		
+		out.v.cd
+		out.v.cl
+		out.v.m
+		out.v. decel stuff
+		
+
+
+
+
