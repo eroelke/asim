@@ -5,6 +5,9 @@ Developed at the Georgia Institute of Technology and University of Colorado Boul
 
 ## Main Contributors
 Michael Grant
+
 Brad Steinfeldt
+
 Zach Putnam
+
 Evan Roelke
