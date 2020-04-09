@@ -101,7 +101,7 @@ in.v.gnc.g.p.dm_mode = uint8(4);   % dej_n guidance
 % DEJ-N settings
 in.v.gnc.g.p_dej_n.npc_mode = uint8(1); % newton method
 in.v.gnc.g.p_dej_n.iter_max = uint8(1); % nd, max NPC internal iterations
-in.v.gnc.g.p_dej_n.A_sens_atm = 0.25; % m/s^2, sensible decel
+in.v.gnc.g.p_dej_n.A_sens_atm = 0.5; % m/s^2, sensible decel
 in.v.gnc.g.p_dej_n.t_init = 0;  % s, time to start guidance
 in.v.gnc.g.p_dej_n.tgt_ap = 400e3; % m, target apoapsis alt
 in.v.gnc.g.p_dej_n.tol_ap = 10e3; % m, apoapsis alt tolerance
