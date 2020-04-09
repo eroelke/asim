@@ -43,14 +43,6 @@ s.A_mag = norm(i.A_sens_pci); % m/s^2, sensed acceleration magnitude
 s.V_pf_mag = norm(i.V_pf_pci); % m/s, planet-relative velocity magnitude (PCI frame)
 j_ind = s.stage+1;  % current index for area_ref, mass, jett flag, etc
 
-% to do: initialize each jettison stage with a higher number of iterations
-if (~s.init_flags(j_ind))
-    max_iters = p.init_iters;
-    s.init_flags(j_ind) = true;
-else
-    max_iters = p.iter_max;
-end
-
 if (j_ind > p.n_jett)
     s.hydra.dtj = 0;
     return;
@@ -58,6 +50,13 @@ elseif (s.A_mag >= p.A_sens_atm && i.t >= p.t_init)
     s.ncalls = s.ncalls + 1;    % start guidance calls at sensible atmosphere
     if (j_ind <= p.n_jett)
         %% Execute predictor-corrector
+        
+        if (~s.init_flags(j_ind))
+            internal_iterations = p.init_iters;
+            s.init_flags(j_ind) = true;
+        else
+            internal_iterations = p.iter_max;
+        end
         
         % Initialize predictor-corrector
         y0 = [i.R_pci; i.V_inrtl_pci]; % multi, initial state vector (inertial)
@@ -95,7 +94,7 @@ elseif (s.A_mag >= p.A_sens_atm && i.t >= p.t_init)
                         [~,dra2,~] = guid_dej_n_pred(y0, t0, s, p, j_ind, dt, guid);
                         
                         [s.tj_next(j_ind), dtj] = update_t_jett( s.tj_next(j_ind), ... 
-                            s.dr_ap, dra2, dt, d_lim);
+                            s.dr_ap, dra2, dt, d_lim, p.tol_ap);
 %                         s.dr_curr(j_ind) = s.dr_ap;
                     end %corrector
                     
@@ -142,12 +141,12 @@ elseif (s.A_mag >= p.A_sens_atm && i.t >= p.t_init)
                             [~,dra2,~] = guid_dej_n_pred_multi(y0, t0, s, p, j_ind, dt, guid);
                             for j = 1:(p.n_jett-(j_ind-1))         
                                 [s.tj_next(j_ind-1+j), ~] = update_t_jett( s.tj_next(j_ind-1+j), ... 
-                                    dr_ap(j), dra2(j), dt, s.hydra.dtj_lim );
+                                    dr_ap(j), dra2(j), dt, s.hydra.dtj_lim, p.tol_ap );
                             end
                         else
                             [~,dra2,~] = guid_dej_n_pred(y0, t0, s, p, j_ind, dt, guid);
                             [s.tj_next(j_ind), dtj] = update_t_jett( ... 
-                                s.tj_next(j_ind), s.dr_ap, dra2, dt, s.hydra.dtj_lim );
+                                s.tj_next(j_ind), s.dr_ap, dra2, dt, s.hydra.dtj_lim, p.tol_ap );
                             
                         end
                     end %corrector
@@ -160,8 +159,8 @@ elseif (s.A_mag >= p.A_sens_atm && i.t >= p.t_init)
                     [s, npc_flag] = guid_dej_n_corr(s, t0, j_ind, r_ap, dr_ap);
             end
             
-            % check max iterations
-            if (s.iter == p.iter_max)
+            % check max iterations or within tolerance
+            if (s.iter == internal_iterations || abs(s.dr_ap) <= p.tol_ap)
                 npc_flag = 2;
             else
                 s.iter = s.iter + uint8(1);     % Increment iteration counter

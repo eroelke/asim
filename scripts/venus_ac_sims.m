@@ -5,6 +5,10 @@
 clear; clc;
 save_path = 'C:\Users\Evan Roelke\Documents\research\venus_ac\';
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%% ENTRY TRADES %%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%{
 %% entry trade studies - feb 2019
 %{
 % clear; clc; close all;
@@ -1959,6 +1963,7 @@ legend('Actual Variation','Variation Estimate','location','se')
 
 % large K_dens spike at jettison time step!!
 %}
+%}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%% 1-STAGE JETTISON %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1966,8 +1971,9 @@ legend('Actual Variation','Variation Estimate','location','se')
 %{
 clearvars -except save_path; clc; close all;
 % ha_tgt = [.4 2 10 105.5].*1000;
-ha_tgt = 400;
-fpas = [-6.5 -6.55 -6.6 -6.65];
+ha_tgt = 2000;
+% fpas = [-6.5 -6.55 -6.6 -6.65];
+fpas = -5.4;
 [x0,aero,gnc,sim,mc] = base_venus_ac();
 gnc.guid_rate = 0.5;
 gnc.tj0 = 80;
@@ -1977,21 +1983,15 @@ sim.parMode = true;
 sim.nWorkers = 10;
 sim.t_max = 2000;
 sim.h_min = 25;
-sim.traj_rate = 200;
+sim.traj_rate = 50;
 sim.data_rate = 10;
 
-x0.v0 = 15;
+x0.v0 = 11;
 
 Ni = length(fpas);
 Nj = length(ha_tgt);
 
-mc.N = 1000;
-
-% preallcate
-% haf_b_2k = nan(mc.N,Ni); haf_b_10k = haf_b_2k;
-% haf_n_2k = haf_b_2k; haf_n_10k = haf_b_2k;
-% dv_b_2k = haf_b_2k; dv_n_2k = haf_b_2k;
-% dv_b_10k = haf_b_2k; dv_n_10k = haf_b_2k;
+mc.N = 500;
 
 % mc.debug = true;
 
@@ -2006,13 +2006,13 @@ for i = 1:Ni %fpas
         gnc.npc_mode = uint8(1);
         out_h = run_dej_n(x0,gnc,aero,sim,mc);
         
-        if (gnc.ha_tgt < 1000)
-            save([save_path 'dej_n\HYDRA\1stage\data\' num2str(floor(gnc.ha_tgt)) ...
-                '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg.mat'])
-        else
-            save([save_path 'dej_n\HYDRA\1stage\data\' num2str(floor(gnc.ha_tgt/1000)) ...
-                'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg.mat'])
-        end
+%         if (gnc.ha_tgt < 1000)
+%             save([save_path 'dej_n\HYDRA\1stage\data\' num2str(floor(gnc.ha_tgt)) ...
+%                 '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg.mat'])
+%         else
+%             save([save_path 'dej_n\HYDRA\1stage\data\' num2str(floor(gnc.ha_tgt/1000)) ...
+%                 'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg.mat'])
+%         end
         
     end %j
 end %i
@@ -2020,8 +2020,9 @@ end %i
 out_stats(out_b)
 out_stats(out_h)
 fprintf('Finished 1stage sim. '); print_current_time();
-% keyboard;
+keyboard;
 %}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%% 2-STAGE JETTISON %%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2036,13 +2037,12 @@ x0.v0 = 11;
 efpas = [-5.4 -5.6];
 Nk = length(efpas);
 
-gnc.ha_tgt = 2000;
+gnc.ha_tgt = 10000;
 gnc.ha_tol = 10;
 gnc.n = 2;
 tj0s = [90 170;70 140];
 gnc.guid_rate = 0.5;
 gnc.npc_mode = uint8(2);
-gnc.iters = uint8(2);
 
 for j = 1:length(b21s)
 b21 = b21s(j);
@@ -2133,7 +2133,7 @@ width = 20;
 h1.BinWidth = width;
 h2.BinWidth = width;
 legend([h1 h2],'Jettison 1','Jettison 2')
-
+%}
 
 %% FJ & CC
 %{
@@ -2366,6 +2366,7 @@ annotation('textbox',dim,'String',str,'FitBoxToText','on');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%% 3-STAGE JETTISON %%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%{
 clearvars -except save_path ;clc
 [x0,aero,gnc,sim, mc] = base_jsr();
 br41 = 10;
@@ -2673,7 +2674,7 @@ ylim([-500 500])
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%% N-Stage Comparions %%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+%{
 clear;clc;
 p = 'C:\Users\Evan Roelke\Documents\research\venus_ac\dej_n\HYDRA\';
 p2 = [p '2stage\data\'];
@@ -3133,7 +3134,7 @@ h4 = histogram(d2_4.out.haf_err + 2000,'FaceColor','m');
 h4.BinWidth = w; h4.FaceAlpha = alpha;
 
 %%%% 2stage, 10k, -5.6deg
-
+%}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%% CONTINUOUS DRAG MODULATION (CVDMA) %%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

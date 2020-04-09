@@ -9,6 +9,7 @@ aero.cds = [1.05 1.05];
 gnc.tj0 = 100;
 gnc.guid_rate = 0.5;
 gnc.force_jett = true;
+gnc.iters = uint8(1);
 
 sim.planet = 'venus';
 sim.h_max = 150;

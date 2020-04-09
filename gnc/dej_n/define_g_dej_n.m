@@ -29,8 +29,9 @@ p_hydra = struct( ...
 
 %% Parameter data structure
 p = struct( ...
-    'iter_max', uint8(0), ... % nd, maximum iterations (for bisection)
-    'A_sens_atm', double(0), ... % m/s^2, sensible atmosphere boundary
+    'iter_max', uint8(1), ... % nd, normal NPC max interal iterations
+    'init_iters',uint8(3), ... %initialize each stage with X NPC iterations
+    'A_sens_atm', double(0.25), ... % m/s^2, sensible atmosphere decel
     't_init', double(0), ...    %s, simulation time to start guidance
     'tgt_ap', double(0), ... % m, target apoapse altitude (RENAME?)
     'tol_ap', double(0), ... % m, apoapse tolerance
@@ -58,6 +59,7 @@ s_hydra = struct( ...
 
 s = struct( ...
     'jettison', false(5,1), ... % nd, jettison flag
+    'init_flags', false(5,1), ... %stage inititialization flags
     'stage', uint8(0), ...         % current jettison stage (0 being no jettison yet)
     'phase', uint8(1), ... % nd, current guidance phase
     'next_step', uint8(1), ... % nd, next phase to execute on a given cycle
