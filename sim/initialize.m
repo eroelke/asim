@@ -32,7 +32,7 @@ function [dat, veh] = initialize(in) %#codegen
 %% Vehicle data structure
 veh = define_veh;
 % Parameters
-veh.p.m_jettison = in.v.mp.m_jettison;
+% veh.p.m_jettison = in.v.mp.m_jettison;
 % Non-integrated states
 veh.s.not_jettisoned = true; % no jettison event has occured
 veh.s.compute_trim = uint8(1); % enable static trim calculation
@@ -40,6 +40,7 @@ veh.s.bank = in.s.traj.bank_ini; % rad
 veh.s.aoa = in.s.traj.aoa_ini; % rad
 veh.s.ssa = in.s.traj.ssa_ini; % rad
 veh.s.area_ref = in.v.aero.area_ref; % m^2
+veh.s.mass = in.v.mp.m_ini; %initial mass
 
 
 %% Output Data storage
@@ -254,6 +255,7 @@ switch in.v.gnc.g.p.dm_mode
         dat.g.dej_n.tj = ldat1;
         dat.g.dej_n.r_ap = ldat1;
         dat.g.dej_n.dr_ap = ldat1;
+        dat.g.dej_n.dr_ap_true = ldat1;
         dat.g.dej_n.step_size = ldat1;
         dat.g.dej_n.dr_f = nan(5,1);
         dat.g.dej_n.ncalls = ldat1;
@@ -454,6 +456,7 @@ dej_n.t_inc = nan;
 dej_n.tj = nan;
 dej_n.r_ap = nan;
 dej_n.dr_ap = nan;
+dej_n.dr_ap_true = nan;
 dej_n.step_size = nan;
 dej_n.dr_f = nan;
 dej_n.ncalls = nan;

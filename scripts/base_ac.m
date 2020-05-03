@@ -42,6 +42,11 @@ function [x0,aero,gnc,sim,mc] = base_ac(isMc)
         mc.sigs = nan;
         mc.debug = false;
     end
+    
+    for i = 1:5
+        gnc.bias(i,1).tgt_ap = 0;
+        gnc.bias(i,1).tj = 0;
+    end
 
     sim.traj_rate = 100;
     sim.data_rate = 1;
@@ -51,6 +56,7 @@ function [x0,aero,gnc,sim,mc] = base_ac(isMc)
     sim.planet = 'earth';
     sim.atm_mode = uint8(3);   %atm look up with winds
     sim.efpa_flag = false;
+    sim.debug = false;
     sim.parMode = false;    % don't run in parallel processing mode
     sim.nWorkers = 10;  %if you do, use 10 workers
 end

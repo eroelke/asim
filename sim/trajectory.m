@@ -134,7 +134,7 @@ for i = 2:N
     if (ctrl.s.jettison) && (veh.s.not_jettisoned == true)
         veh.s.area_ref = guid.cmd.area_ref;
         veh.s.not_jettisoned = false;
-%         veh.s.cd = ctrl.s.cd;
+        veh.s.cd = ctrl.s.cd;
 %         Y1(7,i) = Y1(7,i) - veh.p.m_jettison;
 %         calcs_curr.delta_mass = -veh.p.m_jettison;
         calcs_curr.delta_mass = -guid.cmd.delta_mass;
@@ -143,7 +143,7 @@ for i = 2:N
     end
     Y1(4:6,i) = Y1(4:6,i) + calcs_curr.delta_V; % update velocity with any instantaneous changes
     Y1(7,i) = Y1(7,i) + calcs_curr.delta_mass; % update mass with any discrete changes
-
+    veh.s.mass = Y1(7,i);   %update vehicle mass
     
     %% Store data
     % Rate limit storage

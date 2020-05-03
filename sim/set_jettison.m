@@ -30,10 +30,22 @@ switch guid.p.dm_mode
             ctrl.s.jettison = true;
             veh.s.not_jettisoned = true;
             
+            % new beta values
+            mass = guid.dej_n.p.masses(jett_ind + 1);
+            cd = guid.dej_n.p.cds(jett_ind + 1);
+            %1sigma, percentage, scaled by stage count compared to 2 stage system
+            sigma_m = guid.dej_n.p.sigs.m * mass / ... 
+                sqrt(cast(guid.dej_n.p.n_jett + 1,'double') / 2);
+            sigma_cd = guid.dej_n.p.sigs.cd * cd / ... 
+                sqrt(cast(guid.dej_n.p.n_jett + 1,'double') / 2);
+                        
+            % set cmd values
             guid.cmd.area_ref = guid.dej_n.p.area_refs(jett_ind+1);
-            guid.cmd.delta_mass = guid.dej_n.p.masses(jett_ind) - ...
-                guid.dej_n.p.masses(jett_ind+1);
             ctrl.s.area_ref = guid.dej_n.p.area_refs(jett_ind+1);
+            guid.cmd.delta_mass = veh.s.mass - ...
+                (mass + normrnd(0, sigma_m));
+            ctrl.s.cd = cd + normrnd(0, sigma_cd);
+                        
             
             % update stage for high data rate vs. guidance rate
             if guid.dej_n.s.stage < guid.dej_n.p.n_jett

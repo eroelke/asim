@@ -222,8 +222,10 @@ function dat = store_dat( calcs, i, ti, y, veh, guid, nav, ctrl, dat, in )
             dat.g.dej_n.r_ap(i,:) = guid.dej_n.s.r_ap;
             if isnan(guid.dej_n.s.dr_ap)
                 dat.g.dej_n.dr_ap(i) = nan;
+                dat.g.dej_n.dr_ap_true(i) = nan;
             else
-                dat.g.dej_n.dr_ap(i) = guid.dej_n.s.dr_ap;
+                dat.g.dej_n.dr_ap(i) = guid.dej_n.s.dr_ap;  %error that may include bias
+                dat.g.dej_n.dr_ap_true(i) = guid.dej_n.s.dr_ap_true;    %unbiased error
             end
             
 %             dat.g.dej_n.atm_err(i) = guid.dej_n.s.atm.atm_err;

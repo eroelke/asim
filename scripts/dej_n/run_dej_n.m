@@ -153,6 +153,13 @@ in0.v.gnc.g.p_dej_n.multi.comp_curr = gnc.comp_curr;
 in0.v.gnc.g.p_dej_n.hydra.dtj_lim = gnc.dtj_lim;   % max step size for newton method
 in0.v.gnc.g.p_dej_n.hydra.dtj_flag = gnc.hydra_flag;    % hydra dtj reduction on/off
 
+in0.v.gnc.g.p_dej_n.sigs.m = 0;
+in0.v.gnc.g.p_dej_n.sigs.cd = 0;
+in0.v.gnc.g.p_dej_n.sigs.aref = 0;
+
+%biasing
+in0.v.gnc.g.p_dej_n.bias = gnc.bias;
+
 % check efpa solving
 if (sim.efpa_flag)
     fpa_tol = 0.05; %deg
@@ -180,8 +187,11 @@ end
 
 if (mc.debug == false || mc.flag == false)
 %% Run nominal Trajectory
-out = main1_mex(in0);
-% fprintf('Running in debug mode...\n'); out = main1(in0);         % debug mode
+if (sim.debug)
+    fprintf('Running in debug mode...\n'); out = main1(in0);         % debug mode
+else
+    out = main1_mex(in0);
+end
 
 % 
 % Compute parameters
@@ -280,8 +290,9 @@ if (mc.flag)
     % pre-determine random atmospheres to reduce broadcast overhead
     temp = nan(1000, 7, N);
     for i = 1:N
-        rnd(i) = randi(1000);
-        temp(:,:,i) = mc_atm(rnd(i)).table;
+%         rnd(i) = randi(1000);
+%         temp(:,:,i) = mc_atm(rnd(i)).table;
+        temp(:,:,i) = mc_atm(i).table;
     end
 %     tic
 
