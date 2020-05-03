@@ -22,7 +22,7 @@
 % *Created Sep 2018, E. Roelke
 % *Added outside loop for multiple stages, Mar 2019, E. Roelke    
 % 
-function [r_a,dr_a,pflag] = guid_dej_n_pred(y0, t0, s, p, j_ind, dt, guid)
+function [r_a,dr_ap,dr_ap_true,pflag] = guid_dej_n_pred(y0, t0, s, p, j_ind, dt, guid)
 %#codegen
 
 % Initialize
@@ -41,8 +41,8 @@ K_dens = guid.s.atm.K_dens;
 y = y0;
 t = t0;
 jett_flag = logical(false);
+j_ind0 = j_ind;
 pflag = 0;
-
 tj0 = s.tj_next(j_ind);        % jettison time this index
 tj0 = tj0 + dt;
 
@@ -86,11 +86,12 @@ if pflag ~= 2
     v = y(4:6); % m/s, inertial velocity vector
     ae = rv2ae([r;v], guid.p.planet.mu);    % get orbital elements from r, v
     a = ae(1);
-    e = ae(2);     
-
+    e = ae(2);
+    
     r_a = a*(1+e);       % apoapsis for given jettison time
-    dr_a = r_a - (p.tgt_ap + guid.p.planet.r_e);   %apoapsis radius error, m
-   
+    dr_ap_true = r_a - (p.tgt_ap + guid.p.planet.r_e);   %apoapsis radius error, m
+    dr_ap = dr_ap_true - p.bias(j_ind0).tgt_ap; %minus because negative error is below target
+    
     if (e > 1)
         pflag = 3;  % hyperbolic traj
         return;
@@ -98,7 +99,8 @@ if pflag ~= 2
     
 else % surface impact
     r_a = guid.p.planet.r_e; 
-    dr_a = r_a - (p.tgt_ap + guid.p.planet.r_e);
+    dr_ap = r_a - (p.tgt_ap + guid.p.planet.r_e);    % don't bias impacts
+    dr_ap_true = dr_ap;
     return;
 end
 

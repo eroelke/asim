@@ -51,7 +51,7 @@ elseif (s.A_mag >= p.A_sens_atm && i.t >= p.t_init)
     if (j_ind <= p.n_jett)
         %% Execute predictor-corrector
         
-        if (~s.init_flags(j_ind))
+        if ~s.init_flags(j_ind) %&& j_ind > 1
             internal_iterations = p.init_iters;
             s.init_flags(j_ind) = true;
         else
@@ -83,7 +83,7 @@ elseif (s.A_mag >= p.A_sens_atm && i.t >= p.t_init)
                     d_lim = p.hydra.dtj_lim;
                     dtj = 0; %init
                     
-                    [s.r_ap,s.dr_ap,pflag] = guid_dej_n_pred(y0, t0, s, p, j_ind, 0, guid);
+                    [s.r_ap,s.dr_ap,s.dr_ap_true,pflag] = guid_dej_n_pred(y0, t0, s, p, j_ind, 0, guid);
                     if (pflag == 2)   % impact surface (cut-off to save time)
                         dtj = d_lim;
                         s.tj_next(j_ind) = s.tj_next(j_ind) - dtj; % try jettison much earier
@@ -91,7 +91,7 @@ elseif (s.A_mag >= p.A_sens_atm && i.t >= p.t_init)
                         dtj = -d_lim;
                         s.tj_next(j_ind) = s.tj_next(j_ind) + dtj; % trj jettison much later
                     else
-                        [~,dra2,~] = guid_dej_n_pred(y0, t0, s, p, j_ind, dt, guid);
+                        [~,dra2,~,~] = guid_dej_n_pred(y0, t0, s, p, j_ind, dt, guid);
                         
                         [s.tj_next(j_ind), dtj] = update_t_jett( s.tj_next(j_ind), ... 
                             s.dr_ap, dra2, dt, d_lim, p.tol_ap);
@@ -118,15 +118,15 @@ elseif (s.A_mag >= p.A_sens_atm && i.t >= p.t_init)
                         % only look at current vehicle stage
                         dr_ap = nan;    %to appease the compiler gods
                         r_ap = nan;
-                        [s.r_ap,s.dr_ap,pflag] = guid_dej_n_pred(y0, t0, s, p, j_ind, 0, guid);
+                        [s.r_ap,s.dr_ap,s.dr_ap_true,pflag] = guid_dej_n_pred(y0, t0, s, p, j_ind, 0, guid);
                     end %predictor
                     
-                    if (abs(s.dr_ap) <= p.tol_ap)
+%                     if (abs(s.dr_ap) <= p.tol_ap)
                         % if error is within tolerance, don't adjust
                         % jettison time
 %                         s.hydra.dtj = 0;
 %                         break;
-                    end
+%                     end
                        
                     % corrector
                     if pflag == 2   % impact surface (cut-off to save time)
@@ -144,7 +144,7 @@ elseif (s.A_mag >= p.A_sens_atm && i.t >= p.t_init)
                                     dr_ap(j), dra2(j), dt, s.hydra.dtj_lim, p.tol_ap );
                             end
                         else
-                            [~,dra2,~] = guid_dej_n_pred(y0, t0, s, p, j_ind, dt, guid);
+                            [~,dra2,~,~] = guid_dej_n_pred(y0, t0, s, p, j_ind, dt, guid);
                             [s.tj_next(j_ind), dtj] = update_t_jett( ... 
                                 s.tj_next(j_ind), s.dr_ap, dra2, dt, s.hydra.dtj_lim, p.tol_ap );
                             
@@ -157,7 +157,7 @@ elseif (s.A_mag >= p.A_sens_atm && i.t >= p.t_init)
                 otherwise % bisection
                     [r_ap,dr_ap] = guid_dej_n_pred(y0, t0, s, p, j_ind, 0, guid);
                     [s, npc_flag] = guid_dej_n_corr(s, t0, j_ind, r_ap, dr_ap);
-            end
+            end %switch npc_mode
             
             % check max iterations or within tolerance
             if (s.iter == internal_iterations || abs(s.dr_ap) <= p.tol_ap)

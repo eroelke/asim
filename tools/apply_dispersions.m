@@ -29,11 +29,18 @@ function in = apply_dispersions(in,sigs)
 %alter initial state vector to include random value for given mean and
 %sigma value uncertainties
 %% mass
-in.v.mp.m_ini = in.v.mp.m_ini + normrnd(0,sigs.m);
+sigma_m = in.v.mp.m_ini * sigs.m;
+sigma_cd = in.v.aero.cd * sigs.cd;
+if (in.v.gnc.g.p.dm_mode == uint8(4))
+    scale = sqrt(cast(in.v.gnc.g.p_dej_n.n_jett + 1,'double') / 2);
+    sigma_m = sigma_m / scale;
+    sigma_cd = sigma_cd / scale;
+end
+in.v.mp.m_ini = in.v.mp.m_ini + normrnd(0, sigma_m);
 
 %% Aerodynamics
 % in.v.aero.cl = in.v.aero.cl + normrnd(0,s_cl);
-in.v.aero.cd = in.v.aero.cd + normrnd(0,sigs.cd);
+in.v.aero.cd = in.v.aero.cd + normrnd(0, sigma_cd);
 % in.v.aero.aoa = in.v.aero.aoa + normrnd(0,s_aoa);
 
 %% Entry state
@@ -65,25 +72,11 @@ in.s.traj.alt = in.s.traj.alt + normrnd(0,sigs.hmag_atm);
 % in.s.traj.lon = in.s.traj.lon + normrnd(0,sigs.lon0);
 % in.s.traj.az = in.s.traj.az + normrnd(0,sigs.az0);
 
-%% Atmosphere
-%multiplicative factor on atmospheric properties
-% in.p.atm.table(:,1) = in.p.atm.table(:,1).*disp_atmos(1); %density
-% in.p.atm.table(:,2) = in.p.atm.table(:,2).*disp_atmos(2); %temperature
-% in.p.atm.table(:,3) = in.p.atm.table(:,3).*disp_atmos(3); %pressure
-% in.p.atm.table(:,4) = in.p.atm.table(:,4).*disp_atmos(4); %easterly winds
-% in.p.atm.table(:,5) = in.p.atm.table(:,5).*disp_atmos(5); %northern winds
-% in.p.atm.table(:,6) = in.p.atm.table(:,6).*disp_atmos(6); %vertical winds
-
-%% Deceleretor uncertainties
-%chute deploy altitude
-
-%chute deploy velocity
-
-%chute aerodynamics (cd +- 0.01 1 sigma) - random guess
-% in.v.decel.cd = in.v.decel.cd + normrnd(0,0.01);
-
-% jettisoned mass
-% in.v.gnc.g.p_sej_a.mass_jettison = in.v.gnc.g.p_sej_a.mass_jettison + normrnd(0,sigs(1) );
-
+% dej n uncertainties
+if (in.v.gnc.g.p.atm.Kflag && in.v.gnc.g.p.dm_mode == uint8(4))
+    in.v.gnc.g.p_dej_n.sigs.m = sigs.m;
+    in.v.gnc.g.p_dej_n.sigs.cd = sigs.cd;
+    in.v.gnc.g.p_dej_n.sigs.aref = 0;
+end
 
 end

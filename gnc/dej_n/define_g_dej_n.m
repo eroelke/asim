@@ -28,9 +28,19 @@ p_hydra = struct( ...
 );
 
 %% Parameter data structure
+bias = struct( ...
+    'tgt_ap', double(0), ...    %target apoapsis bias
+    'tj', double(0) ...     % jettison time bias
+);
+
+sigmas = struct( ...
+    'm', double(0), ... %mass uncertainty percentage
+    'cd', double(0), ... %drag coeff 1 sigma uncertinty percentage
+    'aref', double(0) ...
+);
 p = struct( ...
     'iter_max', uint8(1), ... % nd, normal NPC max interal iterations
-    'init_iters',uint8(3), ... %initialize each stage with X NPC iterations
+    'init_iters',uint8(10), ... %initialize each stage with X NPC iterations
     'A_sens_atm', double(0.25), ... % m/s^2, sensible atmosphere decel
     't_init', double(0), ...    %s, simulation time to start guidance
     'tgt_ap', double(0), ... % m, target apoapse altitude (RENAME?)
@@ -46,7 +56,9 @@ p = struct( ...
     'npc_mode', uint8(0), ...  % corrector type (0 bisection, 1 newton, 2 multi, 3 ensemble)
     'traj_rate', double(0), ...  % integration rate for NPC (Hz) (bias if != sim rate)
     'hydra', p_hydra, ...      % hybrid NPC struct
-    'multi', multi_jett ...    % multi stage struct settings
+    'multi', multi_jett, ...    % multi stage struct settings
+    'bias', repmat(bias,5,1), ...     % biasing structure (per stage)
+    'sigs', sigmas ...  % 1 sigma uncertainties
 );
     
 
@@ -78,6 +90,7 @@ s = struct( ...
     'step_size', double(0), ...   % step size for corrector
     'r_ap', double(0), ... % m, current (1) and previous (2) apoapse estimate
     'dr_ap', double(0), ...  % apoapsis radius error
+    'dr_ap_true', double(0), ...    %apoapsis radius error (ignoring biasing)
     'dr_f', double(nan(5,1)), ...   % each jettison stage final apoapsis err
     'dr_curr', double(nan), ... % current apoapsis error estimate (for current jettison time)
     'ncalls', double(0), ...    % number of guidance calls

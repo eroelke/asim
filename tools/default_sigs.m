@@ -20,9 +20,9 @@
 
 function sigs = default_sigs()
 
-sigs.m = 0.25;
+sigs.m = 0.5 / 100 / 3; %.5 3sigma
 sigs.cl = 0;
-sigs.cd = 0.03;
+sigs.cd = 5 / 100 / 3;  %5% 3sigma
 sigs.aoa = 0;
 sigs.vmag_atm = 10/3;  %10 m/s 3sigma
 sigs.hmag_atm = 100;     %m

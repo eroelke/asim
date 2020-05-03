@@ -3,7 +3,7 @@
 % %  EsDL
 % 
 clear; clc;
-save_path = 'C:\Users\Evan Roelke\Documents\research\venus_ac\';
+save_path = '..\venus_ac\';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%% ENTRY TRADES %%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1968,15 +1968,38 @@ legend('Actual Variation','Variation Estimate','location','se')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%% 1-STAGE JETTISON %%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Nominal NPC
+%{
+clear;clc
+[x0,aero,gnc,sim,mc] = base_venus_ac();
+gnc.guid_rate = 0.5;
+gnc.ha_tol = 5;
+gnc.tj0 = 90;
+gnc.hydra_flag = true;
+gnc.dtj_lim = 10;
+mc.flag = false;
+sim.traj_rate = 200;
+gnc.npc_mode = uint8(1);
+mc.flag = true;
+mc.debug = true;
+% sim.debug = true;
+% mc.sigs = zero_sigs;
+out = run_dej_n(x0,gnc,aero,sim,mc);
+
+keyboard
+%}
+
+%% NPC Monte Carlo
 %{
 clearvars -except save_path; clc; close all;
 % ha_tgt = [.4 2 10 105.5].*1000;
-ha_tgt = 2000;
+ha_tgt = [2000 10000];
 % fpas = [-6.5 -6.55 -6.6 -6.65];
-fpas = -5.4;
+fpas = [-5.4 -5.6];
 [x0,aero,gnc,sim,mc] = base_venus_ac();
 gnc.guid_rate = 0.5;
-gnc.tj0 = 80;
+gnc.ha_tol = 5;
+gnc.tj0 = 90;
 gnc.hydra_flag = true;
 gnc.dtj_lim = 10;
 sim.parMode = true;
@@ -1991,9 +2014,9 @@ x0.v0 = 11;
 Ni = length(fpas);
 Nj = length(ha_tgt);
 
-mc.N = 500;
+mc.N = 1000;
 
-% mc.debug = true;
+mc.debug = true;
 
 for i = 1:Ni %fpas
     for j = 1:Nj %ha tgts
@@ -2001,18 +2024,18 @@ for i = 1:Ni %fpas
         gnc.ha_tgt = ha_tgt(j);
         
         fprintf('FPA %4.2f, Target Ap %4.2f\n',fpas(i), gnc.ha_tgt);
-        gnc.npc_mode = uint8(0);
-        out_b = run_dej_n(x0,gnc,aero,sim,mc);
+%         gnc.npc_mode = uint8(0);
+%         out_b = run_dej_n(x0,gnc,aero,sim,mc);
         gnc.npc_mode = uint8(1);
         out_h = run_dej_n(x0,gnc,aero,sim,mc);
         
-%         if (gnc.ha_tgt < 1000)
-%             save([save_path 'dej_n\HYDRA\1stage\data\' num2str(floor(gnc.ha_tgt)) ...
-%                 '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg.mat'])
-%         else
-%             save([save_path 'dej_n\HYDRA\1stage\data\' num2str(floor(gnc.ha_tgt/1000)) ...
-%                 'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg.mat'])
-%         end
+        if (gnc.ha_tgt < 1000)
+            save([save_path 'dej_n\HYDRA\1stage\data\' num2str(floor(gnc.ha_tgt)) ...
+                '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg.mat'])
+        else
+            save([save_path 'dej_n\HYDRA\1stage\data\' num2str(floor(gnc.ha_tgt/1000)) ...
+                'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg.mat'])
+        end
         
     end %j
 end %i
@@ -2020,13 +2043,14 @@ end %i
 out_stats(out_b)
 out_stats(out_h)
 fprintf('Finished 1stage sim. '); print_current_time();
-keyboard;
+% keyboard;
 %}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%% 2-STAGE JETTISON %%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Regular 2stage
+%{
 clearvars -except save_path ;clc
 [x0,aero,gnc,sim, mc] = base_venus_ac();
 
@@ -2037,10 +2061,10 @@ x0.v0 = 11;
 efpas = [-5.4 -5.6];
 Nk = length(efpas);
 
-gnc.ha_tgt = 10000;
+ha_tgts = [2000 10000];
 gnc.ha_tol = 10;
 gnc.n = 2;
-tj0s = [90 170;70 140];
+tj0s = [90 170];
 gnc.guid_rate = 0.5;
 gnc.npc_mode = uint8(2);
 
@@ -2076,8 +2100,8 @@ aero.cls = [0 0 0];
 sim.traj_rate = 200;
 sim.planet = 'venus';
 sim.efpa_flag = false;
-    
-mc.debug = false;
+
+% mc.debug = true;
 
 mc.flag = true;
 sim.parMode = true;
@@ -2085,13 +2109,17 @@ gnc.dtj_lim = 10;
 % gnc.rss_flag = true;
 
 % x0.fpa0 = fpas;
-fprintf('2stage, b2/b1 = %2.0f, ha* = %4.0f\n',br21, gnc.ha_tgt);
+fprintf('2stage, b2/b1 = %2.0f, ha* = %4.0f. ',br21, gnc.ha_tgt); print_current_time();
 gnc.force_jett = true;
 gnc.comp_curr = false;
 
+sim.nWorkers = 10;
+
+for jj = 1:length(ha_tgts)
+    gnc.ha_tgt = ha_tgts(jj);
 for k = 1:Nk
     x0.fpa0 = efpas(k);
-    gnc.tj0 = tj0s(k,:);
+    gnc.tj0 = tj0s;
     out = run_dej_n(x0,gnc,aero,sim,mc);
     
     betas = ['b_ijs' num2str(b21) '_' num2str(b31)];
@@ -2104,38 +2132,13 @@ for k = 1:Nk
             'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
     end
 end %fpas
+end %ha_tgts
 end %b21s
 fprintf('Finished 2stage sims. '); print_current_time();
 keyboard;
-
-
-% % % % post process
-dat = load('..\venus_ac\dej_n\HYDRA\2stage\data\2k\v11_5.4deg_b21=3_b31=10.mat');
-out = dat.out;
-haf1 = nan(1000,1); haf2 = haf1;
-for i = 1:1000
-    if (~isnan(out.tjett(i,2)))
-        haf2(i) = out.haf_err(i);
-        haf1(i) = nan;
-    else
-        haf1(i) = out.haf_err(i);
-        haf2(i) = nan;
-    end
-end
-figure(); hold on
-% plot(out.tjett(:,1),haf1,'*b','LineWidth',1.5)
-% plot(out.tjett(:,2),haf2,'*r','LineWidth',1.5)
-h2=histogram(haf2,'NumBins',50,'FaceColor','b');
-h1=histogram(haf1,'NumBins',50,'FaceColor','r');
-width = 20;
-% h1.Normalization = 'probability';
-% h2.Normalization = 'probability';
-h1.BinWidth = width;
-h2.BinWidth = width;
-legend([h1 h2],'Jettison 1','Jettison 2')
 %}
 
-%% FJ & CC
+%% Biasing Trade Studies
 %{
 clearvars -except save_path ;clc
 [x0,aero,gnc,sim, mc] = base_venus_ac();
@@ -2143,20 +2146,23 @@ clearvars -except save_path ;clc
 b31 = 10;
 b21s = [3 5 7 9];
 
-x0.v0 = 15;
-x0.fpa0 = -6.5;
+% biasing = -1000.*(50:50:750);    %m
+biasing = 50 * -1000;
 
-gnc.ha_tgt = 400;
-gnc.ha_tol = 5;
+x0.v0 = 11;
+% efpas = linspace(-5.3,-5.8,20);
+efpas = -5.4;
+Nk = length(efpas);
+
+gnc.ha_tgt = 10000;
+gnc.ha_tol = 10;
 gnc.n = 2;
-gnc.tj0 = [80 120];
+tj0s = [100 170];
 gnc.guid_rate = 0.5;
 gnc.npc_mode = uint8(2);
 
 for j = 1:length(b21s)
 b21 = b21s(j);
-    
-% aero.rcs = [1 0.45 0.15];
 aero.m = [150 60 20];
 aero.rcs(1) = 1;
 aero.rcs(2) = sqrt( (aero.m(2) * aero.rcs(1)^2) / ...
@@ -2184,60 +2190,75 @@ aero.rn = 0.1;
 aero.cds = [1.05 1.05 1.05];
 aero.cls = [0 0 0];
 
-mc.flag = true;
-
 sim.traj_rate = 200;
 sim.planet = 'venus';
 sim.efpa_flag = false;
     
 mc.debug = false;
-mc.flag = true;
+mc.flag = false;
+
 sim.parMode = true;
 gnc.dtj_lim = 10;
+% gnc.rss_flag = true;
 
 % x0.fpa0 = fpas;
-fprintf('2stage, b2/b1 = %2.0f, ha* = %4.0f\n',br21, gnc.ha_tgt);
-gnc.force_jett = false;
-gnc.comp_curr = false;
-out1 = run_dej_n(x0,gnc,aero,sim,mc);
-
-fprintf('2stage, b2/b1 = %2.0f, ha* = %4.0f, FJ\n',br21, gnc.ha_tgt);
+fprintf('2stage bias, b2/b1 = %2.0f, ha* = %4.0f. ',br21, gnc.ha_tgt); print_current_time();
 gnc.force_jett = true;
 gnc.comp_curr = false;
-out2 = run_dej_n(x0,gnc,aero,sim,mc);
 
-fprintf('2stage, b2/b1 = %2.0f, ha* = %4.0f, CC\n',br21, gnc.ha_tgt);
-gnc.force_jett = false;
-gnc.comp_curr = true;
-out3 = run_dej_n(x0,gnc,aero,sim,mc);
+% sim.nWorkers = 5;
+gnc.tj0 = tj0s;
+tjr = nan(length(biasing),Nk,gnc.n);
+tj = tjr;
+err = nan(length(biasing),Nk);
 
-fprintf('2stage, b2/b1 = %2.0f, ha* = %4.0f, FJ & CC\n',br21, gnc.ha_tgt);
-gnc.force_jett = true;
-gnc.comp_curr = true;
-out4 = run_dej_n(x0,gnc,aero,sim,mc);
+for k = 1:Nk
+x0.fpa0 = efpas(k);
 
-betas = ['b21=' num2str(br21) '_b31=' num2str(b31)];
+for i = 1:length(biasing)
 
-% keyboard;
+gnc.bias(1).tgt_ap = biasing(i);
+out = run_dej_n(x0,gnc,aero,sim,mc);
 
-if (gnc.ha_tgt < 1000)
-    save([save_path 'dej_n\HYDRA\2stage\data\' num2str(floor(gnc.ha_tgt)) ... 
-        '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '_FJ_CC.mat'])
-else
-    save([save_path 'dej_n\HYDRA\2stage\data\' num2str(floor(gnc.ha_tgt/1000)) ... 
-        'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '_FJ_CC.mat'])
-end
+tj(i,k,:) = out.t_jett';
+tjr(i,k,:) = out.idj/out.idxend;
+err(i,k) = out.haf_err;
 
-end
+end %biasing
+% betas = ['b_ijs' num2str(b21) '_' num2str(b31)];
+end %fpas
 
-fprintf('Finished 2stage sims. '); print_current_time();
+save([save_path 'dej_n\HYDRA\2stage_bias\entry_trades\' num2str(floor(gnc.ha_tgt/1000)) ... 
+    'k_v' num2str(x0.v0) '_b21_' num2str(br21) '.mat'])
+fprintf('Finished 2stage bias sim. '); print_current_time();
+end %betas
+
 keyboard;
+
+% ymin = -50;
+% ymax = abs(ymin);
+% figure(); hold on
+% set(gca,'FontSize',14)
+% grid on
+% plot(out.traj.time, out.g.dej_n.dr_ap_true./1000,'LineWidth',2);
+% ylim([ymin ymax])
+% plot([out.t_jett(1) out.t_jett(1)],[ymin ymax],'k--','LineWidth',2)
+% plot([out.t_jett(2) out.t_jett(2)],[ymin ymax],'k-.','LineWidth',2)
+% legend('Apoapsis Error Estimate (km)', ... 
+%     'Jettison 1','Jettison 2','location','se');
+% xlabel('Time (s)')
+% ylabel('Apoapsis Error Estimate (km)')
 %}
 
 %% 2stage Post Process
 %{
-% dat = load('..\venus_ac\dej_n\HYDRA\2stage\data\2k\hydra\mc2k_fpa5_4_0.5Hz, b31=10_b21=3_b32=3.3333.mat');
-dat = load('..\venus_ac\dej_n\HYDRA\2stage\data\2k\rss_data\v11_5.4deg_b21=3_b31=10.mat');
+dat = load('C:\Users\Evan Roelke\Documents\research\venus_ac\dej_n\HYDRA\2stage\data\2k\v11_5.4deg_b_ijs3_10.mat');
+% dat = load('..\venus_ac\dej_n\HYDRA\2stage\data\2k\rss_data\v11_5.4deg_b21=3_b31=10.mat');
+time_history_plot(dat.out, 2);
+
+dej_scatter_plot(dat.out, 2);
+
+compare_stds(2, -5.4);
 
 err = dat.out.haf_err;
 tj = dat.out.tjett;
@@ -2368,7 +2389,7 @@ annotation('textbox',dim,'String',str,'FitBoxToText','on');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %{
 clearvars -except save_path ;clc
-[x0,aero,gnc,sim, mc] = base_jsr();
+[x0,aero,gnc,sim, mc] = base_venus_ac();
 br41 = 10;
 br21s = [3 5 7 9];
 br31s = [5 7 9 9.5];
@@ -2376,8 +2397,8 @@ br31s = [5 7 9 9.5];
 % br21s = [5];
 % br31s = [7];
 
-fpas = [-5.4 -5.6];
-ha_tgts = 2000;
+fpas = [-5.4];
+ha_tgts = [2000];
 
 % br21s = [9];
 % br31s = [9.5];
@@ -2417,7 +2438,7 @@ aero.cls = [0 0 0 0];
 % gnc.ha_tgt = 10000;
 gnc.ha_tgt = ha_tgts(jj);
 gnc.n = 3;
-gnc.tj0 = [90 170 230];
+gnc.tj0 = [90 170 260];
 gnc.guid_rate = 0.5;
 
 sim.t_max = 1500;
@@ -2447,6 +2468,7 @@ gnc.iters = uint8(1);
 gnc.guid_rate = 0.5;
 gnc.npc_mode = uint8(2); %multi stage
 gnc.comp_curr = false;
+gnc.force_jett = true;
 
 % mc.debug = true;
 
@@ -2470,8 +2492,7 @@ end
 br21 = b(2)/b(1);
 br31 = b(3)/b(1);
 br41 = b(4)/b(1);
-betas = ['b41=' num2str(br41) '..b31=' ...
-    num2str(br31) '..b21=' num2str(br21)];
+betas = ['b_ijs' num2str(br21) '_' num2str(br31) '_' num2str(br41)];
 
 for j = 1:1000
 %     ttf0(j) = out.tjett(j,1)./out.traj.t(out.idxend(j),j);
@@ -2529,12 +2550,14 @@ end
 % keyboard;
 
 if (gnc.ha_tgt < 1000)
-    save([save_path 'dej_n\HYDRA\2stage\data\' num2str(floor(gnc.ha_tgt)) ... 
-        '\rss_data\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '_FJ.mat'])
+    save([save_path 'dej_n\HYDRA\3stage\data\' num2str(floor(gnc.ha_tgt)) ... 
+        '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
 else
-    save([save_path 'dej_n\HYDRA\2stage\data\' num2str(floor(gnc.ha_tgt/1000)) ... 
-        'k\rss_data\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '_FJ.mat'])
+    save([save_path 'dej_n\HYDRA\3stage\data\' num2str(floor(gnc.ha_tgt/1000)) ... 
+        'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
 end
+
+
 
 
 
@@ -2550,7 +2573,10 @@ header = ['\beta_n/\beta_1=10,beta_ratios=' ...
     num2str(out.nom.beta_ratios(1)) ' & ' ... 
     num2str(out.nom.beta_ratios(2)) ' & ' ...
     num2str(out.nom.beta_ratios(3))];
+%}
 
+%% 3stage post process
+%{
 % need to redo? need all time indices to match
 % figure(); hold on
 % set(gca,'FontSize',14)
@@ -2672,31 +2698,114 @@ ylim([-500 500])
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%% N-Stage Comparions %%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%% N-Stage Post Process %%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% std vs stage
+% %{
+% histogram, y axis is std, x axis is stage number (1,2,3) for each
+% architecture
+[p, d1, d2, d3] = load_dej_n_data();
+
+std1 = std(d1.out_h.haf);
+std2 = std([d2(1).out.haf, d2(2).out.haf, d2(3).out.haf, d2(4).out.haf]);
+std3 = std([d3(1).out.haf, d3(2).out.haf, d3(3).out.haf, d3(4).out.haf]);
+
+mean1 = mean(d1.out_h.haf_err);
+mean2 = mean([d2(1).out.haf_err, d2(2).out.haf_err, d2(3).out.haf_err, d2(4).out.haf_err]);
+mean3 = mean([d3(1).out.haf_err, d3(2).out.haf_err, d3(3).out.haf_err, d3(4).out.haf_err]);
+
+median1 = median(d1.out_h.haf_err);
+median2 = median([d2(1).out.haf_err, d2(2).out.haf_err, d2(3).out.haf_err, d2(4).out.haf_err]);
+median3 = median([d3(1).out.haf_err, d3(2).out.haf_err, d3(3).out.haf_err, d3(4).out.haf_err]);
+
+stages = [1 2 3];
+
+colors = [0.23 0.23 0.23; 1 0 0; 0 1 0; 0 0 1; 0 1 1; 1 0 1; 1 1 0; ... 
+    0 0.4470 0.7410; 0.8500 0.3250 0.0980; 0.9290 0.6940 0.1250; ...
+    0.4940 0.1840 0.5560; 0.4660 0.6740 0.1880; 0.6350 0.0780 0.1840];
+
+
+
+% group by 1sigma, mean, median
+figure(); hold on
+set(gca,'FontSize',16)
+grid on
+categories = categorical({'1 \sigma','Mean','Median'});
+b1 = bar(categories, ... 
+    [std1 std2(1) std2(2) std2(3) std2(4) std3(1) std3(2) std3(3) std3(4); ... 
+     mean1 mean2(1) mean2(2) mean2(3) mean2(4) mean3(1) mean3(2) mean3(3) mean3(4); ...
+     median1*5 median2(1) median2(2) median2(3) median2(4) ... 
+     median3(1) median3(2) median3(3) median3(4)]);
+for i = 1:9
+    b1(i).FaceColor = colors(i,:);
+end
+legend('SEJ', 'MEJ-2A', 'MEJ-2B','MEJ-2C','MEJ-2D', ... 
+    'MEJ-3A','MEJ-3B','MEJ-3C','MEJ-3D')
+ylim([-5 150])
+ylabel('Apoapsis Error (km)')
+
+% group by stage
+figure(); hold on
+set(gca,'FontSize',16)
+a1 = [std1;mean1;median1];
+a2 = [std2;mean2;median2];
+a3 = [std3;mean3;median3];
+b1 = bar([-0.5 0 0.5], a1, 0.3);
+b2 = bar([1.5 2 2.5], a2);
+b3 = bar([3.5 4 4.5], a3);
+
+
+
+legend(beta_string(1, 1), beta_string(2, 1), beta_string(2, 2), ...
+    beta_string(2, 3), beta_string(2, 4), beta_string(3, 1), ...
+    beta_string(3, 2), beta_string(3, 3), beta_string(3, 4), ... 
+    'location','eastoutside');
+xlabel('Jettison Stage Count')
+ylabel('Apoapsis Altitude 1\sigma (km)')
+xlim([.5 3.5])
+
+
+%}
+
+%% box plots
+% [p, d1, d2, d3] = load_dej_n_data();
+% 
+% figure(); hold on
+% boxplot([d1.out_h.haf, d2(1).out.haf], [1, 2]);
+
+
+%% cdfs
 %{
-clear;clc;
-p = 'C:\Users\Evan Roelke\Documents\research\venus_ac\dej_n\HYDRA\';
-p2 = [p '2stage\data\'];
-p3 = [p '3stage\data\'];
+% generate_cdf_plots([2 3], '11', '5.4', 2000, 25);
+% generate_cdf_plots([2 3], '11', '5.4', 10000, 25);
+
 %%%%%%%%% efpa = -5.4, 2k
-d1 = load([p '1stage\data\mcNewton_fpas_hafs_0.5hz.mat']);
-d2_1 = load([p2 'mc2k_fpa5_4_0.5Hz, b31=10_b21=3_b32=3.3333.mat']);
-d2_2 = load([p2 'mc2k_fpa5_4_0.5Hz, b31=10_b21=5_b32=2.mat']);
-d2_3 = load([p2 'mc2k_fpa5_4_0.5Hz, b31=10_b21=7_b32=1.4286.mat']);
-d2_4 = load([p2 'mc2k_fpa5_4_0.5Hz, b31=10_b21=9_b32=1.1111.mat']);
-d3_1 = load([p3 'mc_2k_fpa5.4_b41=10..b31=5..b21=3.mat']);
-d3_2 = load([p3 'mc_2k_fpa5.4_b41=10..b31=7..b21=5.mat']);
-d3_3 = load([p3 'mc_2k_fpa5.4_b41=10..b31=9..b21=7.mat']);
-d3_4 = load([p3 'mc_2k_fpa5.4_b41=10..b31=9.5..b21=9.mat']);
+[p, d1, d2, d3] = load_dej_n_data();
+tols = 0:1:100;
+haTgt = 2000;
 
-% d2_52 = load([p '2stage\data\mc2k_fpaBoth_5Hz, b31=10_b21=5_b32=2.mat']);
-% d2_25 = load([p '2stage\data\mc2k_fpaBoth_5Hz, b31=10_b21=2_b32=5.mat']);
-% d3_43 = load([p '3stage\data\mc_2k_fpa5.4_b41=10..b31=4..b21=3.mat']);
-% d3_63 = load([p '3stage\data\mc_2k_fpa5.4_b41=10..b31=6..b21=3.mat']);
-% d3_83 = load([p '3stage\data\mc_2k_fpa5.4_b41=10..b31=8..b21=3.mat']);
+N = 1000;
+for i = 1:length(tols)
+    pc1(i) = 100 * length(find((100*abs(d1.out_h.haf_err)/haTgt) <= tols(i))) / N;
+    for j = 1:4
+        pc2(i,j) = 100 * length(find((100*abs(d2(j).out.haf_err)/haTgt) <= tols(i))) / N;
+        pc3(i,j) = 100 * length(find((100*abs(d3(j).out.haf_err)/haTgt) <= tols(i))) / N;
+    end
+end
 
-d1_haf_errs = d1.haf_n_2k(:,1) - 2000;
+figure(); hold on
+grid on
+set(gca,'FontSize',16)
+plot(tols, pc1,'k--','LineWidth',2.5)
+plot(tols, pc2(:,1),'r','LineWidth', 2.5)
+plot(tols, pc2(:,4),'b','LineWidth', 2.5)
+plot(tols, pc3(:,1),'y','LineWidth', 2.5)
+plot(tols, pc3(:,4),'g-.','LineWidth', 2.5)
+xlim([0 20])
+xlabel('Apoapsis Altitude Tolerance (% of Target)')
+ylabel('
+
 
 % names = {'d1','d2_25','d2_52','d3_43','d3_63','d3_83'};
 tols = (0:10:500)';
@@ -3135,6 +3244,7 @@ h4.BinWidth = w; h4.FaceAlpha = alpha;
 
 %%%% 2stage, 10k, -5.6deg
 %}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%% CONTINUOUS DRAG MODULATION (CVDMA) %%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

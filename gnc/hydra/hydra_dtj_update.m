@@ -13,7 +13,7 @@ if ((p.hydra.dtj_flag) && abs(dtj) == s.hydra.dtj_lim)
         if s.hydra.dtj_lim_count == p.hydra.n_dtj_lims && s.hydra.dtj_lim > 0.5
             s.hydra.dtj_lim = s.hydra.dtj_lim / 2;  %reduce jettison time limit to converge
             s.hydra.dtj_lim_count = 0;
-            % fprintf('Reducing Jettison Update Limit to %4.2f\n', s.dtj_lim);
+%             fprintf('Reducing Jettison Update Limit to %4.2f\n', s.dtj_lim);
         else
             s.hydra.dtj_lim_count = s.hydra.dtj_lim_count + 1;
         end
