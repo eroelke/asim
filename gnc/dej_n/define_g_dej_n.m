@@ -40,7 +40,7 @@ sigmas = struct( ...
 );
 p = struct( ...
     'iter_max', uint8(1), ... % nd, normal NPC max interal iterations
-    'init_iters',uint8(10), ... %initialize each stage with X NPC iterations
+    'init_iters',uint8(5), ... %initialize each stage with X NPC iterations
     'A_sens_atm', double(0.25), ... % m/s^2, sensible atmosphere decel
     't_init', double(0), ...    %s, simulation time to start guidance
     'tgt_ap', double(0), ... % m, target apoapse altitude (RENAME?)

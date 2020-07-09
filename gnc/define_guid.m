@@ -42,7 +42,7 @@ cmd = struct( ...
 %% Parameter data structure
 % atmospheric estimation parameter inputs
 p_atm = struct( ...
-    'Kflag', uint8(0), ...      % density corrector flag (for monte carlo)
+    'Kflag', logical(false), ...      % density corrector flag (for monte carlo)
     'K_bounds', double([0.1, 2]), ...     % density corrector range
     'K_gain', double(0.1), ...    % density corrector gain
     'mode', uint8(1), ...   % atmospheric estimation mode (default density factor)

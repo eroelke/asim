@@ -17,23 +17,20 @@
 % Outputs:
 %   out: output data struct
 % 
-function out = ac_venus_pd(efpa,ha_tgt,haf_tol,m,rcs,traj_rate,gnc_rate,trigger,mc)
+function out = ac_venus_pd(efpa,ha_tgt,haf_tol,m,rcs,n,traj_rate,gnc_rate,trigger,mc)
 
 % initial simulation vals
 in0 = pred_guid_venus_in;    % in0put struct for sin0gle jettison event
 
 % set rates
 in0.s.traj.rate = traj_rate; % trajectory integration rate (Hz)
-in0.s.data_rate = in0.s.traj.rate;
+in0.s.data_rate = 10;
 in0.v.gnc.g.p.rate = gnc_rate;   % guidance call rate (Hz)
 in0.v.gnc.n.p.rate = traj_rate;   %nav rate
 in0.v.gnc.c.p.rate = traj_rate; %control rate
 
-% Define Vals
-% m1 = 80;
-% m2 = 40;
-% r1 = 0.75;
-% r2 = 0.175;
+in0.s.traj.t_max = 1500;
+
 m1 = m(1);
 m2 = m(2);
 r1 = rcs(1);
@@ -72,7 +69,11 @@ in0.v.aero.cd = cd;
 in0.v.aero.cl = 0;
 in0.v.aero.nose_radius = rn; % Nose radius (m)
 
-% Defin0e guidance parameters
+% Define guidance parameters
+in0.v.gnc.g.p.atm.K_gain = 0.2;
+in0.v.gnc.g.p.atm.K_bounds = [0.01 2];
+in0.v.gnc.g.p.atm.Kflag = uint8(0);     % flag to do density estimate (for monte carlo)
+
 in0.v.gnc.g.pd.ha_tgt = ha_tgt*1e3;
 in0.v.gnc.g.pd.ha_tol = haf_tol*1e3;
 in0.v.gnc.g.pd.cds(1:2) = cd;
@@ -81,41 +82,50 @@ in0.v.gnc.g.pd.masses(1:2) = [m1 m2];
 in0.v.gnc.g.pd.trigger = trigger;
 in0.v.gnc.g.pd.rate = in0.s.traj.rate;    % predictor integration rate
 
+in0.v.gnc.g.pd.sigs.m = 0;
+in0.v.gnc.g.pd.sigs.cd = 0;
+in0.v.gnc.g.pd.sigs.aref = 0;
+
 beta1 = in0.v.mp.m_ini/(in0.v.aero.area_ref*cd);
 beta2 = in0.v.gnc.g.pd.masses(2)/(in0.v.gnc.g.pd.area_refs(2)*in0.v.aero.cd);
 beta_ratio = beta2/beta1;
 
 % run simulation
 % fprintf('Running PDG in debug mode..\n'); out = main1(in0);     % debug mode
-out = main1_mex(in0);
+if (~mc.debug)
+    out = main1_mex(in0);
 
-% get output parameters
-if isnan(out.traj.alt(end))
-    idxend = find(isnan(out.traj.alt),1)-1;
+    % get output parameters
+    if isnan(out.traj.alt(end))
+        idxend = find(isnan(out.traj.alt),1)-1;
+    else
+        idxend = length(out.traj.alt);
+    end
+
+    rv = [out.traj.pos_ii(idxend,:), out.traj.vel_ii(idxend,:)]';
+    oe = rv2oe(rv,in0.p.mu);
+    ra = oe(1)*(1+oe(2));
+    haf = (ra - in0.p.r_e);
+    dv = out.traj.vel_ii_mag(1) - out.traj.vel_ii_mag(idxend);
+
+    % for j = 1:n
+    out.idj = find(out.g.pd.stage == 1,1);
+    if ~isempty(out.idj)
+        out.tjett = out.traj.time(out.idj);
+    else
+        out.idj = nan;
+        out.tjett = nan;
+    end
+    % end
+
+    out.dv = round(dv,5);    % aerocapture maneuver delta v (m/s)
+    out.haf = round(haf/1000,5);    %km
+    out.haf_err = round(haf/1000 - ha_tgt,5);   % km
+    out.idxend = idxend;
+
 else
-    idxend = length(out.traj.alt);
+    out = nan;
 end
-
-rv = [out.traj.pos_ii(idxend,:), out.traj.vel_ii(idxend,:)]';
-oe = rv2oe(rv,in0.p.mu);
-ra = oe(1)*(1+oe(2));
-haf = (ra - in0.p.r_e);
-dv = out.traj.vel_ii_mag(1) - out.traj.vel_ii_mag(idxend);
-
-% for j = 1:n
-out.idj = find(out.g.pd.stage == 1,1);
-if ~isempty(out.idj)
-    out.tjett = out.traj.time(out.idj);
-else
-    out.idj = nan;
-    out.tjett = nan;
-end
-% end
-
-out.dv = round(dv,5);    % aerocapture maneuver delta v (m/s)
-out.haf = round(haf/1000,5);    %km
-out.haf_err = round(haf/1000 - ha_tgt,5);   % km
-out.idxend = idxend;
 
 if (mc.flag)    % monte carlo
     out_nom = out;
@@ -124,6 +134,10 @@ if (mc.flag)    % monte carlo
     % load disperse atmospheric tables
     mc_atm = load('./data/atm_data/atm_venus_mc.mat');
     mc_atm = mc_atm.mc; % 1000 atm tables
+    
+    debug = mc.debug;
+    
+    in0.v.gnc.g.p.atm.Kflag = uint8(1);
     
     % initialize output params
     N = mc.N;
@@ -143,12 +157,13 @@ if (mc.flag)    % monte carlo
     % pre-determine random atmospheres to reduce broadcast overhead
     temp = nan(1000, 7, N);
     for i = 1:N
-        rnd = randi(1000);
-        temp(:,:,i) = mc_atm(rnd).table;
+%         rnd = randi(1000);
+%         temp(:,:,i) = mc_atm(rnd).table;
+        temp(:,:,i) = mc_atm(i).table;
     end
     
 %     tic
-    parfor (i = 1:N, 6)
+    parfor (i = 1:N, 10)
 %     for i = 1:N
         in_mc = in0;        % copy nominal input struct
         in_mc.v.gnc.g.pd.mcflag = flag;
@@ -165,10 +180,14 @@ if (mc.flag)    % monte carlo
 %         ylim([90 150])
         
         % apply input perturbations (only to traj. guid struct has nominal)
-        in_mc = apply_dispersions(in_mc,sigs);
+        in_mc = apply_dispersions(in_mc, sigs);
         
-%         out_mc = main1(in_mc);    % debugging purposes
-        out_mc = main1_mex(in_mc);  % output struct for disperse case
+        if (debug)
+            fprintf('Running MC in Debug Mode...\n');
+            out_mc = main1(in_mc);    % debugging purposes
+        else
+            out_mc = main1_mex(in_mc);  % output struct for disperse case
+        end
         
         vmag(:,i) = out_mc.traj.vel_pp_mag./1000;   %km/s
         alt(:,i) = out_mc.traj.alt./1000;       %km

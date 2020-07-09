@@ -8,6 +8,7 @@
 %   University of Colorado Boulder
 %
 % Inputs:
+%   mode - guidance mode
 %   h_atm - atmospheric interface (m)
 %   planet - string or index for planet model
 %     1: Venus
@@ -29,7 +30,7 @@
 % Major Revision History:
 %   *Created Jan 2019, E. Roelke
 
-function in = dej_n_in(h_atm,planet,atm_mode)
+function in = dej_n_in(mode, h_atm,planet,atm_mode)
 %#codegen
 
 %% Define input structure
@@ -96,24 +97,47 @@ in.v.mp.m_ini = 1000; % double, kg, vehicle mass
 in.v.gnc.g.p.bank_mode = uint8(1); %  nd, constant bank
 in.v.gnc.g.p.aoa_mode = uint8(1); %  nd, constant angle-of-attack
 in.v.gnc.g.p.prop_mode = uint8(0); %  nd, none
-in.v.gnc.g.p.dm_mode = uint8(4);   % dej_n guidance
+in.v.gnc.g.p.dm_mode = uint8(mode);   % guidance mode
 
-% DEJ-N settings
-in.v.gnc.g.p_dej_n.npc_mode = uint8(1); % newton method
-in.v.gnc.g.p_dej_n.iter_max = uint8(1); % nd, max NPC internal iterations
-in.v.gnc.g.p_dej_n.A_sens_atm = 0.5; % m/s^2, sensible decel
-in.v.gnc.g.p_dej_n.t_init = 0;  % s, time to start guidance
-in.v.gnc.g.p_dej_n.tgt_ap = 400e3; % m, target apoapsis alt
-in.v.gnc.g.p_dej_n.tol_ap = 10e3; % m, apoapsis alt tolerance
-in.v.gnc.g.p_dej_n.t_max = 700; %s, max predictor integration time step (unused)
-in.v.gnc.g.p_dej_n.n_jett = uint8(1);   % default 1 stage to jettison
-in.v.gnc.g.p_dej_n.tol = 1e-5;  % convergence tolerance
-in.v.gnc.g.p_dej_n.tj_ini = [100 0 0 0 0]'; % s, initial guesses for jettison times
-in.v.gnc.g.p_dej_n.traj_rate = in.s.traj.rate; % trajectory integration rate
-in.v.gnc.g.p_dej_n.area_refs(1:2) = [in.v.aero.area_ref; in.v.aero.area_ref/2]; % m^2
-in.v.gnc.g.p_dej_n.cds(1:2) = in.v.aero.cd; % nd, internal vehicle model cds
-in.v.gnc.g.p_dej_n.cls(1:2) = in.v.aero.cl; % nd, internal vehicle model cls
-in.v.gnc.g.p_dej_n.masses(1:2) = [in.v.mp.m_ini in.v.mp.m_ini/2]; % kg, first two stage masses
+switch (mode)
+    case 2 %dcfj
+    case 3 %pdg
+        in.v.gnc.g.pd.A_sens_atm = 0.5; % m/s2, sensed accel for atmosphere
+        in.v.gnc.g.pd.ha_tgt = 400e3;     % m, tgt apoapsis
+        in.v.gnc.g.pd.ha_tol = 10e3;   % 50 km tolerancef
+        in.v.gnc.g.pd.cds = in.v.aero.cd.*ones(6,1);
+        in.v.gnc.g.pd.cls = in.v.aero.cl.*ones(6,1);
+        in.v.gnc.g.pd.n_jett = uint8(1);     % single jettison event
+        in.v.gnc.g.pd.masses(1:2) = [in.v.mp.m_ini 200]';    % spacecraft masses, kg
+        in.v.gnc.g.pd.mcflag = uint8(0);
+        in.v.gnc.g.pd.t_max = in.s.traj.t_max;   % max predictor integration time, s
+        in.v.gnc.g.pd.tj0 = [90 0 0 0 0]';  % initial guess for jettison times, s
+        in.v.gnc.g.pd.rate = in.s.traj.rate;
+        in.v.gnc.g.pd.trigger = uint8(0);
+        in.v.gnc.g.pd.area_refs(1:2) = [in.v.aero.area_ref in.v.aero.area_ref/2]';
+        
+    case 4 %npc
+        % DEJ-N settings
+        in.v.gnc.g.p_dej_n.npc_mode = uint8(1); % newton method
+        in.v.gnc.g.p_dej_n.iter_max = uint8(1); % nd, max NPC internal iterations
+        in.v.gnc.g.p_dej_n.A_sens_atm = 0.5; % m/s^2, sensible decel
+        in.v.gnc.g.p_dej_n.t_init = 0;  % s, time to start guidance
+        in.v.gnc.g.p_dej_n.tgt_ap = 400e3; % m, target apoapsis alt
+        in.v.gnc.g.p_dej_n.tol_ap = 10e3; % m, apoapsis alt tolerance
+        in.v.gnc.g.p_dej_n.t_max = 700; %s, max predictor integration time step (unused)
+        in.v.gnc.g.p_dej_n.n_jett = uint8(1);   % default 1 stage to jettison
+        in.v.gnc.g.p_dej_n.tol = 1e-5;  % convergence tolerance
+        in.v.gnc.g.p_dej_n.tj_ini = [100 0 0 0 0]'; % s, initial guesses for jettison times
+        in.v.gnc.g.p_dej_n.traj_rate = in.s.traj.rate; % trajectory integration rate
+        in.v.gnc.g.p_dej_n.area_refs(1:2) = [in.v.aero.area_ref; in.v.aero.area_ref/2]; % m^2
+        in.v.gnc.g.p_dej_n.cds(1:2) = in.v.aero.cd; % nd, internal vehicle model cds
+        in.v.gnc.g.p_dej_n.cls(1:2) = in.v.aero.cl; % nd, internal vehicle model cls
+        in.v.gnc.g.p_dej_n.masses(1:2) = [in.v.mp.m_ini in.v.mp.m_ini/2]; % kg, first two stage masses
+    case 6 %manual
+        in.v.gnc.g.p_manual.area_refs(1:2) = [in.v.aero.area_ref; in.v.aero.area_ref/2]; % m^2
+        in.v.gnc.g.p_manual.masses(1:2) = [in.v.mp.m_ini in.v.mp.m_ini/2]; % kg
+        in.v.gnc.g.p_manual.n_jett = uint8(1);
+end
 
 % guidance planet model
 in.v.gnc.g.p.planet.p_ind = uint8(planet);

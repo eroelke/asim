@@ -17,6 +17,18 @@
 % 
 function g_pdg = define_g_pdg()
 %#codegen
+sigmas = struct( ...
+    'm', double(0), ... %mass uncertainty percentage
+    'cd', double(0), ... %drag coeff 1 sigma uncertinty percentage
+    'aref', double(0) ...
+);
+
+bias = struct( ...
+    'tgt_ap', double(0), ...    %target apoapsis bias
+    'tj', double(0) ...     % jettison time bias
+);
+
+
 %% Parameter data structure
 p = struct( ...
     'A_sens_atm', double(0), ... % m/s^2, sensible atmosphere boundary
@@ -31,7 +43,10 @@ p = struct( ...
     'tj0', double(zeros(5,1)), ... % s, initial guesses for jettison times
     'rate', double(0), ...      % integration rate
     'trigger', uint8(0), ...    % jettison trigger
-    'area_refs', double(zeros(6,1)) ... % m^2, initial (1) and subsequent reference areas
+    'area_refs', double(zeros(6,1)), ... % m^2, initial (1) and subsequent reference areas
+    'bias', repmat(bias,5,1), ...     % biasing structure (per stage)
+    'stage_skip', 10, ... %for testing purposes only
+    'sigs', sigmas ...   %uncertainty
 );
 
 %% State data structure
@@ -47,6 +62,8 @@ s = struct( ...
     'trig_val',double(0), ...   % trigger parameter value
     'delta_ap', double(0), ...  % predicted apoapsis error
     'bank', double(0), ...      % bank angle
+    'dr_ap', double(0), ...
+    'dr_ap_true', double(0), ...
     'stage', double(0) ...  % current stage
 ); % m, current apoapsis error estimate
 

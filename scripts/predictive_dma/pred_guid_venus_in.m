@@ -65,7 +65,7 @@ in.v.gnc.g.p.aoa_mode = uint8(1);   % constant aoa
 in.v.gnc.g.p.dm_mode = uint8(3);
 
 % predictor algorithm data struct
-in.v.gnc.g.pd.A_sens_atm = 0.25; % m/s2, sensed accel for atmosphere
+in.v.gnc.g.pd.A_sens_atm = 0.5; % m/s2, sensed accel for atmosphere
 in.v.gnc.g.pd.ha_tgt = 10000e3;     % m, tgt apoapsis
 in.v.gnc.g.pd.ha_tol = 50e3;   % 50 km tolerancef
 in.v.gnc.g.pd.cds = in.v.aero.cd.*ones(6,1);

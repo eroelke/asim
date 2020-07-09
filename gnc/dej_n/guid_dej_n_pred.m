@@ -84,11 +84,8 @@ end % while ~plag
 if pflag ~= 2
     r = y(1:3); % m, position vector
     v = y(4:6); % m/s, inertial velocity vector
-    ae = rv2ae([r;v], guid.p.planet.mu);    % get orbital elements from r, v
-    a = ae(1);
-    e = ae(2);
+    [r_a, ~, e] = get_apoapsis_radius([r;v], guid.p.planet.mu); % apoapsis for given jettison time
     
-    r_a = a*(1+e);       % apoapsis for given jettison time
     dr_ap_true = r_a - (p.tgt_ap + guid.p.planet.r_e);   %apoapsis radius error, m
     dr_ap = dr_ap_true - p.bias(j_ind0).tgt_ap; %minus because negative error is below target
     

@@ -74,18 +74,40 @@ switch guid.p.dm_mode
         guid.cmd.area_ref = guid.dcfj.p.area_ref(guid.dcfj.s.stage+1);
 
     case 3 % predictive guidance
-        guid.pd.s.stage = guid.pd.s.stage + 1;
-        guid.pd.s.jflag(guid.pd.s.stage) = true;
-        guid.cmd.delta_mass = guid.pd.p.masses(guid.pd.s.stage) - guid.pd.p.masses(guid.pd.s.stage+1);
-        guid.cmd.area_ref = guid.pd.p.area_refs(guid.pd.s.stage+1);
-        ctrl.s.jettison = logical(true);
+        jett_ind = guid.pd.s.stage + 1; %current stage
         
+        if (jett_ind ~= guid.pd.p.stage_skip)
+            ctrl.s.jettison = true;
+            veh.s.not_jettisoned = true;
+            
+            % new beta values
+            mass = guid.pd.p.masses(jett_ind + 1);
+            cd = guid.pd.p.cds(jett_ind + 1);
+            %1sigma, percentage, scaled by stage count compared to 2 stage system
+            sigma_m = guid.pd.p.sigs.m * mass;
+            sigma_cd = guid.pd.p.sigs.cd * cd;
+
+            % set cmd values
+            guid.cmd.area_ref = guid.pd.p.area_refs(jett_ind + 1);
+            ctrl.s.area_ref = guid.pd.p.area_refs(jett_ind + 1);
+            guid.cmd.delta_mass = veh.s.mass - ...
+                (mass + normrnd(0, sigma_m));
+            ctrl.s.cd = cd + normrnd(0, sigma_cd);
+
+
+            guid.pd.s.stage = guid.pd.s.stage + 1;
+            guid.pd.s.jflag(guid.pd.s.stage) = true;
+    %         guid.cmd.delta_mass = guid.pd.p.masses(guid.pd.s.stage) - guid.pd.p.masses(guid.pd.s.stage+1);
+            guid.cmd.area_ref = guid.pd.p.area_refs(guid.pd.s.stage+1);
+        end
     case 6 % manual jettison     
+        % assumes constant cd
         j_ind = guid.manual.s.j_ind;
         if j_ind <= guid.manual.p.n_jett
             % set jettison commands
             guid.manual.s.jflag(j_ind) = logical(true);
             ctrl.s.jettison = logical(true);
+            veh.s.not_jettisoned = true;
 
             % update stage
             guid.manual.s.stage = guid.manual.s.stage + 1;

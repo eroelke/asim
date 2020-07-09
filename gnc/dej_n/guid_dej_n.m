@@ -103,6 +103,9 @@ elseif (s.A_mag >= p.A_sens_atm && i.t >= p.t_init)
                     
                 case 2 %multi-stage newton
                    
+%                     if (j_ind == 3)
+%                         keyboard;
+%                     end
                     % run predictor for two different t_jett values
                     dt = 1/p.traj_rate;  % ensure jettison occurs at at least one time step
                     d_lim = s.hydra.dtj_lim;

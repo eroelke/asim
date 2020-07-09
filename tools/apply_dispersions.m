@@ -73,10 +73,17 @@ in.s.traj.alt = in.s.traj.alt + normrnd(0,sigs.hmag_atm);
 % in.s.traj.az = in.s.traj.az + normrnd(0,sigs.az0);
 
 % dej n uncertainties
-if (in.v.gnc.g.p.atm.Kflag && in.v.gnc.g.p.dm_mode == uint8(4))
-    in.v.gnc.g.p_dej_n.sigs.m = sigs.m;
-    in.v.gnc.g.p_dej_n.sigs.cd = sigs.cd;
-    in.v.gnc.g.p_dej_n.sigs.aref = 0;
+if (in.v.gnc.g.p.atm.Kflag)
+    switch (in.v.gnc.g.p.dm_mode)
+        case 3 %pdg
+            in.v.gnc.g.pd.sigs.m = sigs.m;
+            in.v.gnc.g.pd.sigs.cd = sigs.cd;
+            in.v.gnc.g.pd.sigs.aref = 0;
+        case 4  %dej_n
+            in.v.gnc.g.p_dej_n.sigs.m = sigs.m;
+            in.v.gnc.g.p_dej_n.sigs.cd = sigs.cd;
+            in.v.gnc.g.p_dej_n.sigs.aref = 0;
+    end
 end
 
 end

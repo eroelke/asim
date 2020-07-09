@@ -8,7 +8,7 @@ save_path = '..\venus_ac\';
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%% ENTRY TRADES %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%{
+% %{
 %% entry trade studies - feb 2019
 %{
 % clear; clc; close all;
@@ -196,36 +196,37 @@ ylabel('\beta_{2}/\beta_{1}')
 %% optimal jettison time(s)
 %{
 clear;clc;
-fpa_bounds = [-6.3, -7.2];
+% fpa_bounds = [-6.3, -7.2];
+fpa_bounds = [-5.3, -6];
 % ha_tgt = 2000;
-ratios = 4:4:20;
+ratios = [5 10 15 20];
 % ratios = [10];
 Nj = length(ratios);
 m2 = nan(Nj,1);
 
-efpas = linspace(fpa_bounds(1),fpa_bounds(2),20)';
+efpas = linspace(fpa_bounds(1),fpa_bounds(2),30)';
 Ni = length(efpas);
 tj = nan(Ni,Nj); haf_err = tj; tjr = tj;
-tj0 = 120;
-tol = 5;    % stop within x km
+tj0 = 100;
+tol = 5;
 veh.m = [150 60];
 veh.r = [1 0.2];
 veh.rn = 0.175/2;
 veh.cd = 1.05;
 
-haf_tol = 100;
+haf_tol = 10;
 [x0,aero,gnc,sim,mc] = base_venus_ac;
 % gnc.ha_tgt = 400;
 mc.flag = false;
-sim.t_max = 2000;
+sim.t_max = 1500;
 sim.traj_rate = 1000;
-sim.data_rate = 1000;
-sim.h_min = 35;
-x0.v0 = 15;
-gnc.iters = uint8(5);
-gnc.npc_mode = uint8(0);
-gnc.guid_rate = 1;
-gnc.ha_tgt = 105500;
+sim.data_rate = 1;
+sim.h_min = 10;
+x0.v0 = 11;
+gnc.iters = uint8(1);
+gnc.npc_mode = uint8(1);
+gnc.guid_rate = 0.5;
+gnc.ha_tgt = 400;
 
 entries = cell(Nj,1);
 % for k = 1:Nk %tgts
@@ -248,19 +249,24 @@ for j = 1:Nj %betas
         tjr(i,j) = tj(i,j) / out.traj.time(out.idxend);
         haf_err(i,j) = out.haf_err;
         
-        if (tj(i,j) < 0 || abs(haf_err(i,j)) > haf_tol)
-            tj(i,j) = nan;
-            tjr(i,j) = nan;
-            haf_err(i,j) = nan;
-        end
+%         if (tj(i,j) < 0 || abs(haf_err(i,j)) > haf_tol)
+%             tj(i,j) = nan;
+%             tjr(i,j) = nan;
+%             haf_err(i,j) = nan;
+%         end
     end
 end
 
-% keyboard;
+keyboard;
+if (gnc.ha_tgt < 1000)
+save(['../venus_ac/entry_trades/opt_t_jett/v' num2str(x0.v0) '_'  ... 
+    num2str(gnc.ha_tgt) '.mat'], ... 
+    'tjr','tj','efpas','haf_err','ratios');
+else
 save(['../venus_ac/entry_trades/opt_t_jett/v' num2str(x0.v0) '_'  ... 
     num2str(gnc.ha_tgt/1000) 'k.mat'], ... 
     'tjr','tj','efpas','haf_err','ratios');
-% end
+end
 keyboard;
 % for j = 1:Nj
 %     entries{j} = ['\beta_2/\beta_1 = ' num2str(ratios(j))];
@@ -1148,270 +1154,6 @@ saveas(gca, ...
     'C:\Users\Evan\Documents\Academics\Research\Venus_ac\DCF\mc_ha.fig')
 %}
 
-
-%% PDG nominal errors vs. fpa - fidelity checks
-%{
-clear; clc; close all;
-fpas = round(linspace(-5.4,-5.8,19),2)';
-m = [150 60];
-rcs = [1 0.2];
-ha_tgts = [2000 10000];
-trigger = uint8(0);
-Ni = length(fpas);
-Nj = length(ha_tgts);
-traj_rate = 100;
-gnc_rate = 10;   % gnc call rate, hz
-t2g = traj_rate/gnc_rate;
-
-ha_tol = 100;          % lower tol and check performance
-tj = nan(Ni,Nj);
-err = tj;
-haf = tj; dv = tj;
-mc.flag = uint8(0);
-for j = 1:Nj % ha tgts
-    fprintf('Target %i\n',j);
-    for i  = 1:Ni % fpas
-        out = ac_venus_pd(fpas(i),ha_tgts(j),ha_tol,m,rcs,traj_rate,gnc_rate,trigger,mc);
-        tj(i,j) = out.tjett;    %s
-        haf(i,j) = out.haf; %km
-        dv(i,j) = out.dv;   %m/s
-        err(i,j) = out.haf_err; %km
-    end
-end
-
-figure(); hold on
-grid on
-set(gca,'FontSize',14)
-title('Nominal Apoapsis Errors, \beta_2/\beta_1 = 9.18, GNC Rate = 5 Hz, Traj/GNC Ratio = 100')
-plot(fpas,err,'-o','LineWidth',2)
-xlabel('EFPA (deg)')
-ylabel('Apoapsis Error (km)')
-legend('h_{a,tgt} = 2000 km','h_{a,tgt} = 10000 km', 'location', 'best')
-ylim([-250 100])
-% saveas(gca, ... 
-%     'C:\Users\Evan Roelke\Documents\research\venus_aerocapture\figures\PDG\pdg_err_ha_low_fidel.fig')
-%}
-%% PDG monte carlo analysis as func of FPA and tgt AP - Energy Trigger
-%{
-% energy trigger, fpa performance
-clear; clc; close all
-fpas = [-5.4 -5.6];
-% fpas = -5.8;
-m = [150 60];
-rcs = [1 0.2];
-ha_tgt = [2 10].*1e3;
-Nk = length(ha_tgt);
-Ni = length(fpas);
-traj_rate = 100;
-gnc_rate = 0.1;
-ha_tol = 10;
-mc.flag = uint8(1);
-mc.N = 1000;
-mc.sigs = default_sigs();
-tols = [10 50 100 250 500 1000];
-Nj = length(tols);
-pc_2k = nan(Ni,Nj);
-pc_10k = pc_2k;
-trigger = uint8(0); % energy trigger
-
-haf_2k = nan(mc.N,Ni);
-haf_10k = haf_2k;
-dv_2k = haf_2k;
-dv_10k = haf_2k;
-for i = 1:Ni % fpas
-    fprintf('PDG FPA Sim %i\n',i);
-    out1 = ac_venus_pd(fpas(i),ha_tgt(1),ha_tol,m,rcs, ... 
-        traj_rate,gnc_rate,trigger,mc);
-%     out2 = ac_venus_pd(fpas(i),ha_tgt(2),ha_tol,m,rcs, ... 
-%         traj_rate,gnc_rate,trigger,mc);
-    for j = 1:Nj
-        num = find(abs(out1.haf_err) <= tols(j));
-        pc_2k(i,j) = length(num)*100/mc.N;
-%         num = find(abs(out2.haf_err) <= tols(j));
-%         pc_10k(i,j) = length(num)*100/mc.N;
-    end
-    
-    haf_2k(:,i) = out1.haf;
-    dv_2k(:,i) = out1.dv;
-%     
-%     haf_10k(:,i) = out2.haf;
-%     dv_10k(:,i) = out2.dv;
-end
-
-keyboard;
-% save results
-save_path = 'C:\Users\Evan Roelke\Documents\research\venus_ac\';
-save([save_path 'dej_n\PDG\data\mc_fpaBoth_0.1hz.mat'], ...
-    'tols','pc_2k','haf_2k','dv_2k','fpas')
-keyboard;
-
-
-a = load('C:\Users\Evan Roelke\Documents\research\venus_ac\dej_n\PDG\data\mc_fpa54_56_5hz.mat');
-b = load('C:\Users\Evan Roelke\Documents\research\venus_ac\dej_n\PDG\data\mc_fpa58_5hz.mat');
-% histogram of results - diff fpa, 2k target
-figure(); hold on; grid on
-set(gca,'FontSize',14)
-title('Monte Carlo, h_{a,tgt} = 2000 km,GNC Rate=5hz Hz,Traj Rate 100 Hz')
-h3 = histogram(b.haf,'NumBins',50,'FaceColor','g');
-h2 = histogram(a.haf_2k(:,2),'NumBins',50,'FaceColor','b');
-h1 = histogram(a.haf_2k(:,1),'NumBins',50,'FaceColor','r');
-xlabel('Apoapsis Altitude (km)')
-ylabel('Occurence')
-legend([h1,h2,h3],'EFPA = -5.4^{o}', ... 
-    'EFPA = -5.6^{o}', ... 
-    'EFPA = -5.8^{o}', ... 
-    'location','ne')
-
-% histogram of results - diff fpa, 10k target
-figure(); hold on; grid on
-set(gca,'FontSize',14)
-title(['Monte Carlo, h_{a,tgt} = 10000 km,GNC Rate ' num2str(gnc_rate) ' Hz,Traj Rate 100 Hz'])
-histogram(haf_10k(:,2)./1000,'NumBins',50,'FaceColor','r')
-histogram(haf_10k(:,1)./1000,'NumBins',20,'FaceColor','b')
-xlabel('Apoapsis Altitude (10^3 km)')
-ylabel('Occurence')
-legend('EFPA = -5.6^{o}','EFPA = -5.4^{o}','location','nw')
-
-% histogram - diff ha_tgt, same fpa (-5.4)
-figure(); hold on; grid on
-set(gca,'FontSize',14)
-title(['Monte Carlo Histogram, EFPA=-5.4, GNC Rate ' num2str(gnc_rate) ' Hz,Traj Rate 100 Hz'])
-histogram(haf_2k(:,1) - 2000,'NumBins',50,'FaceColor','r')
-histogram(haf_10k(:,1) - 10000,'NumBins',50,'FaceColor','b')
-xlabel('Apoapsis Error (km)')
-ylabel('Occurence')
-legend('2000 km Target','10000 km Target','location','nw')
-% histogram - diff ha_tgt, same fpa (-5.6)
-figure(); hold on; grid on
-set(gca,'FontSize',14)
-title(['Monte Carlo Histogram, EFPA=-5.6, GNC Rate ' num2str(gnc_rate) ' Hz,Traj Rate 100 Hz'])
-histogram(haf_10k(:,2) - 10000,'NumBins',50,'FaceColor','b')
-histogram(haf_2k(:,2) - 2000,'NumBins',50,'FaceColor','r')
-xlabel('Apoapsis Error (km)')
-ylabel('Occurence')
-legend('10000 km Target','2000 km Target','location','ne')
-
-% save figure
-% saveas(gca, ... 
-%     'C:\Users\Evan Roelke\Documents\research\venus_aerocapture\figures\PDG\monte_carlo\pdg_mc_fpa_2_4.fig')
-%}
-
-%% PDG monte carlo as func of ha_tgt (Oct 2018)
-%{
-clear; clc; close all
-efpa = -5.4;
-ha_tgt = [2000];
-Ni = length(ha_tgt);
-traj_rate = 100;
-gnc_rate = 5;
-haf_tol = 10;
-mc.flag = uint8(1);
-mc.N = 1000;
-mc.sigs = default_sigs();
-tols = [10 50 100 250 500];
-Nj = length(tols);
-percent = nan(Ni,Nj);
-haf_med = nan(Ni,1);
-haf_std = nan(Ni,1);
-trigger = uint8(0);
-m = [150 60];
-rcs = [1 0.2];
-for i = 1:Ni % ha
-    fprintf('Starting PDG Case %i\n',i);
-    out = ac_venus_pd(efpa,ha_tgt(i),haf_tol,m,rcs,traj_rate,gnc_rate,trigger,mc);
-    for j = 1:Nj
-        num = find(abs(out(i).haf_err) <= tols(j));
-        percent(i,j) = length(num)*100/mc.N;
-    end
-    haf_med(i) = median(out(i).haf);
-    haf_std(i) = std(out(i).haf);
-end
-
-keyboard;
-% save capture results
-% save('C:\Users\Evan Roelke\Documents\research\venus_aerocapture\data\PDG\monte_carlo\percent_ha.mat', ... 
-%     'tols','percent','haf_med','haf_std')
-
-% histogram of results
-figure(); hold on; grid on
-set(gca,'FontSize',14)
-title('Monte Carlo Histogram, EFPA = -5.4 Hz, GNC Rate = 5 Hz')
-h1 = histogram(haf_10k(:,1) -10000,'NumBins',50,'FaceColor','b');
-h2 = histogram(haf_2k(:,1) - 2000,'NumBins',50,'FaceColor','r');
-xlabel('Apoapsis Error (km)')
-ylabel('Occurence')
-legend([h2, h1],'h_{a,tgt} = 2000 km','h_{a,tgt} = 10000 km','location','nw')
-
-figure(); hold on; grid on
-set(gca,'FontSize',14)
-title('Monte Carlo Histogram, EFPA = -5.6 Hz, GNC Rate = 5 Hz')
-h1 = histogram(haf_10k(:,2) -10000,'NumBins',50,'FaceColor','b');
-h2 = histogram(haf_2k(:,2) - 2000,'NumBins',50,'FaceColor','r');
-xlabel('Apoapsis Error (km)')
-ylabel('Occurence')
-legend([h2, h1],'h_{a,tgt} = 2000 km','h_{a,tgt} = 10000 km','location','nw')
-
-% save figure
-saveas(gca, ... 
-    'C:\Users\Evan Roelke\Documents\research\venus_aerocapture\figures\PDG\monte_carlo\pdg_mc_ha.fig')
-%}
-%% PDG error vs. GNC rate
-%{
-m = [150 60];
-rcs = [1 0.2];
-ha_tgt = 2000;
-ha_tol = 1;
-trigger = uint8(0);
-efpa = -5.4;
-mc.flag = false;
-
-a = 0.1;
-b = 5000;
-n = 25;
-gnc_rates = nan(n,1);
-growth = (b/a)^(1/(n - 1));
-for i = 1:n
-    gnc_rates(i) = a*growth^(i-1);
-end
-Ni = length(gnc_rates);
-traj_rate0 = 1000;
-
-haf_err = nan(Ni,1);
-dv = haf_err;
-tjr = haf_err;
-for i = 1:Ni
-    if gnc_rates(i) > traj_rate0
-        traj_rate = round(gnc_rates(i),0);
-    else
-        traj_rate = traj_rate0;
-    end
-    out = ac_venus_pd(efpa,ha_tgt,ha_tol,m,rcs,traj_rate,gnc_rates(i),trigger,mc);
-    haf_err(i) = out.haf_err;
-    dv(i) = out.dv;
-    tjr(i) = out.tjett / out.traj.time(out.idxend);
-    
-%     keyboard
-end
-
-save([save_path 'dej_n/PDG/data/err2k_vs_gncRate_fpa5.4.mat'], ...
-    'dv','haf_err','tjr','efpa','ha_tgt');
-
-ind = 14;
-fig = figure(); hold on
-set(gca,'FontSize',14)
-title('2k tgt, -5.4deg, PDG, Venus, \beta_2/\beta_1=10')
-yyaxis left
-plot(gnc_rates(1:ind),haf_err(1:ind),'LineWidth',2)
-ylabel('Nominal Apoapsis Altitude Error (km)')
-ylim([-200 5])
-yyaxis right
-plot(gnc_rates(1:ind),tjr(1:ind)-tjr(ind),'LineWidth',2)
-ylabel('\Delta t_{jett}/t_f')
-ylim([-0.025 0])
-xlabel('GNC Rate (Hz)')
-xlim([0 gnc_rates(ind)])
-%}
-
 %%%%%%%%%%%%%%%
 % NPC STUFF - SEJ
 %%%%%%%%%%%%%%%
@@ -1451,8 +1193,6 @@ save(['C:\Users\Evan Roelke\Documents\research\venus_ac\dej_n\HYDRA\1stage\data\
 % 
 keyboard;
 %}
-
-
 
 
 %% High Fidelity NPC newton/bisection method monte carlo analysis as func of ha_tgt, fpa
@@ -1968,6 +1708,255 @@ legend('Actual Variation','Variation Estimate','location','se')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%% 1-STAGE JETTISON %%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% PDG nominal errors vs. fpa - fidelity checks
+%{
+clear; clc; close all;
+fpas = round(linspace(-5.4,-5.8,19),2)';
+m = [150 60];
+rcs = [1 0.2];
+ha_tgts = [2000 10000];
+trigger = uint8(0);
+Ni = length(fpas);
+Nj = length(ha_tgts);
+traj_rate = 100;
+gnc_rate = 10;   % gnc call rate, hz
+t2g = traj_rate/gnc_rate;
+
+ha_tol = 100;          % lower tol and check performance
+tj = nan(Ni,Nj);
+err = tj;
+haf = tj; dv = tj;
+mc.flag = uint8(0);
+for j = 1:Nj % ha tgts
+    fprintf('Target %i\n',j);
+    for i  = 1:Ni % fpas
+        out = ac_venus_pd(fpas(i),ha_tgts(j),ha_tol,m,rcs,traj_rate,gnc_rate,trigger,mc);
+        tj(i,j) = out.tjett;    %s
+        haf(i,j) = out.haf; %km
+        dv(i,j) = out.dv;   %m/s
+        err(i,j) = out.haf_err; %km
+    end
+end
+
+figure(); hold on
+grid on
+set(gca,'FontSize',14)
+title('Nominal Apoapsis Errors, \beta_2/\beta_1 = 9.18, GNC Rate = 5 Hz, Traj/GNC Ratio = 100')
+plot(fpas,err,'-o','LineWidth',2)
+xlabel('EFPA (deg)')
+ylabel('Apoapsis Error (km)')
+legend('h_{a,tgt} = 2000 km','h_{a,tgt} = 10000 km', 'location', 'best')
+ylim([-250 100])
+% saveas(gca, ... 
+%     'C:\Users\Evan Roelke\Documents\research\venus_aerocapture\figures\PDG\pdg_err_ha_low_fidel.fig')
+%}
+
+%% PDG error vs. GNC rate
+%{
+m = [150 60];
+rcs = [1 0.2];
+ha_tgt = 2000;
+ha_tol = 1;
+trigger = uint8(0);
+efpa = -5.4;
+mc.flag = false;
+
+a = 0.1;
+b = 5000;
+n = 25;
+gnc_rates = nan(n,1);
+growth = (b/a)^(1/(n - 1));
+for i = 1:n
+    gnc_rates(i) = a*growth^(i-1);
+end
+Ni = length(gnc_rates);
+traj_rate0 = 1000;
+
+haf_err = nan(Ni,1);
+dv = haf_err;
+tjr = haf_err;
+for i = 1:Ni
+    if gnc_rates(i) > traj_rate0
+        traj_rate = round(gnc_rates(i),0);
+    else
+        traj_rate = traj_rate0;
+    end
+    out = ac_venus_pd(efpa,ha_tgt,ha_tol,m,rcs,traj_rate,gnc_rates(i),trigger,mc);
+    haf_err(i) = out.haf_err;
+    dv(i) = out.dv;
+    tjr(i) = out.tjett / out.traj.time(out.idxend);
+    
+%     keyboard
+end
+
+save([save_path 'dej_n/PDG/data/err2k_vs_gncRate_fpa5.4.mat'], ...
+    'dv','haf_err','tjr','efpa','ha_tgt');
+
+ind = 14;
+fig = figure(); hold on
+set(gca,'FontSize',14)
+title('2k tgt, -5.4deg, PDG, Venus, \beta_2/\beta_1=10')
+yyaxis left
+plot(gnc_rates(1:ind),haf_err(1:ind),'LineWidth',2)
+ylabel('Nominal Apoapsis Altitude Error (km)')
+ylim([-200 5])
+yyaxis right
+plot(gnc_rates(1:ind),tjr(1:ind)-tjr(ind),'LineWidth',2)
+ylabel('\Delta t_{jett}/t_f')
+ylim([-0.025 0])
+xlabel('GNC Rate (Hz)')
+xlim([0 gnc_rates(ind)])
+%}
+
+
+%% PDG Monte Carlo
+%{
+% energy trigger, fpa performance
+clear; clc; close all
+save_path = '..\venus_ac\';
+fpas = [-5.4 -5.6];
+rates = [0.5 5];
+Nk = length(rates);
+% fpas = -5.8;
+m = [150 60];
+rcs = [1 0.2];
+ha_tgt = [2 10].*1e3;
+Nj = length(ha_tgt);
+Ni = length(fpas);
+traj_rate = 100;
+% gnc_rate = 0.5;
+ha_tol = 10;
+
+
+trigger = uint8(0); % energy trigger
+
+mc.flag = uint8(1);
+mc.N = 1000;
+mc.sigs = default_sigs();
+
+mc.debug = false;
+
+for k = 1:Nk
+for j = 1:Nj %ha tgts
+for i = 1:Ni % fpas
+    fprintf('PDG FPA Sim %i\n',i + j - 1);
+    out = ac_venus_pd(fpas(i),ha_tgt(j),ha_tol,m,rcs, ... 
+        traj_rate,rates(k),trigger,mc);
+    
+    save([save_path 'dej_n\PDG\data\v11_' num2str(ha_tgt(j)/1000) ... 
+        'k_' num2str(abs(fpas(i))) 'deg_' num2str(rates(k)) 'hz.mat']);
+
+end %i
+end %j
+end %k
+print_current_time();
+keyboard;
+
+
+% a = load('C:\Users\Evan Roelke\Documents\research\venus_ac\dej_n\PDG\data\mc_fpa54_56_5hz.mat');
+% b = load('C:\Users\Evan Roelke\Documents\research\venus_ac\dej_n\PDG\data\mc_fpa58_5hz.mat');
+% % histogram of results - diff fpa, 2k target
+% figure(); hold on; grid on
+% set(gca,'FontSize',14)
+% title('Monte Carlo, h_{a,tgt} = 2000 km,GNC Rate=5hz Hz,Traj Rate 100 Hz')
+% h3 = histogram(b.haf,'NumBins',50,'FaceColor','g');
+% h2 = histogram(a.haf_2k(:,2),'NumBins',50,'FaceColor','b');
+% h1 = histogram(a.haf_2k(:,1),'NumBins',50,'FaceColor','r');
+% xlabel('Apoapsis Altitude (km)')
+% ylabel('Occurence')
+% legend([h1,h2,h3],'EFPA = -5.4^{o}', ... 
+%     'EFPA = -5.6^{o}', ... 
+%     'EFPA = -5.8^{o}', ... 
+%     'location','ne')
+% 
+% % histogram of results - diff fpa, 10k target
+% figure(); hold on; grid on
+% set(gca,'FontSize',14)
+% title(['Monte Carlo, h_{a,tgt} = 10000 km,GNC Rate ' num2str(gnc_rate) ' Hz,Traj Rate 100 Hz'])
+% histogram(haf_10k(:,2)./1000,'NumBins',50,'FaceColor','r')
+% histogram(haf_10k(:,1)./1000,'NumBins',20,'FaceColor','b')
+% xlabel('Apoapsis Altitude (10^3 km)')
+% ylabel('Occurence')
+% legend('EFPA = -5.6^{o}','EFPA = -5.4^{o}','location','nw')
+% 
+% % histogram - diff ha_tgt, same fpa (-5.4)
+% figure(); hold on; grid on
+% set(gca,'FontSize',14)
+% title(['Monte Carlo Histogram, EFPA=-5.4, GNC Rate ' num2str(gnc_rate) ' Hz,Traj Rate 100 Hz'])
+% histogram(haf_2k(:,1) - 2000,'NumBins',50,'FaceColor','r')
+% histogram(haf_10k(:,1) - 10000,'NumBins',50,'FaceColor','b')
+% xlabel('Apoapsis Error (km)')
+% ylabel('Occurence')
+% legend('2000 km Target','10000 km Target','location','nw')
+% % histogram - diff ha_tgt, same fpa (-5.6)
+% figure(); hold on; grid on
+% set(gca,'FontSize',14)
+% title(['Monte Carlo Histogram, EFPA=-5.6, GNC Rate ' num2str(gnc_rate) ' Hz,Traj Rate 100 Hz'])
+% histogram(haf_10k(:,2) - 10000,'NumBins',50,'FaceColor','b')
+% histogram(haf_2k(:,2) - 2000,'NumBins',50,'FaceColor','r')
+% xlabel('Apoapsis Error (km)')
+% ylabel('Occurence')
+% legend('10000 km Target','2000 km Target','location','ne')
+
+% save figure
+% saveas(gca, ... 
+%     'C:\Users\Evan Roelke\Documents\research\venus_aerocapture\figures\PDG\monte_carlo\pdg_mc_fpa_2_4.fig')
+%}
+
+%% PDG Expected Error Monte Carlo
+%{
+clear; clc; close all
+[x0,aero,gnc,sim, mc] = base_venus_ac();
+
+b21 = 3;
+b31 = 10;
+aero.m = [150 60 20];
+aero.rcs(1) = 1;
+aero.rcs(2) = sqrt( (aero.m(2) * aero.rcs(1)^2) / ...
+    (aero.m(1) * b21) );
+aero.rcs(3) = sqrt( (aero.m(3) * aero.rcs(1)^2) / ...
+    (aero.m(1) * b31) );
+
+if (aero.rcs(2) > aero.rcs(1)) || (aero.rcs(3) > aero.rcs(2))
+    error('Impossible Geometry')
+end
+
+b = nan(3,1);   %betas
+br = nan(2,1);  %beta ratios
+for i = 1:3
+    b(i) = aero.m(i) / (aero.cds(1) * pi * aero.rcs(i)^2);
+end
+for i = 1:2
+    br(i) = b(i+1)/b(i);
+end
+br21 = b(2)/b(1);
+br32 = b(3)/b(2);
+br31 = b(3)/b(1);
+
+aero.rn = 0.1;
+aero.cds = [1.05 1.05 1.05];
+aero.cls = [0 0 0];
+
+x0.fpa0 = -5.5;
+
+sim.traj_rate = 100;
+sim.planet = 'venus';
+sim.efpa_flag = false;
+gnc.mode = 3;   %pdg
+gnc.n = 2;
+gnc.guid_rate = 25;
+mc.flag = true;
+% mc.debug = true;
+sim.ignore_nominal = true;
+sim.parMode = true;
+sim.nWorkers = 10;
+gnc.rho_truth = false;
+gnc.stage_skip = 2;
+out = run_dej_n(x0,gnc,aero,sim,mc);
+
+keyboard;
+%}
+
 %% Nominal NPC
 %{
 clear;clc
@@ -1978,10 +1967,11 @@ gnc.tj0 = 90;
 gnc.hydra_flag = true;
 gnc.dtj_lim = 10;
 mc.flag = false;
-sim.traj_rate = 200;
+sim.traj_rate = 1000;
+sim.data_rate = 1;
 gnc.npc_mode = uint8(1);
-mc.flag = true;
-mc.debug = true;
+% mc.flag = true;
+% mc.debug = true;
 % sim.debug = true;
 % mc.sigs = zero_sigs;
 out = run_dej_n(x0,gnc,aero,sim,mc);
@@ -1993,20 +1983,23 @@ keyboard
 %{
 clearvars -except save_path; clc; close all;
 % ha_tgt = [.4 2 10 105.5].*1000;
-ha_tgt = [2000 10000];
+ha_tgt = [10000];
 % fpas = [-6.5 -6.55 -6.6 -6.65];
-fpas = [-5.4 -5.6];
+fpas = [-5.4];
 [x0,aero,gnc,sim,mc] = base_venus_ac();
-gnc.guid_rate = 0.5;
+rates = [1];
+Nk = length(rates);
+
 gnc.ha_tol = 5;
-gnc.tj0 = 90;
+gnc.tj0 = 110;
 gnc.hydra_flag = true;
 gnc.dtj_lim = 10;
+gnc.iters = uint8(5);
 sim.parMode = true;
 sim.nWorkers = 10;
 sim.t_max = 2000;
 sim.h_min = 25;
-sim.traj_rate = 50;
+sim.traj_rate = 200;
 sim.data_rate = 10;
 
 x0.v0 = 11;
@@ -2015,35 +2008,66 @@ Ni = length(fpas);
 Nj = length(ha_tgt);
 
 mc.N = 1000;
+mc.sigs = zero_sigs;
 
-mc.debug = true;
+% mc.debug = true;
+% mc.flag = false;
+% sim.debug = true;
 
+for k = 1:Nk %guid rates
+gnc.guid_rate = rates(k);
 for i = 1:Ni %fpas
     for j = 1:Nj %ha tgts
         x0.fpa0 = fpas(i);
         gnc.ha_tgt = ha_tgt(j);
         
         fprintf('FPA %4.2f, Target Ap %4.2f\n',fpas(i), gnc.ha_tgt);
-%         gnc.npc_mode = uint8(0);
-%         out_b = run_dej_n(x0,gnc,aero,sim,mc);
+        gnc.npc_mode = uint8(0);
+        out_b = run_dej_n(x0,gnc,aero,sim,mc);
         gnc.npc_mode = uint8(1);
         out_h = run_dej_n(x0,gnc,aero,sim,mc);
         
         if (gnc.ha_tgt < 1000)
-            save([save_path 'dej_n\HYDRA\1stage\data\' num2str(floor(gnc.ha_tgt)) ...
-                '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg.mat'])
+%             save([save_path 'dej_n\HYDRA\1stage\data\' num2str(floor(gnc.ha_tgt)) ...
+%                 '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg.mat'])
         else
             save([save_path 'dej_n\HYDRA\1stage\data\' num2str(floor(gnc.ha_tgt/1000)) ...
-                'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg.mat'])
+                'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' ... 
+                num2str(gnc.guid_rate) 'hz.mat'])
         end
         
     end %j
 end %i
+end %k
 
 out_stats(out_b)
 out_stats(out_h)
 fprintf('Finished 1stage sim. '); print_current_time();
-% keyboard;
+keyboard;
+%}
+
+%% 1 stage post process
+%{
+% histogram for bisection vs. HYDRA - 10k, 0.1 and 1 hz
+clear;clc;
+% dat = load('..\venus_ac\dej_n\HYDRA\1stage\data\10k\v11_5.4deg_0.1hz.mat');
+dat = load('..\venus_ac\dej_n\HYDRA\1stage\data\10k\v11_5.4deg_1hz.mat');
+
+width = 200/10000;
+figure(); hold on
+title('SEJ HYDRA vs. Bisection, h_a^8 = 10000, v=11, GNC Rate = 0.1 Hz')
+set(gca,'FontSize',16)
+h1 = histogram(dat.out_b.haf/10000, 'FaceColor','r');
+h2 = histogram(dat.out_h.haf/10000, 'FaceColor','b');
+xline(1,'k--','LineWidth',2);
+h1.BinWidth = width;
+h2.BinWidth = width;
+xlabel('Apoapsis Altitude (10^4 km)')
+ylabel('Occurrence');
+xlim([5000/10000, 15000/10000])
+legend('Bisection Method','HYDRA Method','location','ne')
+
+keyboard;
 %}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2055,17 +2079,19 @@ clearvars -except save_path ;clc
 [x0,aero,gnc,sim, mc] = base_venus_ac();
 
 b31 = 10;
-b21s = [3 5 7 9];
+% b21s = [3 5 7 9];
+b21s = 9;
 
 x0.v0 = 11;
-efpas = [-5.4 -5.6];
+efpas = [-5.6];
 Nk = length(efpas);
 
 ha_tgts = [2000 10000];
 gnc.ha_tol = 10;
 gnc.n = 2;
-tj0s = [90 170];
-gnc.guid_rate = 0.5;
+tj0s = [80 170];
+% gnc.guid_rate = 0.5;
+rates = [0.5 5];
 gnc.npc_mode = uint8(2);
 
 for j = 1:length(b21s)
@@ -2115,6 +2141,8 @@ gnc.comp_curr = false;
 
 sim.nWorkers = 10;
 
+for zz = 1:length(rates)
+gnc.guid_rate = rates(z);
 for jj = 1:length(ha_tgts)
     gnc.ha_tgt = ha_tgts(jj);
 for k = 1:Nk
@@ -2125,40 +2153,40 @@ for k = 1:Nk
     betas = ['b_ijs' num2str(b21) '_' num2str(b31)];
 
     if (gnc.ha_tgt < 1000)
-        save([save_path 'dej_n\HYDRA\2stage\data\' num2str(floor(gnc.ha_tgt)) ... 
-            '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
+%         save([save_path 'dej_n\HYDRA\2stage\data\' num2str(floor(gnc.ha_tgt)) ... 
+%             '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
     else
         save([save_path 'dej_n\HYDRA\2stage\data\' num2str(floor(gnc.ha_tgt/1000)) ... 
-            'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
+            'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' ... 
+            num2str(gnc.guid_rate) 'hz_' betas '.mat'])
     end
 end %fpas
 end %ha_tgts
 end %b21s
+end %rates
 fprintf('Finished 2stage sims. '); print_current_time();
 keyboard;
 %}
 
-%% Biasing Trade Studies
-%{
+%% Conditional 2stage
+% %{
 clearvars -except save_path ;clc
 [x0,aero,gnc,sim, mc] = base_venus_ac();
 
 b31 = 10;
-b21s = [3 5 7 9];
-
-% biasing = -1000.*(50:50:750);    %m
-biasing = 50 * -1000;
+% b21s = [3 5 7 9];
+b21s = [3 9];
 
 x0.v0 = 11;
-% efpas = linspace(-5.3,-5.8,20);
-efpas = -5.4;
+efpas = [-5.6];
 Nk = length(efpas);
 
-gnc.ha_tgt = 10000;
+ha_tgts = [2000 10000];
 gnc.ha_tol = 10;
 gnc.n = 2;
-tj0s = [100 170];
-gnc.guid_rate = 0.5;
+tj0s = [80 170];
+% gnc.guid_rate = 0.5;
+rates = [0.5];
 gnc.npc_mode = uint8(2);
 
 for j = 1:length(b21s)
@@ -2193,62 +2221,47 @@ aero.cls = [0 0 0];
 sim.traj_rate = 200;
 sim.planet = 'venus';
 sim.efpa_flag = false;
-    
-mc.debug = false;
-mc.flag = false;
 
+% mc.debug = true;
+
+mc.flag = true;
 sim.parMode = true;
 gnc.dtj_lim = 10;
 % gnc.rss_flag = true;
 
 % x0.fpa0 = fpas;
-fprintf('2stage bias, b2/b1 = %2.0f, ha* = %4.0f. ',br21, gnc.ha_tgt); print_current_time();
-gnc.force_jett = true;
+gnc.force_jett = false;
 gnc.comp_curr = false;
 
-% sim.nWorkers = 5;
-gnc.tj0 = tj0s;
-tjr = nan(length(biasing),Nk,gnc.n);
-tj = tjr;
-err = nan(length(biasing),Nk);
+sim.nWorkers = 10;
 
+for zz = 1:length(rates)
+gnc.guid_rate = rates(zz);
+for jj = 1:length(ha_tgts)
+    gnc.ha_tgt = ha_tgts(jj);
 for k = 1:Nk
-x0.fpa0 = efpas(k);
+    fprintf('2stage Conditional, b2/b1 = %2.0f, ha* = %4.0f. ',br21, gnc.ha_tgt); print_current_time();
+    x0.fpa0 = efpas(k);
+    gnc.tj0 = tj0s;
+    out = run_dej_n(x0,gnc,aero,sim,mc);
+    
+    betas = ['b_ijs' num2str(b21) '_' num2str(b31)];
 
-for i = 1:length(biasing)
-
-gnc.bias(1).tgt_ap = biasing(i);
-out = run_dej_n(x0,gnc,aero,sim,mc);
-
-tj(i,k,:) = out.t_jett';
-tjr(i,k,:) = out.idj/out.idxend;
-err(i,k) = out.haf_err;
-
-end %biasing
-% betas = ['b_ijs' num2str(b21) '_' num2str(b31)];
+    if (gnc.ha_tgt < 1000)
+        save([save_path 'dej_n\HYDRA\2stage\data\conditional\' num2str(floor(gnc.ha_tgt)) ... 
+            '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
+    else
+        save([save_path 'dej_n\HYDRA\2stage\data\conditional\' num2str(floor(gnc.ha_tgt/1000)) ... 
+            'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
+    end
 end %fpas
-
-save([save_path 'dej_n\HYDRA\2stage_bias\entry_trades\' num2str(floor(gnc.ha_tgt/1000)) ... 
-    'k_v' num2str(x0.v0) '_b21_' num2str(br21) '.mat'])
-fprintf('Finished 2stage bias sim. '); print_current_time();
-end %betas
-
+end %ha_tgts
+end %b21s
+end %rates
+fprintf('Finished 2stage Conditional sims. '); print_current_time();
 keyboard;
-
-% ymin = -50;
-% ymax = abs(ymin);
-% figure(); hold on
-% set(gca,'FontSize',14)
-% grid on
-% plot(out.traj.time, out.g.dej_n.dr_ap_true./1000,'LineWidth',2);
-% ylim([ymin ymax])
-% plot([out.t_jett(1) out.t_jett(1)],[ymin ymax],'k--','LineWidth',2)
-% plot([out.t_jett(2) out.t_jett(2)],[ymin ymax],'k-.','LineWidth',2)
-% legend('Apoapsis Error Estimate (km)', ... 
-%     'Jettison 1','Jettison 2','location','se');
-% xlabel('Time (s)')
-% ylabel('Apoapsis Error Estimate (km)')
 %}
+
 
 %% 2stage Post Process
 %{
@@ -2391,14 +2404,15 @@ annotation('textbox',dim,'String',str,'FitBoxToText','on');
 clearvars -except save_path ;clc
 [x0,aero,gnc,sim, mc] = base_venus_ac();
 br41 = 10;
-br21s = [3 5 7 9];
-br31s = [5 7 9 9.5];
+br21s = [9];
+br31s = [9.5];
 
 % br21s = [5];
 % br31s = [7];
 
-fpas = [-5.4];
-ha_tgts = [2000];
+fpas = [-5.6];
+ha_tgts = [2000 10000];
+rates = [0.5 5];
 
 % br21s = [9];
 % br31s = [9.5];
@@ -2476,89 +2490,25 @@ sim.parMode = true;
 sim.nWorkers = 10;
 
 t = datetime();
-fprintf('Starting 3stage Monte Carlo %i, %i/%i/%i, %2.0f:%2.0f:%2.0f\n', ... 
-    k,t.Month, t.Day, t.Year, t.Hour, t.Minute, t.Second);
 x0.fpa0 = fpas(kk);
 fprintf(['Starting 3stage, betas = ' ... 
     num2str(br21) ',' num2str(br31) ',' num2str(br41)]); print_current_time();
-out = run_dej_n(x0,gnc,aero,sim,mc);
+
+for zz = 1:length(rates)
+    gnc.guid_rate = rates(zz);
+    out = run_dej_n(x0,gnc,aero,sim,mc);
+end %gnc rates
 fprintf(['Finished 3stage sim, betas = ' ... 
     num2str(br21) ',' num2str(br31) ',' num2str(br41)]); print_current_time();
 
-mc.N = 1000;
-for i = 1:4
-    b(i) = aero.m(i)/(1.05*pi*aero.rcs(i)^2);
-end
-br21 = b(2)/b(1);
-br31 = b(3)/b(1);
-br41 = b(4)/b(1);
-betas = ['b_ijs' num2str(br21) '_' num2str(br31) '_' num2str(br41)];
-
-for j = 1:1000
-%     ttf0(j) = out.tjett(j,1)./out.traj.t(out.idxend(j),j);
-    ttf1(j) = out.tjett(j,1)./out.traj.t(out.idxend(j),j);
-    ttf2(j) = out.tjett(j,2)./out.traj.t(out.idxend(j),j);
-    ttf3(j) = out.tjett(j,3)./out.traj.t(out.idxend(j),j);
-end
-
-haf_err2 = nan(mc.N,1);
-haf_err1 = haf_err2;
-haf_err3 = haf_err2;
-n3 = 0; % num 3 stage jettisons
-n2 = 0; % num 2 stage jettisons
-n1 = 0; % num 1 stage jettisons
-
-ha_est1 = haf_err2;
-ha_est2 = haf_err2;
-ha_est3 = haf_err2;
-
-for i = 1:mc.N
-    if ~isnan(out.tjett(i,3))
-        haf_err3(i) = out.haf_err(i);
-        n3 = n3 + 1;
-    elseif ~isnan(out.tjett(i,2))
-        haf_err2(i) = out.haf_err(i);
-        n2 = n2 + 1;
-    else
-        haf_err1(i) = out.haf_err(i);
-        n1 = n1 + 1;
-    end
-    
-    ind = out.idj(i,1);
-    if ~isnan(ind)
-        ha_est1(i) = out.g.ha_err(ind,i); %-1 b/c GNC run before store_dat.m
-    else
-        ha_est1(i) = nan;
-    end
-    
-    ind = out.idj(i,2);
-    if ~(isnan(ind))
-        ha_est2(i) = out.g.ha_err(ind,i);
-    else
-        ha_est2(i) = nan;
-    end    
-    
-    ind = out.idj(i,3);
-    if ~(isnan(ind))
-        ha_est3(i) = out.g.ha_err(ind,i);
-    else
-        ha_est3(i) = nan;
-    end     
-    
-end
-
-% keyboard;
-
 if (gnc.ha_tgt < 1000)
-    save([save_path 'dej_n\HYDRA\3stage\data\' num2str(floor(gnc.ha_tgt)) ... 
-        '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
+%     save([save_path 'dej_n\HYDRA\3stage\data\' num2str(floor(gnc.ha_tgt)) ... 
+%         '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
 else
     save([save_path 'dej_n\HYDRA\3stage\data\' num2str(floor(gnc.ha_tgt/1000)) ... 
-        'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
+        'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' ... 
+        num2str(gnc.guid_rate) 'hz_' betas '.mat']);
 end
-
-
-
 
 
 end %k betas
@@ -2701,548 +2651,122 @@ ylim([-500 500])
 %%%%%%%%%%%%%%%%%%%%%%% N-Stage Post Process %%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% std vs stage
-% %{
-% histogram, y axis is std, x axis is stage number (1,2,3) for each
-% architecture
-[p, d1, d2, d3] = load_dej_n_data();
-
-std1 = std(d1.out_h.haf);
-std2 = std([d2(1).out.haf, d2(2).out.haf, d2(3).out.haf, d2(4).out.haf]);
-std3 = std([d3(1).out.haf, d3(2).out.haf, d3(3).out.haf, d3(4).out.haf]);
-
-mean1 = mean(d1.out_h.haf_err);
-mean2 = mean([d2(1).out.haf_err, d2(2).out.haf_err, d2(3).out.haf_err, d2(4).out.haf_err]);
-mean3 = mean([d3(1).out.haf_err, d3(2).out.haf_err, d3(3).out.haf_err, d3(4).out.haf_err]);
-
-median1 = median(d1.out_h.haf_err);
-median2 = median([d2(1).out.haf_err, d2(2).out.haf_err, d2(3).out.haf_err, d2(4).out.haf_err]);
-median3 = median([d3(1).out.haf_err, d3(2).out.haf_err, d3(3).out.haf_err, d3(4).out.haf_err]);
-
-stages = [1 2 3];
-
-colors = [0.23 0.23 0.23; 1 0 0; 0 1 0; 0 0 1; 0 1 1; 1 0 1; 1 1 0; ... 
-    0 0.4470 0.7410; 0.8500 0.3250 0.0980; 0.9290 0.6940 0.1250; ...
-    0.4940 0.1840 0.5560; 0.4660 0.6740 0.1880; 0.6350 0.0780 0.1840];
-
-
-
-% group by 1sigma, mean, median
-figure(); hold on
-set(gca,'FontSize',16)
-grid on
-categories = categorical({'1 \sigma','Mean','Median'});
-b1 = bar(categories, ... 
-    [std1 std2(1) std2(2) std2(3) std2(4) std3(1) std3(2) std3(3) std3(4); ... 
-     mean1 mean2(1) mean2(2) mean2(3) mean2(4) mean3(1) mean3(2) mean3(3) mean3(4); ...
-     median1*5 median2(1) median2(2) median2(3) median2(4) ... 
-     median3(1) median3(2) median3(3) median3(4)]);
-for i = 1:9
-    b1(i).FaceColor = colors(i,:);
+%% mc stats trends
+%{
+clear;clc
+[d1, d2, d3, names] = load_dej_n_data(2000, -5.4);
+s(1) = 0;
+err(i) = 100;
+sEnd = std(d2.out1.haf_err);
+SEM = sEnd / sqrt(1000);
+ts = tinv([0.025  0.975],1000 - 1);
+CI = mean(d2.out1.haf_err) + ts*SEM;
+for i = 2:1000
+    s(i) = std(d2.out1.haf_err(1:i));
+    err(i) = 100 * (s(i) - sEnd)/sEnd;
 end
-legend('SEJ', 'MEJ-2A', 'MEJ-2B','MEJ-2C','MEJ-2D', ... 
-    'MEJ-3A','MEJ-3B','MEJ-3C','MEJ-3D')
-ylim([-5 150])
-ylabel('Apoapsis Error (km)')
 
-% group by stage
 figure(); hold on
-set(gca,'FontSize',16)
-a1 = [std1;mean1;median1];
-a2 = [std2;mean2;median2];
-a3 = [std3;mean3;median3];
-b1 = bar([-0.5 0 0.5], a1, 0.3);
-b2 = bar([1.5 2 2.5], a2);
-b3 = bar([3.5 4 4.5], a3);
+plot(s,'LineWidth',2)
+yline(0.9 .* sEnd,'k--');
+yline(1.1 .* sEnd,'k--');
 
-
-
-legend(beta_string(1, 1), beta_string(2, 1), beta_string(2, 2), ...
-    beta_string(2, 3), beta_string(2, 4), beta_string(3, 1), ...
-    beta_string(3, 2), beta_string(3, 3), beta_string(3, 4), ... 
-    'location','eastoutside');
-xlabel('Jettison Stage Count')
-ylabel('Apoapsis Altitude 1\sigma (km)')
-xlim([.5 3.5])
-
-
+figure(); hold on
+plot(err,'LineWidth',2)
+ylim([-5 5])
 %}
 
-%% box plots
-% [p, d1, d2, d3] = load_dej_n_data();
-% 
-% figure(); hold on
-% boxplot([d1.out_h.haf, d2(1).out.haf], [1, 2]);
+%% std vs stage
+%{
+% histogram, y axis is std, x axis is stage number (1,2,3) for each
+% architecture
+%%%%% 2k, -5.4
+clear;clc
+[d1, d2, d3, names] = load_dej_n_data(2000, -5.4);
+compare_stds(d1, d2, d3, names, 'stats');
 
+%%%%%% 2k, -5.6 deg
+clear;clc
+[d1, d2, d3, names] = load_dej_n_data(2000, -5.6);
+compare_stds(d1, d2, d3, names, 'stats');
+
+%%%%%% 10k, -5.4 deg
+clear;clc
+[d1, d2, d3, names] = load_dej_n_data(10000, -5.4);
+compare_stds(d1, d2, d3, names, 'stats');
+
+%%%%%% 10k, -5.6 deg
+clear;clc
+[d1, d2, d3, names] = load_dej_n_data(10000, -5.6);
+compare_stds(d1, d2, d3, names, 'stats');
+%}
 
 %% cdfs
 %{
-% generate_cdf_plots([2 3], '11', '5.4', 2000, 25);
-% generate_cdf_plots([2 3], '11', '5.4', 10000, 25);
-
 %%%%%%%%% efpa = -5.4, 2k
-[p, d1, d2, d3] = load_dej_n_data();
-tols = 0:1:100;
-haTgt = 2000;
-
-N = 1000;
-for i = 1:length(tols)
-    pc1(i) = 100 * length(find((100*abs(d1.out_h.haf_err)/haTgt) <= tols(i))) / N;
-    for j = 1:4
-        pc2(i,j) = 100 * length(find((100*abs(d2(j).out.haf_err)/haTgt) <= tols(i))) / N;
-        pc3(i,j) = 100 * length(find((100*abs(d3(j).out.haf_err)/haTgt) <= tols(i))) / N;
-    end
-end
-
-figure(); hold on
-grid on
-set(gca,'FontSize',16)
-plot(tols, pc1,'k--','LineWidth',2.5)
-plot(tols, pc2(:,1),'r','LineWidth', 2.5)
-plot(tols, pc2(:,4),'b','LineWidth', 2.5)
-plot(tols, pc3(:,1),'y','LineWidth', 2.5)
-plot(tols, pc3(:,4),'g-.','LineWidth', 2.5)
-xlim([0 20])
-xlabel('Apoapsis Altitude Tolerance (% of Target)')
-ylabel('
-
-
-% names = {'d1','d2_25','d2_52','d3_43','d3_63','d3_83'};
-tols = (0:10:500)';
-Ni = length(tols);
-pc1 = nan(Ni,1);
-pc2_1 = pc1; pc2_2 = pc1; pc2_3 = pc1; pc2_4 = pc1;
-pc3_1 = pc1; pc3_2 = pc1; pc3_3 = pc1; pc3_4 = pc1;
-
-mcN = 1000;
-for i = 1:Ni
-    num = find(abs(d1_haf_errs) <= tols(i));
-    pc1(i) = length(num)/mcN * 100;
-    
-    num = find(abs(d2_1.out.haf_err) <= tols(i));
-    pc2_1(i) = length(num)/mcN * 100;
-    num = find(abs(d2_2.out.haf_err) <= tols(i));
-    pc2_2(i) = length(num)/mcN * 100;
-    num = find(abs(d2_3.out.haf_err) <= tols(i));
-    pc2_3(i) = length(num)/mcN * 100;
-    num = find(abs(d2_4.out.haf_err) <= tols(i));
-    pc2_4(i) = length(num)/mcN * 100;
-    
-    num = find(abs(d3_1.out.haf_err) <= tols(i));
-    pc3_1(i) = length(num)/mcN * 100;
-    num = find(abs(d3_2.out.haf_err) <= tols(i));
-    pc3_2(i) = length(num)/mcN * 100;
-    num = find(abs(d3_3.out.haf_err) <= tols(i));
-    pc3_3(i) = length(num)/mcN * 100;
-    num = find(abs(d3_4.out.haf_err) <= tols(i));
-    pc3_4(i) = length(num)/mcN * 100;
-end
-
-figure(); hold on
-set(gca,'FontSize',14)
-title('2k tgt, -5.4deg, 0.5hz, venus')
-plot(tols, pc1,'k--','LineWidth',1.5)
-plot(tols, pc2_1,'LineWidth',1.5)
-plot(tols, pc2_2,'LineWidth',1.5)
-plot(tols, pc2_3,'LineWidth',1.5)
-plot(tols, pc2_4,'LineWidth',1.5)
-plot(tols, pc3_1,'-.','LineWidth',1.5)
-plot(tols, pc3_2,'-.','LineWidth',1.5)
-plot(tols, pc3_3,'-.','LineWidth',1.5)
-plot(tols, pc3_4,'-.','LineWidth',1.5)
-legend( ... 
-    '1 Stage', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{3,3.33\}', ... 
-    '2 Stage, \beta_{i+1}/\beta_i = \{5,2\}', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{7,1.42\}', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{9,1.11\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{3,1.67,2\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{5,1.4,1.43\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{7,1.28,1.11\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{9,1.05,1.05\}', ...
-    'location','se', 'FontSize',10);
-xlabel('Apoapsis Error Tolerance (km)')
-ylabel('Capture Rate (%)')
-xlim([0 200])
-
-
-%%%%%%%%% efpa = -5.6, 2k
-clearvars -except p p2 p3 d1 pc1
-d2_1 = load([p2 'mc2k_fpa5.6_0.5Hz__b31=10_b21=3_b32=3.33.mat']);
-d2_2 = load([p2 'mc2k_fpa5.6_0.5Hz__b31=10_b21=5_b32=2.mat']);
-d2_3 = load([p2 'mc2k_fpa5.6_0.5Hz__b31=10_b21=7_b32=1.43.mat']);
-d2_4 = load([p2 'mc2k_fpa5.6_0.5Hz__b31=10_b21=9_b32=1.11.mat']);
-d3_1 = load([p3 'mc_2k_fpa5.6_b41=10..b31=5..b21=3.mat']);
-d3_2 = load([p3 'mc_2k_fpa5.6_b41=10..b31=7..b21=5.mat']);
-d3_3 = load([p3 'mc_2k_fpa5.6_b41=10..b31=9..b21=7.mat']);
-d3_4 = load([p3 'mc_2k_fpa5.6_b41=10..b31=9.5..b21=9.mat']);
-
-d1 = load([p '1stage\data\mc_n_2k_0.5hz_56deg.mat']);
-
-% d1_haf_errs = d1.haf_n_2k(:,2) - 2000;
-d1_haf_errs = d1.out.haf_err;
-
-tols = (0:10:500)';
-Ni = length(tols);
-pc1 = nan(Ni,1);
-pc2_1 = pc1; pc2_2 = pc1; pc2_3 = pc1; pc2_4 = pc1;
-pc3_1 = pc1; pc3_2 = pc1; pc3_3 = pc1; pc3_4 = pc1;
-mcN = 1000;
-for i = 1:Ni
-    num = find(abs(d1_haf_errs) <= tols(i));
-    pc1(i) = length(num)/mcN * 100;
-    
-    num = find(abs(d2_1.out.haf_err) <= tols(i));
-    pc2_1(i) = length(num)/mcN * 100;
-    num = find(abs(d2_2.out.haf_err) <= tols(i));
-    pc2_2(i) = length(num)/mcN * 100;
-    num = find(abs(d2_3.out.haf_err) <= tols(i));
-    pc2_3(i) = length(num)/mcN * 100;
-    num = find(abs(d2_4.out.haf_err) <= tols(i));
-    pc2_4(i) = length(num)/mcN * 100;
-    
-    num = find(abs(d3_1.out.haf_err) <= tols(i));
-    pc3_1(i) = length(num)/mcN * 100;
-    num = find(abs(d3_2.out.haf_err) <= tols(i));
-    pc3_2(i) = length(num)/mcN * 100;
-    num = find(abs(d3_3.out.haf_err) <= tols(i));
-    pc3_3(i) = length(num)/mcN * 100;
-    num = find(abs(d3_4.out.haf_err) <= tols(i));
-    pc3_4(i) = length(num)/mcN * 100;
-end
-
-figure(); hold on
-set(gca,'FontSize',14)
-title('2k tgt, -5.6deg, 0.5hz, venus')
-plot(tols, pc1,'k--','LineWidth',1.5)
-plot(tols, pc2_1,'LineWidth',1.5)
-plot(tols, pc2_2,'LineWidth',1.5)
-plot(tols, pc2_3,'LineWidth',1.5)
-plot(tols, pc2_4,'LineWidth',1.5)
-plot(tols, pc3_1,'-.','LineWidth',1.5)
-plot(tols, pc3_2,'-.','LineWidth',1.5)
-plot(tols, pc3_3,'-.','LineWidth',1.5)
-plot(tols, pc3_4,'-.','LineWidth',1.5)
-legend( ... 
-    '1 Stage', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{3,3.33\}', ... 
-    '2 Stage, \beta_{i+1}/\beta_i = \{5,2\}', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{7,1.42\}', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{9,1.11\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{3,1.67,2\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{5,1.4,1.43\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{7,1.28,1.11\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{9,1.05,1.05\}', ...
-    'location','se', 'FontSize',10);
-xlabel('Apoapsis Error Tolerance (km)')
-ylabel('Capture Rate (%)')
-% xlim([0 200])
-
+clear;clc
+[d1, d2, d3, names] = load_dej_n_data(2000, -5.4);
+generate_cdf_plots(d1, d2, d3, names, [1 4]);
 
 %%%%%%%%% efpa = -5.4, 10k
-clearvars -except p p2 p3 d1 pc1
-d2_1 = load([p2 'mc10k_fpa5.4_0.5Hz__b31=10_b21=3_b32=3.33.mat']);
-d2_2 = load([p2 'mc10k_fpa5.4_0.5Hz__b31=10_b21=5_b32=2.mat']);
-d2_3 = load([p2 'mc10k_fpa5.4_0.5Hz__b31=10_b21=7_b32=1.43.mat']);
-d2_4 = load([p2 'mc10k_fpa5.4_0.5Hz__b31=10_b21=9_b32=1.11.mat']);
-d3_1 = load([p3 'mc_10k_fpa5.4_b41=10..b31=5..b21=3.mat']);
-d3_2 = load([p3 'mc_10k_fpa5.4_b41=10..b31=7..b21=5.mat']);
-d3_3 = load([p3 'mc_10k_fpa5.4_b41=10..b31=9..b21=7.mat']);
-d3_4 = load([p3 'mc_10k_fpa5.4_b41=10..b31=9.5..b21=9.mat']);
+clear;clc
+[d1, d2, d3, names] = load_dej_n_data(10000, -5.4);
+generate_cdf_plots(d1, d2, d3, names, [1 4]);
 
-% d1_haf_errs = d1.haf_n_10k(:,1) - 10000;
-
-d1 = load([p '1stage\data\mc_n_10k_0.5hz_54deg.mat']);
-d1_haf_errs = d1.out.haf_err;
-
-tols = (0:10:500)';
-Ni = length(tols);
-pc1 = nan(Ni,1);
-pc2_1 = pc1; pc2_2 = pc1; pc2_3 = pc1; pc2_4 = pc1;
-pc3_1 = pc1; pc3_2 = pc1; pc3_3 = pc1; pc3_4 = pc1;
-mcN = 1000;
-for i = 1:Ni
-    num = find(abs(d1_haf_errs) <= tols(i));
-    pc1(i) = length(num)/mcN * 100;
-    
-    num = find(abs(d2_1.out.haf_err) <= tols(i));
-    pc2_1(i) = length(num)/mcN * 100;
-    num = find(abs(d2_2.out.haf_err) <= tols(i));
-    pc2_2(i) = length(num)/mcN * 100;
-    num = find(abs(d2_3.out.haf_err) <= tols(i));
-    pc2_3(i) = length(num)/mcN * 100;
-    num = find(abs(d2_4.out.haf_err) <= tols(i));
-    pc2_4(i) = length(num)/mcN * 100;
-    
-    num = find(abs(d3_1.out.haf_err) <= tols(i));
-    pc3_1(i) = length(num)/mcN * 100;
-    num = find(abs(d3_2.out.haf_err) <= tols(i));
-    pc3_2(i) = length(num)/mcN * 100;
-    num = find(abs(d3_3.out.haf_err) <= tols(i));
-    pc3_3(i) = length(num)/mcN * 100;
-    num = find(abs(d3_4.out.haf_err) <= tols(i));
-    pc3_4(i) = length(num)/mcN * 100;
-end
-
-figure(); hold on
-set(gca,'FontSize',14)
-title('10k tgt, -5.4deg, 0.5hz, venus')
-plot(tols, pc1,'k--','LineWidth',1.5)
-plot(tols, pc2_1,'LineWidth',1.5)
-plot(tols, pc2_2,'LineWidth',1.5)
-plot(tols, pc2_3,'LineWidth',1.5)
-plot(tols, pc2_4,'LineWidth',1.5)
-plot(tols, pc3_1,'-.','LineWidth',1.5)
-plot(tols, pc3_2,'-.','LineWidth',1.5)
-plot(tols, pc3_3,'-.','LineWidth',1.5)
-plot(tols, pc3_4,'-.','LineWidth',1.5)
-legend( ... 
-    '1 Stage', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{3,3.33\}', ... 
-    '2 Stage, \beta_{i+1}/\beta_i = \{5,2\}', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{7,1.42\}', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{9,1.11\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{3,1.67,2\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{5,1.4,1.43\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{7,1.28,1.11\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{9,1.05,1.05\}', ...
-    'location','se', 'FontSize',10);
-xlabel('Apoapsis Error Tolerance (km)')
-ylabel('Capture Rate (%)')
-xlim([0 200])
+%%%%%%%%% efpa = -5.6, 2k
+clear;clc
+[d1, d2, d3, names] = load_dej_n_data(2000, -5.6);
+generate_cdf_plots(d1, d2, d3, names, [1 4]);
 
 %%%%%%%%% efpa = -5.6, 10k
-clearvars -except p p2 p3 d1 pc1
-d2_1 = load([p2 'mc10k_fpa5.6_0.5Hz__b31=10_b21=3_b32=3.33.mat']);
-d2_2 = load([p2 'mc10k_fpa5.6_0.5Hz__b31=10_b21=5_b32=2.mat']);
-d2_3 = load([p2 'mc10k_fpa5.6_0.5Hz__b31=10_b21=7_b32=1.43.mat']);
-d2_4 = load([p2 'mc10k_fpa5.6_0.5Hz__b31=10_b21=9_b32=1.11.mat']);
-d3_1 = load([p3 'mc_10k_fpa5.6_b41=10..b31=5..b21=3.mat']);
-d3_2 = load([p3 'mc_10k_fpa5.6_b41=10..b31=7..b21=5.mat']);
-d3_3 = load([p3 'mc_10k_fpa5.6_b41=10..b31=9..b21=7.mat']);
-d3_4 = load([p3 'mc_10k_fpa5.6_b41=10..b31=9.5..b21=9.mat']);
+clear;clc
+[d1, d2, d3, names] = load_dej_n_data(10000, -5.6);
+generate_cdf_plots(d1, d2, d3, names, [1 4]);
+%}
 
-d1_haf_errs = d1.haf_n_10k(:,2) - 10000;
+%% histograms
+%{
+%%%%%%%%% -5.4, 2k
+clear;clc
+[d1, d2, d3, names] = load_dej_n_data(2000, -5.4);
+histogram_plot(250, 1800/2000, 2200/2000, d1, d2);
+%}
 
-d1 = load([p '1stage\data\mc_n_10k_0.5hz_56deg.mat']);
-d1_haf_errs = d1.out.haf_err;
+%% tj scatter plots
+%{
+%%%%%%%%% -5.4, 2k
+% clear;clc
+% tgt = 2000;
+% [d1, d2, d3, names] = load_dej_n_data(tgt, -5.4);
+% dej_scatter_plot(d2.out1, 2, tgt,'normalized');
+% dej_scatter_plot(d2.out4, 2, tgt,'normalized');
+% dej_scatter_plot(d3.out1, 3, tgt, 'normalized');
+% dej_scatter_plot(d3.out4, 3, tgt, 'normalized');
 
-tols = (0:10:500)';
-Ni = length(tols);
-pc2_1 = pc1; pc2_2 = pc1; pc2_3 = pc1; pc2_4 = pc1;
-pc3_1 = pc1; pc3_2 = pc1; pc3_3 = pc1; pc3_4 = pc1;
-mcN = 1000;
-for i = 1:Ni
-    num = find(abs(d1_haf_errs) <= tols(i));
-    pc1(i) = length(num)/mcN * 100;
-    
-    num = find(abs(d2_1.out.haf_err) <= tols(i));
-    pc2_1(i) = length(num)/mcN * 100;
-    num = find(abs(d2_2.out.haf_err) <= tols(i));
-    pc2_2(i) = length(num)/mcN * 100;
-    num = find(abs(d2_3.out.haf_err) <= tols(i));
-    pc2_3(i) = length(num)/mcN * 100;
-    num = find(abs(d2_4.out.haf_err) <= tols(i));
-    pc2_4(i) = length(num)/mcN * 100;
-    
-    num = find(abs(d3_1.out.haf_err) <= tols(i));
-    pc3_1(i) = length(num)/mcN * 100;
-    num = find(abs(d3_2.out.haf_err) <= tols(i));
-    pc3_2(i) = length(num)/mcN * 100;
-    num = find(abs(d3_3.out.haf_err) <= tols(i));
-    pc3_3(i) = length(num)/mcN * 100;
-    num = find(abs(d3_4.out.haf_err) <= tols(i));
-    pc3_4(i) = length(num)/mcN * 100;
-end
+%%%%%%%%% -5.6, 2k
+% clear;clc
+% [d1, d2, d3, names] = load_dej_n_data(2000, -5.6);
+% dej_scatter_plot(d2.out1, 2, 2000,'normalized');
+% dej_scatter_plot(d2.out4, 2, 2000,'normalized');
+% dej_scatter_plot(d3.out1, 3, 2000, 'normalized');
+% dej_scatter_plot(d3.out4, 3, 2000, 'normalized');
 
-figure(); hold on
-set(gca,'FontSize',14)
-title('10k tgt, -5.6deg, 0.5hz, venus')
-plot(tols, pc1,'k--','LineWidth',1.5)
-plot(tols, pc2_1,'LineWidth',1.5)
-plot(tols, pc2_2,'LineWidth',1.5)
-plot(tols, pc2_3,'LineWidth',1.5)
-plot(tols, pc2_4,'LineWidth',1.5)
-plot(tols, pc3_1,'-.','LineWidth',1.5)
-plot(tols, pc3_2,'-.','LineWidth',1.5)
-plot(tols, pc3_3,'-.','LineWidth',1.5)
-plot(tols, pc3_4,'-.','LineWidth',1.5)
-legend( ... 
-    '1 Stage', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{3,3.33\}', ... 
-    '2 Stage, \beta_{i+1}/\beta_i = \{5,2\}', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{7,1.42\}', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{9,1.11\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{3,1.67,2\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{5,1.4,1.43\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{7,1.28,1.11\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{9,1.05,1.05\}', ...
-    'location','nw', 'FontSize',10);
-xlabel('Apoapsis Error Tolerance (km)')
-ylabel('Capture Rate (%)')
-% xlim([0 200])
+%%%%%%%%% -5.4, 10k
+% clear;clc
+% [d1, d2, d3, names] = load_dej_n_data(10000, -5.4);
+% dej_scatter_plot(d2.out1, 2, 10000,'normalized');
+% dej_scatter_plot(d2.out4, 2, 10000,'normalized');
+% dej_scatter_plot(d3.out1, 3, 10000,'normalized');
+% dej_scatter_plot(d3.out4, 3, 10000,'normalized');
 
-%%%%%%%%%%%%
-% histograms
-clearvars -except p p2 p3
+%%%%%%%%% -5.6, 10k
+% clear;clc
+% [d1, d2, d3, names] = load_dej_n_data(10000, -5.6);
+% dej_scatter_plot(d2.out1, 2, 10000,'normalized');
+% dej_scatter_plot(d2.out4, 2, 10000,'normalized');
+% dej_scatter_plot(d3.out1, 3, 10000,'normalized');
+% dej_scatter_plot(d3.out4, 3, 10000,'normalized');
 
-% 2stage, 2k, -5.4deg
-d1 = load([p '1stage\data\mcNewton_fpas_hafs_0.5hz.mat']);
-d2_1 = load([p2 'mc2k_fpa5_4_0.5Hz, b31=10_b21=3_b32=3.3333.mat']);
-d2_2 = load([p2 'mc2k_fpa5_4_0.5Hz, b31=10_b21=5_b32=2.mat']);
-d2_3 = load([p2 'mc2k_fpa5_4_0.5Hz, b31=10_b21=7_b32=1.4286.mat']);
-d2_4 = load([p2 'mc2k_fpa5_4_0.5Hz, b31=10_b21=9_b32=1.1111.mat']);
-d3_1 = load([p3 'mc_2k_fpa5.4_b41=10..b31=5..b21=3.mat']);
-d3_2 = load([p3 'mc_2k_fpa5.4_b41=10..b31=7..b21=5.mat']);
-d3_3 = load([p3 'mc_2k_fpa5.4_b41=10..b31=9..b21=7.mat']);
-d3_4 = load([p3 'mc_2k_fpa5.4_b41=10..b31=9.5..b21=9.mat']);
-
-figure(); hold on
-set(gca,'FontSize',14)
-title('2stage, 2k tgt, -5.4deg, 0.5hz, venus')
-w = 15;
-alpha = 0.6;
-h0 = histogram(d1.haf_n_2k,'FaceColor','k');
-h0.BinWidth = w; h0.FaceAlpha = alpha;
-h1 = histogram(d2_1.out.haf_err + 2000,'FaceColor','r');
-h1.BinWidth = w; h1.FaceAlpha = alpha;
-h2 = histogram(d2_2.out.haf_err + 2000,'FaceColor','b');
-h2.BinWidth = w; h2.FaceAlpha = alpha;
-h3 = histogram(d2_3.out.haf_err + 2000,'FaceColor','g');
-h3.BinWidth = w; h3.FaceAlpha = alpha;
-h4 = histogram(d2_4.out.haf_err + 2000,'FaceColor','m');
-h4.BinWidth = w; h4.FaceAlpha = alpha;
-
-xlabel('Apoapsis Altitude (km)')
-ylabel('Occurrence')
-legend([h0 h1 h2 h3 h4], ...
-    '1 Stage', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{3,3.33\}', ... 
-    '2 Stage, \beta_{i+1}/\beta_i = \{5,2\}', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{7,1.42\}', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{9,1.11\}', ...
-    'location','ne','FontSize',10)
-xlim([-400 600] + 2000)
-% 3stage, 2k, -5.4deg
-figure(); hold on
-set(gca,'FontSize',14)
-title('2stage, 2k tgt, -5.4deg, 0.5hz, venus')
-w = 15;
-alpha = 0.6;
-h0 = histogram(d1.haf_n_2k,'FaceColor','k');
-h0.BinWidth = w; h0.FaceAlpha = alpha;
-h1 = histogram(d3_1.out.haf_err + 2000,'FaceColor','r');
-h1.BinWidth = w; h1.FaceAlpha = alpha;
-h2 = histogram(d3_2.out.haf_err + 2000,'FaceColor','b');
-h2.BinWidth = w; h2.FaceAlpha = alpha;
-h3 = histogram(d3_3.out.haf_err + 2000,'FaceColor','g');
-h3.BinWidth = w; h3.FaceAlpha = alpha;
-h4 = histogram(d3_4.out.haf_err + 2000,'FaceColor','m');
-h4.BinWidth = w; h4.FaceAlpha = alpha;
-
-xlabel('Apoapsis Altitude (km)')
-ylabel('Occurrence')
-legend([h0 h1 h2 h3 h4], ...
-    '1 Stage', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{3,1.67,2\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{5,1.4,1.43\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{7,1.28,1.11\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{9,1.05,1.05\}', ...
-    'location','ne','FontSize',10)
-xlim([-400 600] + 2000)
-
-%%%% 2stage, 10k, -5.4deg
-clearvars -except d1 p p2 p3
-d2_1 = load([p2 'mc10k_fpa5.4_0.5Hz__b31=10_b21=3_b32=3.33.mat']);
-d2_2 = load([p2 'mc10k_fpa5.4_0.5Hz__b31=10_b21=5_b32=2.mat']);
-d2_3 = load([p2 'mc10k_fpa5.4_0.5Hz__b31=10_b21=7_b32=1.43.mat']);
-d2_4 = load([p2 'mc10k_fpa5.4_0.5Hz__b31=10_b21=9_b32=1.11.mat']);
-d3_1 = load([p3 'mc_10k_fpa5.4_b41=10..b31=5..b21=3.mat']);
-d3_2 = load([p3 'mc_10k_fpa5.4_b41=10..b31=7..b21=5.mat']);
-d3_3 = load([p3 'mc_10k_fpa5.4_b41=10..b31=9..b21=7.mat']);
-d3_4 = load([p3 'mc_10k_fpa5.4_b41=10..b31=9.5..b21=9.mat']);
-
-figure(); hold on
-set(gca,'FontSize',14)
-title('2stage, 10k tgt, -5.4deg, 0.5hz, venus')
-w = 0.15;
-alpha = 0.6;
-h0 = histogram(d1.haf_n_10k/1000,'FaceColor','k');
-h0.BinWidth = w; h0.FaceAlpha = alpha;
-h1 = histogram((d2_1.out.haf_err + 10000)/1000,'FaceColor','r');
-h1.BinWidth = w; h1.FaceAlpha = alpha;
-h2 = histogram((d2_2.out.haf_err + 10000)/1000,'FaceColor','b');
-h2.BinWidth = w; h2.FaceAlpha = alpha;
-h3 = histogram((d2_3.out.haf_err + 10000)/1000,'FaceColor','g');
-h3.BinWidth = w; h3.FaceAlpha = alpha;
-h4 = histogram((d2_4.out.haf_err + 10000)/1000,'FaceColor','m');
-h4.BinWidth = w; h4.FaceAlpha = alpha;
-xlabel('Apoapsis Altitude (10^3 km)')
-ylabel('Occurrence')
-legend([h0 h1 h2 h3 h4], ...
-    '1 Stage', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{3,3.33\}', ... 
-    '2 Stage, \beta_{i+1}/\beta_i = \{5,2\}', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{7,1.42\}', ...
-    '2 Stage, \beta_{i+1}/\beta_i = \{9,1.11\}', ...
-    'location','ne','FontSize',10)
-xlim([-1 4]+10)
-
-%3 stage, 10k, -5.4deg
-figure(); hold on
-set(gca,'FontSize',14)
-title('3stage, 10k tgt, -5.4deg, 0.5hz, venus')
-w = 0.12;
-alpha = 0.6;
-h0 = histogram(d1.haf_n_10k/1000,'FaceColor','k');
-h0.BinWidth = w; h0.FaceAlpha = alpha;
-h1 = histogram((d3_1.out.haf_err + 10000)/1000,'FaceColor','r');
-h1.BinWidth = w; h1.FaceAlpha = alpha;
-h2 = histogram((d3_2.out.haf_err + 10000)/1000,'FaceColor','b');
-h2.BinWidth = w; h2.FaceAlpha = alpha;
-h3 = histogram((d3_3.out.haf_err + 10000)/1000,'FaceColor','g');
-h3.BinWidth = w; h3.FaceAlpha = alpha;
-h4 = histogram((d3_4.out.haf_err + 10000)/1000,'FaceColor','m');
-h4.BinWidth = w; h4.FaceAlpha = alpha;
-xlabel('Apoapsis Altitude (10^3 km)')
-ylabel('Occurrence')
-legend([h0 h1 h2 h3 h4], ...
-    '1 Stage', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{3,1.67,2\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{5,1.4,1.43\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{7,1.28,1.11\}', ...
-    '3 Stage, \beta_{i+1}/\beta_i = \{9,1.05,1.05\}', ...
-    'location','ne','FontSize',10)
-xlim([-1 4]+10)
-
-%%%% 2stage, 2k, -5.6deg
-clearvars -except d1 p p2 p3
-d2_1 = load([p2 'mc2k_fpa5.6_0.5Hz__b31=10_b21=3_b32=3.33.mat']);
-d2_2 = load([p2 'mc2k_fpa5.6_0.5Hz__b31=10_b21=5_b32=2.mat']);
-d2_3 = load([p2 'mc2k_fpa5.6_0.5Hz__b31=10_b21=7_b32=1.43.mat']);
-d2_4 = load([p2 'mc2k_fpa5.6_0.5Hz__b31=10_b21=9_b32=1.11.mat']);
-d3_1 = load([p3 'mc_2k_fpa5.6_b41=10..b31=5..b21=3.mat']);
-d3_2 = load([p3 'mc_2k_fpa5.6_b41=10..b31=7..b21=5.mat']);
-d3_3 = load([p3 'mc_2k_fpa5.6_b41=10..b31=9..b21=7.mat']);
-d3_4 = load([p3 'mc_2k_fpa5.6_b41=10..b31=9.5..b21=9.mat']);
-
-figure(); hold on
-set(gca,'FontSize',14)
-title('2stage, 2k tgt, -5.4deg, 0.5hz, venus')
-w = 15;
-alpha = 0.6;
-h0 = histogram(d1.haf_n_2k,'FaceColor','k');
-h0.BinWidth = w; h0.FaceAlpha = alpha;
-h1 = histogram(d2_1.out.haf_err + 2000,'FaceColor','r');
-h1.BinWidth = w; h1.FaceAlpha = alpha;
-h2 = histogram(d2_2.out.haf_err + 2000,'FaceColor','b');
-h2.BinWidth = w; h2.FaceAlpha = alpha;
-h3 = histogram(d2_3.out.haf_err + 2000,'FaceColor','g');
-h3.BinWidth = w; h3.FaceAlpha = alpha;
-h4 = histogram(d2_4.out.haf_err + 2000,'FaceColor','m');
-h4.BinWidth = w; h4.FaceAlpha = alpha;
-
-%%%% 2stage, 10k, -5.6deg
 %}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

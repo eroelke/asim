@@ -19,6 +19,16 @@ if (guid.p.atm.Kflag)
     re = guid.p.planet.r_e;
     % get mass, geometry
     switch (guid.p.dm_mode)
+        case 3 %pdg
+            j_ind = guid.pd.s.stage + 1;
+%             if (j_ind > guid.pd.p.n_jett) %temp
+%                 guid.s.atm.K_dens = 1;
+%                 return;
+%             end
+            area_ref = guid.pd.p.area_refs(j_ind);  % get current stage area (1-indexed)
+            mass = guid.pd.p.masses(j_ind); %expected mass
+            cd = guid.pd.p.cds(j_ind);  %expected cd
+            
         case 4  % dej_n
             j_ind = guid.dej_n.s.stage+1;  % current jettison stage
             
@@ -32,11 +42,11 @@ if (guid.p.atm.Kflag)
             
         case 5 % cvdma
             area_ref = guid.cvdma.s.Aref;
-            cd = guid.cvdma.s.cd;
+            cd = guid.cvdma.s.cd;   
             mass = guid.cvdma.p.mass;
             
         otherwise
-            guid.p.atm.Kflag = uint8(0);    % turn off density corrector
+            guid.p.atm.Kflag = false;    % turn off density corrector
             fprintf('WARNING: No Density Corrector Input Information in Guidance Struct...\nTurning Density Corrector Off\n');
             guid.s.atm.K_dens = 1;
             return;

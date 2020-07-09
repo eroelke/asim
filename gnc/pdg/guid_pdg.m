@@ -16,7 +16,7 @@ function [s] = guid_pdg( i, s, p, guid )
 % calculate guidance initiation parameters
 s.A_mag = norm(i.A_sens_pci); % m/s^2, sensed acceleration magnitude
 
-if s.A_mag >= p.A_sens_atm && s.stage < p.n_jett
+if s.A_mag >= p.A_sens_atm %&& s.stage < p.n_jett
     % Estimate density multiplier based on current acceleration
 %     if (p.mcflag)
 %         s = est_K_dens(i, s, p); % density corrector for monte carlo runs
@@ -34,7 +34,7 @@ if s.A_mag >= p.A_sens_atm && s.stage < p.n_jett
 
     % run predictor with jettisoned vehicle state
     j_ind = s.stage + 2;            %1-indexed sc jettison phase
-    [ha_j,hp_j,zeta_j] = predict_orbit( y0, t0, j_ind, s, p, guid );
+    [ha_j,hp_j,zeta_j, s] = predict_orbit( y0, t0, j_ind, s, p, guid );
     
 %     dzeta = zeta - zeta_j;  % energy difference     
     
@@ -42,8 +42,8 @@ if s.A_mag >= p.A_sens_atm && s.stage < p.n_jett
     switch (p.trigger)
         case 0 % energy trigger
             % calculate desired orbital energy
-            ha_des = p.ha_tgt + guid.p.planet.r_p;  % desired apoapsis radius
-            hp_des = hp_j + guid.p.planet.r_p;  % periapsis radius
+            ha_des = (p.ha_tgt + guid.p.planet.r_p) - p.bias(s.stage + 1).tgt_ap;  % desired apoapsis radius
+            hp_des = hp_j + guid.p.planet.r_p;  % periapsis radius (min altitude)
             e_des = (ha_des - hp_des)/(ha_des + hp_des);    % desired eccentricity
             sma_des = (ha_des+hp_des)/2; % m, desired semi-major axis
             zeta_des = -guid.p.planet.mu/(2*sma_des);   % desired orbital energy
@@ -111,7 +111,7 @@ end % pred_guid_ac
 
 
 
-function [ha,hp,zeta] = predict_orbit( y0, t0, j_ind, s, p, guid )
+function [ha, hp, zeta, s] = predict_orbit( y0, t0, j_ind, s, p, guid )
 % predict the orbit if stage had been jettisoned
 
 % initialize
@@ -171,6 +171,10 @@ ra = a*(1+e); % apoapsis *radius*
 hp = min(h);    % periapsis *altitude*
 ha = ra - guid.p.planet.r_p; % apoapsis altitude
 % rp = min(rmag);
+
+% error - for data output
+s.dr_ap_true = ra - (p.ha_tgt + guid.p.planet.r_e);   %apoapsis radius error, m
+s.dr_ap = s.dr_ap_true - p.bias(s.stage + 1).tgt_ap; %minus because negative error is below target
 
 zeta = 0.5*vmag^2 - guid.p.planet.mu/rmag;   % energy of orbit with jettison
 
