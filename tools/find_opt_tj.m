@@ -15,7 +15,8 @@
 %   iters:      number of iterations
 %   haf_err:    error on apoapsis altitude
 % 
-function [tj,tjr,haf_err,out_f] = find_opt_tj(ha_tgt,efpa,tj0,tol,veh)
+function [tj,tjr,haf_err,out_f] = find_opt_tj( ... 
+    ha_tgt, efpa, tj0, tol, veh)
 
 iters = 1;
 tj = tj0;   %initial guess
@@ -27,7 +28,7 @@ f = nan(max_iters,1);
 traj_rate = 1000;
 eps = 1/traj_rate;    % change in jettison time guess
 flag = false;
-dtj_lim = 30;
+dtj_lim = 10;
 
 sub_iter = 0;
 while ~flag

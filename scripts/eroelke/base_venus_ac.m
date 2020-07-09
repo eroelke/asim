@@ -10,6 +10,9 @@ gnc.tj0 = 100;
 gnc.guid_rate = 0.5;
 gnc.force_jett = true;
 gnc.iters = uint8(1);
+gnc.mode = 4;   %dej_n
+gnc.rho_truth = false;
+gnc.stage_skip = 1000;
 
 sim.planet = 'venus';
 sim.h_max = 150;
@@ -17,7 +20,8 @@ sim.h_min = 50;
 sim.t_max = 1500;
 mc.flag = true;
 mc.N = 1000;
-sim.data_rate = 10;
+sim.data_rate = 1;
+sim.ignore_nominal = false;
 
 % beta ratio = 10
 aero.m = [150 60]; 

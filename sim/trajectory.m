@@ -118,6 +118,23 @@ for i = 2:N
 %     m=in.v.mp.m_ini_mainfuel-calcs_curr.prop_mass*h
 %     calcs_curr.mass-6000
     
+    % Termination Logic
+    [termination_flag, cond] = termination(in,calcs_curr, calcs_prev); % check termination conditions    
+    if termination_flag 
+        % Write final data point
+        if mod(i-1,sd_ratio)~=0
+            di = di + 1;
+            dat = store_dat( calcs_curr, di, ttvec(i), Y1(:,i), veh, guid, nav, ctrl, dat, in );
+            dat.term.cond = cond;
+            
+            % write final atmospheric model
+            dat.g.atm_hist = guid.s.atm.atm_hist;
+
+        %else
+        %	dat.term=[];
+        end
+        break; % Terminate integration
+    end
 
     %% Flight computer (GNC)
     % density corrector (decouple from guidance func)
@@ -140,37 +157,26 @@ for i = 2:N
         calcs_curr.delta_mass = -guid.cmd.delta_mass;
         ctrl.s.jettison = false;
         
-    end
-    Y1(4:6,i) = Y1(4:6,i) + calcs_curr.delta_V; % update velocity with any instantaneous changes
-    Y1(7,i) = Y1(7,i) + calcs_curr.delta_mass; % update mass with any discrete changes
-    veh.s.mass = Y1(7,i);   %update vehicle mass
-    
-    %% Store data
-    % Rate limit storage
-    if mod(i-1,sd_ratio) == 0
+        Y1(4:6,i) = Y1(4:6,i) + calcs_curr.delta_V; % update velocity with any instantaneous changes
+        Y1(7,i) = Y1(7,i) + calcs_curr.delta_mass; % update mass with any discrete changes
+        veh.s.mass = Y1(7,i);   %update vehicle mass
+        
+        % always store data on jettison time step
         di = di + 1;
-        dat = store_dat( calcs_curr, di, ttvec(i), Y1(:,i), veh, guid, nav, ctrl, dat, in );    
-    end
-
-    %% Termination Logic
-    % Check termination conditions
-    [termination_flag,cond]=termination(in,calcs_curr, calcs_prev); % check termination conditions    
-    if termination_flag 
-        % Write final data point
-        if mod(i-1,sd_ratio)~=0
+        dat = store_dat( calcs_curr, di, ttvec(i), Y1(:,i), veh, guid, nav, ctrl, dat, in );  
+        
+    else
+        Y1(4:6,i) = Y1(4:6,i) + calcs_curr.delta_V; % update velocity with any instantaneous changes
+        Y1(7,i) = Y1(7,i) + calcs_curr.delta_mass; % update mass with any discrete changes
+        veh.s.mass = Y1(7,i);   %update vehicle mass
+        
+        % Store data
+        % Rate limit storage
+        if mod(i-1,sd_ratio) == 0
             di = di + 1;
-            dat = store_dat( calcs_curr, di, ttvec(i), Y1(:,i), veh, guid, nav, ctrl, dat, in );
-            dat.term.cond = cond;
-            
-            % write final atmospheric model
-            dat.g.atm_hist = guid.s.atm.atm_hist;
-
-        %else
-        %	dat.term=[];
+            dat = store_dat( calcs_curr, di, ttvec(i), Y1(:,i), veh, guid, nav, ctrl, dat, in );    
         end
-        break; % Terminate integration
     end
-    
 end % integration loop (i=2:N)
 
 % if ~termination_flag

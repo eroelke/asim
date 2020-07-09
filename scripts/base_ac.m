@@ -8,7 +8,7 @@ function [x0,aero,gnc,sim,mc] = base_ac(isMc)
     x0.az0 = 90;
 
     gnc.ha_tgt = 2000;
-    gnc.ha_tol = 10;
+    gnc.ha_tol = 0.5;
     gnc.n = 1;
     gnc.tj0 = 120;
     gnc.dtj_lim = 30;

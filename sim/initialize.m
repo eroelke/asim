@@ -95,15 +95,17 @@ dat.traj.lift_ii_mag = ldat1;
 % dat.traj.azi_pp = ldat1;
 % dat.traj.downrange = ldat1;
 % dat.traj.crossrange = ldat1;
-dat.traj.heat_rate = ldat1;
-dat.traj.lat = ldat1;
-dat.traj.lon = ldat1;
+% dat.traj.heat_rate = ldat1;
+% dat.traj.lat = ldat1;
+% dat.traj.lon = ldat1;
 % dat.traj.cg = ldat3;
 dat.traj.time = ldat1; % Time
 % dat.traj.prop_mass = ldat1;
+% dat.traj.h_ap = ldat1;   % way to visualize aerocapture energy loss
 
 % general guidance params
 dat.g.K_dens = ldat1;   % density corrector
+dat.g.K_true = ldat1;   % true density variation
 dat.g.rho_est = ldat1;  % true density estimate
 dat.g.atm_hist = nan(1000,4); % internal atmosphere model
 dat.g.rss_nom = nan(1,1);  % nominal atm rss error (static)
@@ -187,7 +189,7 @@ switch in.v.gnc.g.p.prop_mode
         dat.g.adm.next_step = ldat1;
         dat.g.adm.iter = ldat1;
         dat.g.adm.A_mag = ldat1;
-        dat.g.adm.K_dens = ldat1;
+%         dat.g.adm.K_dens = ldat1;
         dat.g.adm.dens_est = ldat1;
         dat.g.adm.V_pf_mag = ldat1;
         dat.g.adm.t_inc = ldat1;
@@ -231,11 +233,13 @@ switch in.v.gnc.g.p.dm_mode
         
         dat.g.pd.jettison = nan(t_length,5);
         dat.g.pd.A_mag = ldat1;
-        dat.g.pd.K_dens = ldat1;
+%         dat.g.pd.K_dens = ldat1;
         dat.g.pd.ha_j = ldat1;
         dat.g.pd.delta_ap = ldat1;
         dat.g.pd.stage = ldat1;
         dat.g.pd.trig_val = ldat1;
+        dat.g.pd.dr_ap = ldat1;
+        dat.g.pd.dr_ap_true = ldat1;
         
         dat.g.dej_n = dej_n_empty();
         dat.g.cvdma = cvdma_empty();
@@ -275,7 +279,7 @@ switch in.v.gnc.g.p.dm_mode
         
         dat.g.cvdma.cd = ldat1;
         dat.g.cvdma.Aref = ldat1;
-        dat.g.cvdma.K_dens = ldat1;
+%         dat.g.cvdma.K_dens = ldat1;
         dat.g.cvdma.rc = ldat1;
         dat.g.cvdma.delta_c = ldat1;
         dat.g.cvdma.ra = ldat1;
@@ -309,7 +313,7 @@ switch in.v.gnc.g.p.dm_mode
         dat.g.sej_e.next_step = ldat1;
         dat.g.sej_e.iter = ldat1;
         dat.g.sej_e.A_mag = ldat1;
-        dat.g.sej_e.K_dens = ldat1;
+%         dat.g.sej_e.K_dens = ldat1;
         dat.g.sej_e.dens_est = ldat1;
         dat.g.sej_e.V_pf_mag = ldat1;
         dat.g.sej_e.t_inc = ldat1;
@@ -407,7 +411,7 @@ adm.phase = nan;
 adm.next_step = nan;
 adm.iter = nan;
 adm.A_mag = nan;
-adm.K_dens = nan;
+% adm.K_dens = nan;
 adm.dens_est = nan;
 adm.V_pf_mag = nan;
 adm.t_inc = nan;
@@ -439,11 +443,13 @@ end
 function pd = pd_empty()
 pd.jettison = nan;
 pd.A_mag = nan;
-pd.K_dens = nan;
+% pd.K_dens = nan;
 pd.ha_j = nan;
 pd.delta_ap = nan;
 pd.stage = nan;
 pd.trig_val = nan;
+pd.dr_ap = nan;
+pd.dr_ap_true = nan;
 end
 
 function dej_n = dej_n_empty()
@@ -467,7 +473,7 @@ end
 function cvdma = cvdma_empty()
 cvdma.cd = nan;
 cvdma.Aref = nan;
-cvdma.K_dens = nan;
+% cvdma.K_dens = nan;
 cvdma.rc = nan;
 cvdma.delta_c = nan;
 cvdma.ra = nan;
@@ -487,7 +493,7 @@ sej_e.phase = nan;
 sej_e.next_step = nan;
 sej_e.iter = nan;
 sej_e.A_mag = nan;
-sej_e.K_dens = nan;
+% sej_e.K_dens = nan;
 sej_e.dens_est = nan;
 sej_e.V_pf_mag = nan;
 sej_e.t_inc = nan;

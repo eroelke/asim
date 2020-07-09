@@ -284,8 +284,9 @@ if mod(si-1,ctrl.s.sc_ratio) == 0 % rate limit calls to control
                 ctrl.s.jettison = false;
             end
             
-        case 3 % pd, predictor guidance, E. Roelke
-            if (t >= guid.cmd.t_jettison && guid.pd.s.stage < guid.pd.p.n_jett)
+        case 3 % pdg, predictor guidance, E. Roelke
+            if (t >= guid.cmd.t_jettison) && guid.pd.s.jflag(guid.pd.s.stage+1) == logical(true) 
+                    %&& guid.pd.s.stage < guid.pd.p.n_jett)
                 [guid,ctrl,veh] = set_jettison(guid,ctrl,veh,t);
             else
                 ctrl.s.jettison = false;
@@ -311,7 +312,9 @@ if mod(si-1,ctrl.s.sc_ratio) == 0 % rate limit calls to control
             
         case 6 % manual: manual jettison time, n stages - M. Werner, E. Roelke
             % handled in get_tjett.m and set_jettison.m
-            
+            if (t >= get_guid_tj(guid, t))
+                [guid,ctrl,veh] = set_jettison(guid,ctrl,veh,t);
+            end
         case 7 % Entry: single-event jettison drag modulation (with parachute range trigger)
             if (guid.cmd.t_jettison <= t) && (guid.sej_e.s.phase >= uint8(2)) || (norm(nav.s.v_pf_pcpf) <= guid.sej_e.p.v_j_min)
                 ctrl.s.jettison = true;

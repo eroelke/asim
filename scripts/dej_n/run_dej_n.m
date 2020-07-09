@@ -13,6 +13,7 @@
 %       lon:     initial longitude (deg)
 %       az:      initial azimuth (deg)
 %   gnc:    Guidance Input Struct
+%       mode:       guidance dma mode
 %       ha_tgt:     target apoapsis altitude (km) - [1x1]
 %       ha_tol:     target apoapsis tolerance (km) - [1x1]
 %       n_jett:     number of jettison stages - [1x1]
@@ -67,7 +68,7 @@ max_alt = sim.h_max * 1e3;
 min_alt = sim.h_min * 1e3;
 
 %% Base Input Structure
-in0 = dej_n_in(max_alt,sim.planet,3); % nominal dej-n input structure
+in0 = dej_n_in(gnc.mode, max_alt, sim.planet, 3); % nominal dej-n input structure
 
 % Get updated atmospheric profile
 [in0.p.atm.table, mc_atm] = parse_atm_data(in0, sim.planet);
@@ -115,50 +116,80 @@ in0.v.aero.nose_radius = aero.rn; % Nose radius (m)
 %% Guidance Settings
 in0.v.gnc.g.p.atm.K_gain = 0.2;
 in0.v.gnc.g.p.atm.K_bounds = [0.01 2];
-in0.v.gnc.g.p.atm.Kflag = uint8(0);     % flag to do density estimate (for monte carlo)
+in0.v.gnc.g.p.atm.Kflag = false;     % flag to do density estimate (for monte carlo)
 in0.v.gnc.g.p.planet.alt_max = max_alt;
 in0.v.gnc.g.p.planet.alt_min = min_alt;
 in0.v.gnc.g.p.atm.ens_tol = gnc.p_tol;  % tolerance on ensemble search range (% of density estimate)
 in0.v.gnc.g.p.atm.rss_flag = gnc.rss_flag;
-
-%% N_DEJ Guidance Settings
-in0.v.gnc.g.p_dej_n.cds(1:stages) = aero.cds;
-in0.v.gnc.g.p_dej_n.cls(1:stages) = aero.cls;
-in0.v.gnc.g.p_dej_n.masses(1:stages) = aero.m'; % kg
-in0.v.gnc.g.p_dej_n.area_refs(1:length(areas)) = transpose(areas); % m^2
-in0.v.gnc.g.p_dej_n.t_max = sim.t_max;
 
 % Simulation Rates
 in0.s.traj.rate = sim.traj_rate;           % double, Hz, integration rate
 in0.v.gnc.g.p.rate = gnc.guid_rate;         % nd, guidance call rate (Hz)
 in0.v.gnc.g.p_dej_n.traj_rate = sim.traj_rate;  % guidance integration rate (Hz)
 in0.s.data_rate = sim.data_rate;          % Hz, data storage frequency
+% overall guidance settings
 in0.v.gnc.n.p.rate = sim.traj_rate;   % navigation rate = traj rate
 in0.v.gnc.c.p.rate = sim.traj_rate;    % control rate = traj rate
-
-% dej-n properties
-in0.v.gnc.g.p_dej_n.n_jett = uint8(gnc.n);
 in0.v.gnc.g.p.prop_mode = uint8(0);
-in0.v.gnc.g.p.dm_mode = uint8(4);   % dej-n
-in0.v.gnc.g.p_dej_n.iter_max = uint8(gnc.iters); % NPC iteration limit
-in0.v.gnc.g.p_dej_n.tj_ini(1:length(gnc.tj0)) = gnc.tj0;
-in0.v.gnc.g.p_dej_n.tgt_ap = gnc.ha_tgt*1000; % m, target apoapse
-in0.v.gnc.g.p_dej_n.tol_ap = gnc.ha_tol*1000; % m, apoapse tolerance
-in0.v.gnc.g.p_dej_n.npc_mode = uint8(gnc.npc_mode);   % root finding method (1 = newton, 0=bisection)
-in0.v.gnc.g.p_dej_n.t_init = gnc.t_init;
+in0.v.gnc.g.p.dm_mode = uint8(gnc.mode);
 
-in0.v.gnc.g.p_dej_n.multi.force_jett = gnc.force_jett;
-in0.v.gnc.g.p_dej_n.multi.comp_curr = gnc.comp_curr;
+switch (gnc.mode)
+    case 3 %pdg
+        mode = 'pd';
+        in0.v.gnc.g.pd.n_jett = uint8(gnc.n);
+        in0.v.gnc.g.pd.ha_tgt = gnc.ha_tgt*1000;
+        in0.v.gnc.g.pd.ha_tol = gnc.ha_tol*1000;
+        in0.v.gnc.g.pd.cds(1:stages) = aero.cds;
+        in0.v.gnc.g.pd.cls(1:stages) = aero.cls;
+        in0.v.gnc.g.pd.area_refs(1:stages) = transpose(areas); % m^2
+        in0.v.gnc.g.pd.masses(1:stages) = aero.m'; % kg
+%         in0.v.gnc.g.pd.trigger = uint8(0); %energy trigger
+        in0.v.gnc.g.pd.rate = in0.s.traj.rate;    % predictor integration rate
+        in0.v.gnc.g.pd.t_max = sim.t_max;
+        
+        in0.v.gnc.g.pd.sigs.m = 0;
+        in0.v.gnc.g.pd.sigs.cd = 0;
+        in0.v.gnc.g.pd.sigs.aref = 0;
+        
+        in0.v.gnc.g.pd.bias = gnc.bias;
+        in0.v.gnc.g.pd.stage_skip = gnc.stage_skip;
+        
+    case 4 % dej-n properties
+        mode = 'dej_n';
+        in0.v.gnc.g.p_dej_n.cds(1:stages) = aero.cds;
+        in0.v.gnc.g.p_dej_n.cls(1:stages) = aero.cls;
+        in0.v.gnc.g.p_dej_n.masses(1:stages) = aero.m'; % kg
+        in0.v.gnc.g.p_dej_n.area_refs(1:length(areas)) = transpose(areas); % m^2
+        in0.v.gnc.g.p_dej_n.t_max = sim.t_max;
 
-in0.v.gnc.g.p_dej_n.hydra.dtj_lim = gnc.dtj_lim;   % max step size for newton method
-in0.v.gnc.g.p_dej_n.hydra.dtj_flag = gnc.hydra_flag;    % hydra dtj reduction on/off
+        in0.v.gnc.g.p_dej_n.n_jett = uint8(gnc.n);
+        in0.v.gnc.g.p_dej_n.iter_max = uint8(gnc.iters); % NPC iteration limit
+        in0.v.gnc.g.p_dej_n.tj_ini(1:length(gnc.tj0)) = gnc.tj0;
+        in0.v.gnc.g.p_dej_n.tgt_ap = gnc.ha_tgt*1000; % m, target apoapse
+        in0.v.gnc.g.p_dej_n.tol_ap = gnc.ha_tol*1000; % m, apoapse tolerance
+        in0.v.gnc.g.p_dej_n.npc_mode = uint8(gnc.npc_mode);   % root finding method (1 = newton, 0=bisection)
+        in0.v.gnc.g.p_dej_n.t_init = gnc.t_init;
 
-in0.v.gnc.g.p_dej_n.sigs.m = 0;
-in0.v.gnc.g.p_dej_n.sigs.cd = 0;
-in0.v.gnc.g.p_dej_n.sigs.aref = 0;
+        in0.v.gnc.g.p_dej_n.multi.force_jett = gnc.force_jett;
+        in0.v.gnc.g.p_dej_n.multi.comp_curr = gnc.comp_curr;
 
-%biasing
-in0.v.gnc.g.p_dej_n.bias = gnc.bias;
+        in0.v.gnc.g.p_dej_n.hydra.dtj_lim = gnc.dtj_lim;   % max step size for newton method
+        in0.v.gnc.g.p_dej_n.hydra.dtj_flag = gnc.hydra_flag;    % hydra dtj reduction on/off
+
+        in0.v.gnc.g.p_dej_n.sigs.m = 0;
+        in0.v.gnc.g.p_dej_n.sigs.cd = 0;
+        in0.v.gnc.g.p_dej_n.sigs.aref = 0;
+        
+        in0.v.gnc.g.p_dej_n.bias = gnc.bias;
+    case 6 %manual
+        mode = 'manual';
+        in0.v.gnc.g.p_manual.n_jett = uint8(gnc.n);
+        in0.v.gnc.g.p_manual.masses(1:stages) = aero.m'; % kg
+        in0.v.gnc.g.p_manual.area_refs(1:length(areas)) = transpose(areas); % m^2
+        in0.v.gnc.g.p_manual.t_jetts(1:gnc.n) = gnc.tj0';
+        in0.v.gnc.c.p.rate = sim.traj_rate;
+end
+
 
 % check efpa solving
 if (sim.efpa_flag)
@@ -185,7 +216,7 @@ if (gnc.npc_mode == uint8(3))
     in0.v.gnc.g.p_dej_n.npc_mode = uint8(1);
 end
 
-if (mc.debug == false || mc.flag == false)
+if ((~sim.ignore_nominal) && (mc.debug == false || mc.flag == false))
 %% Run nominal Trajectory
 if (sim.debug)
     fprintf('Running in debug mode...\n'); out = main1(in0);         % debug mode
@@ -222,14 +253,14 @@ out.haf_err = round((haf - gnc.ha_tgt),5);    %km
 out.dv = round(dv,5);
 out.idxend = idxend;
 for i = 1:gnc.n
-    tjett = (find(out.g.dej_n.stage == i,1)-1)/(in0.s.data_rate);
-    if ~isempty(tjett)
-        out.t_jett(i) = tjett;
-        try
-            out.idj(i) = find(out.traj.time >= out.t_jett(i),1);
-        catch
+    idj = find(out.g.(mode).stage == i,1);
+    if ~isempty(idj)
+        if (idxend > idj)
+            out.idj(i) = idj;
+        else
             out.idj(i) = out.idxend;
         end
+        out.t_jett(i) = out.traj.time(out.idj(i));
     else
         out.t_jett(i) = nan;
         out.idj(i) = nan;
@@ -243,7 +274,7 @@ out.beta_ratios = round(beta_ratio,3);
 %     fprintf('WARNING: Exiting Orbit is Hyperbolic\n');
 % end
 
-else % debugging monte carlo runs
+else % ignore nominal
     out = struct('efpa', in0.s.traj.gamma_pp*180/pi);
 end %check debugging
 % check monte carlo
@@ -255,7 +286,7 @@ if (mc.flag)
     
     in0.v.gnc.g.p_dej_n.npc_mode = gnc.npc_mode;
     
-    in0.v.gnc.g.p.atm.Kflag = uint8(mc.flag);
+    in0.v.gnc.g.p.atm.Kflag = mc.flag;
     in0.v.gnc.g.p.atm.mode = gnc.atm_mode; % atmospheric capture mode (1-factor, 2-interp, 3-ens filter)
     
     % prellocate data storage variables
@@ -310,6 +341,11 @@ if (mc.flag)
         in_mc = in0;        % copy nominal input struct
 
         in_mc.p.atm.table = temp(:,:,i);    % new atmospheric table
+        if (gnc.rho_truth)
+            in_mc.v.gnc.g.p.atm.Kflag = false;
+            in_mc.v.gnc.g.p.planet.atm_nom = in_mc.p.atm.table;
+        end
+        
 %         in_mc.v.gnc.g.p_dej_n.atm.mc_ind = rnd(i);  % atmosphere index
         in_mc.v.gnc.g.p.atm.mc_ind = rnd(i);
         
@@ -339,7 +375,7 @@ if (mc.flag)
 %         out.traj(i).rho = out_mc.traj.rho;
         
         for j = 1:n
-            tjett = (find(out_mc.g.dej_n.stage == j,1)-1)/(in0.s.data_rate);
+            tjett = (find(out_mc.g.(mode).stage == j,1)-1)/(in0.s.data_rate);
             if isempty(tjett)
                 t_jett(i,j) = nan;
                 idj(i,j) = nan;
@@ -354,15 +390,21 @@ if (mc.flag)
             end
         end
        
-        ha(:,i) = out_mc.g.dej_n.r_ap./1000;
-        ha_err(:,i) = out_mc.g.dej_n.dr_ap./1000;
-%         ncalls(:,i) = out_mc.g.dej_n.ncalls;
-        tj_curr(:,i) = out_mc.g.dej_n.tj;
+        ha_err(:,i) = out_mc.g.(mode).dr_ap./1000;  %km
         K_dens(:,i) = out_mc.g.K_dens;  %estimated density variation (nd)
         rho_est(:,i) = out_mc.g.rho_est;    %estimated density (kg/m3)
-%         atm_err(:,i) = out_mc.g.dej_n.atm_err;
+        switch (mode)
+            case 'dej_n'
+                ha(:,i) = out_mc.g.dej_n.r_ap./1000;
+        %         ncalls(:,i) = out_mc.g.dej_n.ncalls;
+                tj_curr(:,i) = out_mc.g.dej_n.tj;
+        %         atm_err(:,i) = out_mc.g.dej_n.atm_err;
+            case 'pd'
+                
+            case 'manual'
+        end
 
-        %
+        % atmospheric stuff
         rss_nom(i) = out_mc.g.rss_nom;
         rss_K(:,i) = out_mc.g.rss_K;
         rss_ecf(:,i) = out_mc.g.rss_ens;
@@ -392,7 +434,7 @@ if (mc.flag)
 %         end
         
         
-    end % monte carlo loop
+    end % monte carlo parfor loop
 %     toc
 
     % store all monte carlo results into out struct
@@ -402,19 +444,25 @@ if (mc.flag)
     out.traj.t = t;
     out.traj.rho = rho;
     
-    out.g.ha = ha;
     out.g.ha_err = ha_err;
-%     out.g.ncalls = ncalls;
-    out.g.tj_curr = tj_curr;
     out.g.K_dens = K_dens;
     out.g.rho_est = rho_est;
     out.g.atm_err = atm_err;
-    
-    % atmospheric estimation
-    out.g.atm.rss_nom = rss_nom;    % nominal error
-    out.g.atm.rss_K = rss_K;        % scale factor error
-    out.g.atm.rss_ecf = rss_ecf;    % ensemble filter
-    
+    switch (mode)
+        case 'dej_n'
+            out.g.ha = ha;
+        %     out.g.ncalls = ncalls;
+            out.g.tj_curr = tj_curr;
+
+            % atmospheric estimation
+            out.g.atm.rss_nom = rss_nom;    % nominal error
+            out.g.atm.rss_K = rss_K;        % scale factor error
+            out.g.atm.rss_ecf = rss_ecf;    % ensemble filter
+        case 'pd'
+            out.g.dr_ap = ha_err;
+        case 'manual'
+    end
+            
     out.haf = haf;
     out.haf_err = haf_err;
     out.dv = dv;

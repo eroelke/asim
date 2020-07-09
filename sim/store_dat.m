@@ -45,15 +45,17 @@ function dat = store_dat( calcs, i, ti, y, veh, guid, nav, ctrl, dat, in )
 %     dat.traj.azi_pp(i) = calcs.azi_pp;
 %     dat.traj.downrange(i) = y(8); % downrange, m
 %     dat.traj.crossrange(i) = y(9); % crossrange, m
-    dat.traj.heat_rate(i) = calcs.heat_rate; % stagnation-point heat rate, W/m^2
-    dat.traj.lat(i) = calcs.lat; % latitude (centric or detic), rad
-    dat.traj.lon(i) = calcs.lon; % longiude, rad
+%     dat.traj.heat_rate(i) = calcs.heat_rate; % stagnation-point heat rate, W/m^2
+%     dat.traj.lat(i) = calcs.lat; % latitude (centric or detic), rad
+%     dat.traj.lon(i) = calcs.lon; % longiude, rad
 %     dat.traj.cg(i,:) = calcs.cg; % center of gravity position, m
     dat.traj.time(i) = ti; % Time
 %     dat.traj.prop_mass(i) = 1;
+%     dat.traj.h_ap(i) = (get_apoapsis_radius([calcs.pos_ii;calcs.vel_ii],in.p.mu) - in.p.r_e);
 
     % general guidance params
     dat.g.K_dens(i) = guid.s.atm.K_dens;    % density corrector variation estimate
+    dat.g.K_true(i) = guid.s.atm.K_true;    % true atmospheric density variation
     dat.g.rho_est(i) = guid.s.atm.rho_est;
     
     % atmospheric estimate rss errs
@@ -157,7 +159,7 @@ function dat = store_dat( calcs, i, ti, y, veh, guid, nav, ctrl, dat, in )
             dat.g.adm.phase(i) = guid.adm.s.phase;
             dat.g.adm.next_step(i) = guid.adm.s.next_step;
             dat.g.adm.A_mag(i) = guid.adm.s.A_mag;
-            dat.g.adm.K_dens(i) = guid.adm.s.K_dens;
+%             dat.g.adm.K_dens(i) = guid.adm.s.K_dens;
             dat.g.adm.dens_est(i) = guid.adm.s.dens_est;
             dat.g.adm.V_pf_mag(i) = guid.adm.s.V_pf_mag;
             dat.g.adm.t_j_curr(i) = guid.adm.s.t_j_curr;
@@ -207,11 +209,13 @@ function dat = store_dat( calcs, i, ti, y, veh, guid, nav, ctrl, dat, in )
                 dat.g.pd.jettison(i,j) = guid.pd.s.jflag(guid.pd.p.n_jett - (guid.pd.s.jett_curr - 1));
             end
             dat.g.pd.A_mag(i) = guid.pd.s.A_mag;
-            dat.g.pd.K_dens(i) = guid.pd.s.K_dens;
+%             dat.g.pd.K_dens(i) = guid.pd.s.K_dens;
             dat.g.pd.ha_j(i) = guid.pd.s.ha_j;  % jettisoned predicted apoapsis
             dat.g.pd.delta_ap(i) = guid.pd.s.delta_ap;
             dat.g.pd.stage(i) = guid.pd.s.stage;
             dat.g.pd.trig_val(i) = guid.pd.s.trig_val;
+            dat.g.pd.dr_ap(i) = guid.pd.s.dr_ap;
+            dat.g.pd.dr_ap_true(i) = guid.pd.s.dr_ap_true;
             
         case 4 %dej-n
             dat.g.dej_n.stage(i) = guid.dej_n.s.stage;
@@ -239,7 +243,7 @@ function dat = store_dat( calcs, i, ti, y, veh, guid, nav, ctrl, dat, in )
         case 5 %cvdma
             dat.g.cvdma.cd(i) = guid.cvdma.s.cd;
             dat.g.cvdma.Aref(i) = guid.cvdma.s.Aref;
-            dat.g.cvdma.K_dens(i) = guid.cvdma.s.K_dens;
+%             dat.g.cvdma.K_dens(i) = guid.cvdma.s.K_dens;
             dat.g.cvdma.rc(i) = guid.cvdma.s.rc;
             dat.g.cvdma.delta_c(i) = guid.cvdma.s.delta_c;
             dat.g.cvdma.ra(i) = guid.cvdma.s.ra;
@@ -256,7 +260,7 @@ function dat = store_dat( calcs, i, ti, y, veh, guid, nav, ctrl, dat, in )
             dat.g.sej_e.next_step(i) = guid.sej_e.s.next_step;
             dat.g.sej_e.iter(i) = guid.sej_e.s.iter;
             dat.g.sej_e.A_mag(i) = guid.sej_e.s.A_mag;
-            dat.g.sej_e.K_dens(i) = guid.sej_e.s.K_dens;
+%             dat.g.sej_e.K_dens(i) = guid.sej_e.s.K_dens;
             dat.g.sej_e.dens_est(i) = guid.sej_e.s.dens_est;
             dat.g.sej_e.V_pf_mag(i) = guid.sej_e.s.V_pf_mag;
             dat.g.sej_e.t_inc(i) = guid.sej_e.s.t_inc;

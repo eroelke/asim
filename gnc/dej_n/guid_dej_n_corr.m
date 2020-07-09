@@ -65,7 +65,7 @@ s.tj_curr = s.tj_next; % set current jettison time to previous "next" jettison t
 %     s.step_size = 50;
 % end
 
-s.step_size = 15;
+s.step_size = 30;
 if s.step_size > (s.tj_next(j_ind)-t0)
     s.step_size = (s.tj_next(j_ind)-t0);
 end
@@ -87,10 +87,10 @@ if s.bound(1) && s.bound(2)   % if both bounds exist, bisection method w/ time
     s.tj_next(j_ind) = (s.tj(2)-s.tj(1))/2 + s.tj(1);
     
 % elseif sma < 0   % hyperbolic - energy too high, bleed off more
-    
+%     
 %     s.tj_next(j_ind) = s.tj_next(j_ind) + big_step; % big positive step
 %     s.tj_next(j_ind) = s.tj_next(j_ind) + s.step_size;
-%     path = 3;   % unused
+% %     path = 3;   % unused
     
 else            % Captured, check error
     if s.dr_ap > 0           % high -> bled off too little energy -> increase tj_next
