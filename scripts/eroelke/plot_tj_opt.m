@@ -1,11 +1,11 @@
 
-function plot_tj_opt(n, haTgt, b21, haf_tol, ratio)
+function plot_tj_opt(n, haTgt, b21, haf_tol, normalize, fill)
 
 % load SEJ data
 if (haTgt == 400)
     d0 = load('..\venus_ac\entry_trades\opt_t_jett\v11_400.mat');
 elseif (haTgt == 2000)
-    d0 = load('..\venus_ac\entry_trades\opt_t_jett\opt_t_jett_v11_2k_original');        
+    d0 = load('..\venus_ac\entry_trades\opt_t_jett\opt_t_jett_v11_2k_original');    
 elseif (haTgt == 10000)
     d0 = load('..\venus_ac\entry_trades\opt_t_jett\opt_t_jett_v11_10k_original');
 else
@@ -39,10 +39,16 @@ indD0 = find(d0.ratios == 10,1);
 if ~isempty(indD0)
     err0 = nan(length(d0.tjr),1);
     tjr0 = err0;
+    tj0 = err0;
+%     tjr0_ai = err0;
+%     tj0_ai = err0;
     for i = 1:length(err0)
         if abs(d0.haf_err(i,indD0)) < haf_tol
             err0(i) = d0.haf_err(i,indD0);
+            tj0(i) = d0.tj(i,indD0);
             tjr0(i) = d0.tjr(i,indD0);
+%             tjr0_ai(i) = d0.tjr_ai(i,indD0);
+%             tj0_ai(i) = d0.tj_ai(i,indD0);
         end
     end
 
@@ -87,10 +93,13 @@ for i = 1:Ni
     
     switch (n)
         case 2
-            entries{eIdx} = ['Biasing ' num2str(100 * (d1.biasing(i)/1000)/d1.gnc.ha_tgt) '%'];    
+            entries{eIdx} = ['Biasing ' ... 
+                num2str(100 * (d1.biasing(i)/1000)/d1.gnc.ha_tgt) ...
+                '%'];    
         case 3
-            entries{eIdx} = ['Biasing ' num2str(d1.biasing(i,2) / d1.gnc.ha_tgt / 10) '%, ' ... 
-                num2str(d1.biasing(i,1) / d1.gnc.ha_tgt / 10) '%'];
+            entries{eIdx} = ['Biasing = \{' ... 
+                num2str(d1.biasing(i,1) / d1.gnc.ha_tgt / 10) '%, ' ... 
+                num2str(d1.biasing(i,2) / d1.gnc.ha_tgt / 10) '%\}'];
     end
     ind = ind + 1;
     eIdx = eIdx + 1;
@@ -112,19 +121,28 @@ figure(); hold on
 grid on
 title(figTitle)
 set(gca,'FontSize',16)
-if (ratio)
+if (normalize)
     p0 = plot(d0.efpas, tjr0, 'k--','LineWidth',2);
     switch (n)
         case 2
             for i = 1:Ni
                 p1(i) = plot(d1.efpas, tjr2(i,:),'LineWidth',2,'Color',colors(i,:));
                 plot(d1.efpas, tjr1(i,:),'LineWidth',2,'Color',colors(i,:));
-            end   
+            end
+%             plot(d0.efpas, tjr0_ai, 'Color',[0 0 0] + 0.5,'LineWidth',1.5);
         case 3
-            for i = 1:Ni
-                p1(i) = plot(d1.efpas, tjr3(i,:),'LineWidth',2,'Color',colors(i,:));
-                plot(d1.efpas, tjr2(i,:),'LineWidth',2,'Color',colors(i,:));
-                plot(d1.efpas, tjr1(i,:),'Linewidth',2,'Color',colors(i,:));
+            if (fill)
+                for i = 1:Ni
+                    p1(i) = plot(d1.efpas, fillmissing(tjr3(i,:),'linear'),'LineWidth',2,'Color',colors(i,:));
+                    plot(d1.efpas, fillmissing(tjr2(i,:),'linear'),'LineWidth',2,'Color',colors(i,:));
+                    plot(d1.efpas, fillmissing(tjr1(i,:),'linear'),'Linewidth',2,'Color',colors(i,:));
+                end
+            else
+                for i = 1:Ni
+                    p1(i) = plot(d1.efpas, tjr3(i,:),'LineWidth',2,'Color',colors(i,:));
+                    p2 = plot(d1.efpas, tjr2(i,:),'LineWidth',2,'Color',colors(i,:));
+                    p3 = plot(d1.efpas, tjr1(i,:),'Linewidth',2,'Color',colors(i,:));
+                end
             end
         otherwise
             error('Bad Stage Count\n');
@@ -140,8 +158,8 @@ else
         case 3
             for i = 1:Ni
                 p1(i) = plot(d1.efpas, tj3(i,:),'LineWidth',2,'Color',colors(i,:));
-                plot(d1.efpas, tj2(i,:),'LineWidth',2,'Color',colors(i,:));
-                plot(d1.efpas, tj1(i,:),'Linewidth',2,'Color',colors(i,:));
+                p2 = plot(d1.efpas, tj2(i,:),'LineWidth',2,'Color',colors(i,:));
+                p3 = plot(d1.efpas, tj1(i,:),'Linewidth',2,'Color',colors(i,:));
             end
         otherwise
             error('Bad Stage Count\n');
@@ -153,6 +171,14 @@ switch (n)
         legend([p0 p1(1:Ni)], entries, 'location','eastoutside')
     case 3
         legend([p0 p1(1:Ni)], entries, 'location','eastoutside')
+%         legend('SEJ, \beta_2/\beta_1 = 10', ...
+%             ['Biasing = \{' num2str(d1.biasing(1,1) / d1.gnc.ha_tgt / 10) '%, ' num2str(d1.biasing(1,2) / d1.gnc.ha_tgt / 10) '%\}'], ...
+%             ['Biasing = \{' num2str(d1.biasing(2,1) / d1.gnc.ha_tgt / 10) '%, ' num2str(d1.biasing(2,2) / d1.gnc.ha_tgt / 10) '%\}'], ...
+%             ['Biasing = \{' num2str(d1.biasing(3,1) / d1.gnc.ha_tgt / 10) '%, ' num2str(d1.biasing(3,2) / d1.gnc.ha_tgt / 10) '%\}'], ...
+%             'Jettison 1', ...
+%             'Jettison 2', ...
+%             'Jettison 3', ...
+%             'location','eastoutside'); 
 end
 xlabel('EFPA (deg)')
 ylabel('t_{jett}/t_f')

@@ -47,11 +47,14 @@ veh.s.mass = in.v.mp.m_ini; %initial mass
 % Determine storage array size
 data_t_step = 1/in.s.data_rate;
 t_vec = (in.s.traj.t_ini : data_t_step : in.s.traj.t_max)';
-t_length = length(t_vec)+1; % +1 accomdates terminal point
-
-ldat1 = nan(t_length,1);
-ldat2 = nan(t_length,2);
-ldat3 = nan(t_length,3);
+if (in.v.gnc.g.p.dm_mode > 0)
+    t_length = length(t_vec) + double(in.v.gnc.g.p_dej_n.n_jett); % +1 for jettison and terminal point
+else
+    t_length = length(t_vec) + 1;   % +1 for terminal point
+end
+ldat1 = nan(t_length,1); %1D arrays
+% ldat2 = nan(t_length,2);  %2D arrays. unused
+ldat3 = nan(t_length,3); %3D arrays
 
 % Trajectory
 dat.traj.pos_ii = ldat3; % Inertial position
@@ -117,10 +120,10 @@ dat.veh.area_ref = ldat1; % m^2
 
 
 % Navigation
-% dat.nav.r_pci = ldat3;
-% dat.nav.v_inrtl_pci = ldat3;
-% dat.nav.a_sens_pci = ldat3;
-% dat.nav.rva_error = nan(t_length,9);
+dat.nav.r_pci = ldat3;
+dat.nav.v_inrtl_pci = ldat3;
+dat.nav.a_sens_pci = ldat3;
+dat.nav.rva_error = nan(t_length,9);
 % dat.nav.r_pcpf = ldat3;
 % dat.nav.v_pf_pci = ldat3;
 % dat.nav.v_pf_pcpf = ldat3;

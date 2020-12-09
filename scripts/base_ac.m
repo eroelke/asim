@@ -6,6 +6,18 @@ function [x0,aero,gnc,sim,mc] = base_ac(isMc)
     x0.lat0 = 0;
     x0.lon0 = 0;
     x0.az0 = 90;
+    
+    sim.traj_rate = 100;
+    sim.data_rate = 1;
+    sim.t_max = 800;
+    sim.h_max = x0.h0;
+    sim.h_min = 50;
+    sim.planet = 'earth';
+    sim.atm_mode = uint8(3);   %atm look up with winds
+    sim.efpa_flag = false;
+    sim.debug = false;
+    sim.parMode = false;    % don't run in parallel processing mode
+    sim.nWorkers = 10;  %if you do, use 10 workers
 
     gnc.ha_tgt = 2000;
     gnc.ha_tol = 0.5;
@@ -23,6 +35,14 @@ function [x0,aero,gnc,sim,mc] = base_ac(isMc)
     gnc.comp_curr = false;   %compare secondary stage error to only last stage
     gnc.rss_flag = false;   %no atm estimation rss stuff
     
+    %navigation
+    gnc.nav.mode = 1;   %monte carlo nav mode - perfect nav
+    gnc.nav.P_SS = zeros(9,9);
+    gnc.nav.rate = sim.traj_rate;
+    gnc.nav.seed = 0;
+    gnc.nav.tau = 0;
+
+    
     aero.rcs = [0.75 0.175];
     aero.m = [80 40];
     aero.rn = 0.175/2;
@@ -39,24 +59,13 @@ function [x0,aero,gnc,sim,mc] = base_ac(isMc)
         mc.flag = false;
         mc.Kflag = false;
         mc.N = 0;
-        mc.sigs = nan;
+        mc.sigs = sigs_zero();
         mc.debug = false;
     end
+    mc.mcIndex = [];   %force specific monte carlo index/indices
     
     for i = 1:5
         gnc.bias(i,1).tgt_ap = 0;
         gnc.bias(i,1).tj = 0;
     end
-
-    sim.traj_rate = 100;
-    sim.data_rate = 1;
-    sim.t_max = 800;
-    sim.h_max = x0.h0;
-    sim.h_min = 50;
-    sim.planet = 'earth';
-    sim.atm_mode = uint8(3);   %atm look up with winds
-    sim.efpa_flag = false;
-    sim.debug = false;
-    sim.parMode = false;    % don't run in parallel processing mode
-    sim.nWorkers = 10;  %if you do, use 10 workers
 end

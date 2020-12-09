@@ -11,96 +11,96 @@ save_path = '..\venus_ac\';
 % %{
 %% entry trade studies - feb 2019
 %{
-% clear; clc; close all;
-% betas = [25 50 100 200 500];
-% Ni = length(betas);
-% 
-% v_atms = linspace(10,15,10);
-% Nj = length(v_atms);
-% 
-% % vehicle
-% [x0,aero,gnc,sim,mc] = base_jsr();
-% aref = pi*aero.rcs(1)^2;
-% cd = aero.cds(1);
-% b1 = aero.m(1)/(cd*aref);
-% b2 = aero.m(2)/(cd*pi*aero.rcs(2)^2);
-% 
-% 
-% fpa0 = -5.4; %initial guess
-% 
-% 
-% fpa_tol = 0.025;
-% 
-% ha_tol = 25;        %km
-% % ha_tgt = 10000;      %km
-% ha_tgt = 2000;  % high LEO
-% % ha_tgt = 35786; % ~GEO
-% % ha_tgt = 400; %km
-% % ha_tgt = 200; %km - low LEO
-% 
-% corr0 = [-10 -2];
-% 
-% in0 = dme_venus_in;
-% temp = load('./data/atm_data/atm_venus_mc.mat');
-% in0.p.atm.table = temp.nom_table;
-% in0.s.traj.alt = x0.h0 * 1e3;
-% in0.s.traj.az = 90*pi/180;
-% in0.s.traj.gamma_pp = fpa0*pi/180;
-% in0.v.aero.cd = cd;
-% in0.v.aero.area_ref = aref;
-% in0.v.gnc.g.p.dm_mode = uint8(0); % remove guidance
-% in0.s.traj.rate = 100;
-% in0.v.gnc.g.p.rate = 0;
-% in0.v.mp.m_ini = aero.m(1);
-% in0.v.aero.nose_radius = aero.rn;
-% 
-% % preallocte
-% m = nan(Ni,1);
-% fpa_f = nan(Ni,Nj);
-% 
-% for i = 1:Ni
-%     m(i) = betas(i)*cd*aref;
-%     for j = 1:length(v_atms)
-%         in = in0;
-%         % update input struct
-%         in.s.traj.vel_pp_mag = v_atms(j)*1000;
-%         in.v.mp.m_ini = m(i);
-%         [in.s.traj.r_pci_ini, in.s.traj.v_pci_ini] = LLAVFA2RV_I( ...
-%             in.s.traj.lat, in.s.traj.lon, in.s.traj.alt, ...
-%             in.s.traj.gamma_pp, in.s.traj.az, in.s.traj.vel_pp_mag, ...
-%             in.p.omega, in.s.traj.t_ini, 0, in.p.r_e, in.p.r_p);
-%         % test sim
-%         out = main1_mex(in);
-%         
-% %         [fpa_f(i,j),haf,haf_err,~] = fpa_given_haf( ...
-% %             fpa0, ... %  initial fpa guess, (rad)
-% %             ha_tgt, ... % target apoapse altitude, (m)
-% %             in, ... % asim input file, contains plantary parameters, vehicle, and ICs
-% %             fpa_tol, ... % tolerance on flight path angle to search for (rad)
-% %             ha_tol); % tolerance on final target apoapse altitude (m)
-% 
-%         [fpa_f(i,j), ~,~,~,~] = find_fpa_given_ha(corr0, ha_tgt,  ...
-%             in, fpa_tol, ha_tol);
-% 
-%     end %Nj
-% end %Ni
-% 
-% 
-% for i = 1:Ni
-%     entries{i} = ['\beta = ' num2str(betas(i)) ' kg/m^2'];
-% end
-% 
-% 
-% figure(); hold on
-% set(gca,'FontSize',14)
-% title(['Venus Apoapsis Altitude Target: ' num2str(ha_tgt) ' km'],'FontSize',10)
-% xlabel('Entry Velocity (km/s)')
-% ylabel('Entry Flight Path Angle (deg)')
-% plot(v_atms,fpa_f,'LineWidth',2)
-% xlim([min(v_atms) max(v_atms)])
-% legend(entries,'Location','ne','FontSize',10)
-% 
-% keyboard;
+clear; clc; close all;
+betas = [25 50 100 200 500];
+Ni = length(betas);
+
+v_atms = linspace(10,15,10);
+Nj = length(v_atms);
+
+% vehicle
+[x0,aero,gnc,sim,mc] = base_venu();
+aref = pi*aero.rcs(1)^2;
+cd = aero.cds(1);
+b1 = aero.m(1)/(cd*aref);
+b2 = aero.m(2)/(cd*pi*aero.rcs(2)^2);
+
+
+fpa0 = -5.4; %initial guess
+
+
+fpa_tol = 0.025;
+
+ha_tol = 25;        %km
+% ha_tgt = 10000;      %km
+ha_tgt = 2000;  % high LEO
+% ha_tgt = 35786; % ~GEO
+% ha_tgt = 400; %km
+% ha_tgt = 200; %km - low LEO
+
+corr0 = [-10 -2];
+
+in0 = dme_venus_in;
+temp = load('./data/atm_data/atm_venus_mc.mat');
+in0.p.atm.table = temp.nom_table;
+in0.s.traj.alt = x0.h0 * 1e3;
+in0.s.traj.az = 90*pi/180;
+in0.s.traj.gamma_pp = fpa0*pi/180;
+in0.v.aero.cd = cd;
+in0.v.aero.area_ref = aref;
+in0.v.gnc.g.p.dm_mode = uint8(0); % remove guidance
+in0.s.traj.rate = 100;
+in0.v.gnc.g.p.rate = 0;
+in0.v.mp.m_ini = aero.m(1);
+in0.v.aero.nose_radius = aero.rn;
+
+% preallocte
+m = nan(Ni,1);
+fpa_f = nan(Ni,Nj);
+
+for i = 1:Ni
+    m(i) = betas(i)*cd*aref;
+    for j = 1:length(v_atms)
+        in = in0;
+        % update input struct
+        in.s.traj.vel_pp_mag = v_atms(j)*1000;
+        in.v.mp.m_ini = m(i);
+        [in.s.traj.r_pci_ini, in.s.traj.v_pci_ini] = LLAVFA2RV_I( ...
+            in.s.traj.lat, in.s.traj.lon, in.s.traj.alt, ...
+            in.s.traj.gamma_pp, in.s.traj.az, in.s.traj.vel_pp_mag, ...
+            in.p.omega, in.s.traj.t_ini, 0, in.p.r_e, in.p.r_p);
+        % test sim
+        out = main1_mex(in);
+        
+%         [fpa_f(i,j),haf,haf_err,~] = fpa_given_haf( ...
+%             fpa0, ... %  initial fpa guess, (rad)
+%             ha_tgt, ... % target apoapse altitude, (m)
+%             in, ... % asim input file, contains plantary parameters, vehicle, and ICs
+%             fpa_tol, ... % tolerance on flight path angle to search for (rad)
+%             ha_tol); % tolerance on final target apoapse altitude (m)
+
+        [fpa_f(i,j), ~,~,~,~] = find_fpa_given_ha(corr0, ha_tgt,  ...
+            in, fpa_tol, ha_tol);
+
+    end %Nj
+end %Ni
+
+
+for i = 1:Ni
+    entries{i} = ['\beta = ' num2str(betas(i)) ' kg/m^2'];
+end
+
+
+figure(); hold on
+set(gca,'FontSize',14)
+title(['Venus Apoapsis Altitude Target: ' num2str(ha_tgt) ' km'],'FontSize',10)
+xlabel('Entry Velocity (km/s)')
+ylabel('Entry Flight Path Angle (deg)')
+plot(v_atms,fpa_f,'LineWidth',2)
+xlim([min(v_atms) max(v_atms)])
+legend(entries,'Location','ne','FontSize',10)
+
+keyboard;
 %}
 
 %% beta ratio as a function of entry corridor,a couple different entry velocities
@@ -193,20 +193,23 @@ xlabel('\Delta Corridor Width (degrees)')
 ylabel('\beta_{2}/\beta_{1}')
 %}
 
-%% optimal jettison time(s)
+%% optimal jettison time(s) vs efpa
 %{
 clear;clc;
 % fpa_bounds = [-6.3, -7.2];
-fpa_bounds = [-5.3, -6];
-% ha_tgt = 2000;
-ratios = [5 10 15 20];
+fpa_bounds = [-5.35, -5.85];
+ha_tgts = [400 2000];
+Nz = length(ha_tgts);
+% ratios = [5 10 15 20];
+ratios = [3 9];
 % ratios = [10];
 Nj = length(ratios);
 m2 = nan(Nj,1);
 
-efpas = linspace(fpa_bounds(1),fpa_bounds(2),30)';
+efpas = linspace(fpa_bounds(1),fpa_bounds(2), 100)';
 Ni = length(efpas);
 tj = nan(Ni,Nj); haf_err = tj; tjr = tj;
+tj_ai = tj; tjr_ai = tj;    %time of sensible atmosphere
 tj0 = 100;
 tol = 5;
 veh.m = [150 60];
@@ -214,22 +217,26 @@ veh.r = [1 0.2];
 veh.rn = 0.175/2;
 veh.cd = 1.05;
 
-haf_tol = 10;
-[x0,aero,gnc,sim,mc] = base_venus_ac;
+% haf_tol = 0.1;
+[x0,aero,gnc,sim,mc] = base_venus_ac(false);
 % gnc.ha_tgt = 400;
 mc.flag = false;
 sim.t_max = 1500;
-sim.traj_rate = 1000;
-sim.data_rate = 1;
+sim.traj_rate = 100;
+sim.data_rate = 5;
 sim.h_min = 10;
 x0.v0 = 11;
 gnc.iters = uint8(1);
 gnc.npc_mode = uint8(1);
-gnc.guid_rate = 0.5;
-gnc.ha_tgt = 400;
+gnc.guid_rate = 5;
+% gnc.ha_tgt = 400;
+gnc.ha_tol = 0.1;
+gnc.dtj_lim = 10;
 
 entries = cell(Nj,1);
 % for k = 1:Nk %tgts
+for z = 1:Nz %ha_tgts
+gnc.ha_tgt = ha_tgts(z);
 for j = 1:Nj %betas
     fprintf('Outer Loop %i\n',j);
 %     m2(j) = ratios(j) * veh.m(1) * (veh.r(2)/veh.r(1))^2;
@@ -245,28 +252,33 @@ for j = 1:Nj %betas
         
         x0.fpa0 = efpas(i);
         out = run_dej_n(x0,gnc,aero,sim,mc);
+        
         tj(i,j) = out.t_jett(1);
         tjr(i,j) = tj(i,j) / out.traj.time(out.idxend);
         haf_err(i,j) = out.haf_err;
+        tj_ai(i,j) = out.traj.time(find(out.g.dej_n.dr_ap ~= 0, 1));
+        tjr_ai(i,j) = tj_ai(i,j) / out.traj.time(out.idxend);
         
 %         if (tj(i,j) < 0 || abs(haf_err(i,j)) > haf_tol)
 %             tj(i,j) = nan;
 %             tjr(i,j) = nan;
 %             haf_err(i,j) = nan;
 %         end
-    end
-end
+    end %i, efpa
 
-keyboard;
+end %ratios, j
+
 if (gnc.ha_tgt < 1000)
 save(['../venus_ac/entry_trades/opt_t_jett/v' num2str(x0.v0) '_'  ... 
     num2str(gnc.ha_tgt) '.mat'], ... 
-    'tjr','tj','efpas','haf_err','ratios');
+    'tjr','tj','efpas','haf_err','ratios','tj_ai','tjr_ai');
 else
 save(['../venus_ac/entry_trades/opt_t_jett/v' num2str(x0.v0) '_'  ... 
     num2str(gnc.ha_tgt/1000) 'k.mat'], ... 
-    'tjr','tj','efpas','haf_err','ratios');
+    'tjr','tj','efpas','haf_err','ratios','tj_ai','tjr_ai');
 end
+
+end %ha_tgts
 keyboard;
 % for j = 1:Nj
 %     entries{j} = ['\beta_2/\beta_1 = ' num2str(ratios(j))];
@@ -2080,18 +2092,18 @@ clearvars -except save_path ;clc
 
 b31 = 10;
 % b21s = [3 5 7 9];
-b21s = 9;
+b21s = [3 9];
 
 x0.v0 = 11;
-efpas = [-5.6];
+efpas = [-5.4 -5.6];
 Nk = length(efpas);
 
-ha_tgts = [2000 10000];
+ha_tgts = [400];
 gnc.ha_tol = 10;
 gnc.n = 2;
 tj0s = [80 170];
 % gnc.guid_rate = 0.5;
-rates = [0.5 5];
+rates = [0.5];
 gnc.npc_mode = uint8(2);
 
 for j = 1:length(b21s)
@@ -2142,7 +2154,7 @@ gnc.comp_curr = false;
 sim.nWorkers = 10;
 
 for zz = 1:length(rates)
-gnc.guid_rate = rates(z);
+gnc.guid_rate = rates(zz);
 for jj = 1:length(ha_tgts)
     gnc.ha_tgt = ha_tgts(jj);
 for k = 1:Nk
@@ -2153,12 +2165,11 @@ for k = 1:Nk
     betas = ['b_ijs' num2str(b21) '_' num2str(b31)];
 
     if (gnc.ha_tgt < 1000)
-%         save([save_path 'dej_n\HYDRA\2stage\data\' num2str(floor(gnc.ha_tgt)) ... 
-%             '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
+        save([save_path 'dej_n\HYDRA\2stage\data\' num2str(floor(gnc.ha_tgt)) ... 
+            '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
     else
         save([save_path 'dej_n\HYDRA\2stage\data\' num2str(floor(gnc.ha_tgt/1000)) ... 
-            'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' ... 
-            num2str(gnc.guid_rate) 'hz_' betas '.mat'])
+            'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
     end
 end %fpas
 end %ha_tgts
@@ -2169,7 +2180,7 @@ keyboard;
 %}
 
 %% Conditional 2stage
-% %{
+%{
 clearvars -except save_path ;clc
 [x0,aero,gnc,sim, mc] = base_venus_ac();
 
@@ -2178,10 +2189,10 @@ b31 = 10;
 b21s = [3 9];
 
 x0.v0 = 11;
-efpas = [-5.6];
+efpas = [-5.4 -5.6];
 Nk = length(efpas);
 
-ha_tgts = [2000 10000];
+ha_tgts = [400];
 gnc.ha_tol = 10;
 gnc.n = 2;
 tj0s = [80 170];
@@ -2262,163 +2273,342 @@ fprintf('Finished 2stage Conditional sims. '); print_current_time();
 keyboard;
 %}
 
-
-%% 2stage Post Process
+%% Regular 2stage Post Process
 %{
-dat = load('C:\Users\Evan Roelke\Documents\research\venus_ac\dej_n\HYDRA\2stage\data\2k\v11_5.4deg_b_ijs3_10.mat');
-% dat = load('..\venus_ac\dej_n\HYDRA\2stage\data\2k\rss_data\v11_5.4deg_b21=3_b31=10.mat');
-time_history_plot(dat.out, 2);
 
-dej_scatter_plot(dat.out, 2);
+if ~exist('d2', 'var')
+    [~, d2, ~, ~] = load_dej_n_data(2000, -5.6);
+end
+dej_est_scatter_plot(d2.out1, 2, 2000, 'normalized');
+dej_est_scatter_plot(d2.out4, 2, 2000, 'normalized');
 
-compare_stds(2, -5.4);
+[~, d2, d3, names] = load_dej_n_data(10000, -5.4);
+dej_est_scatter_plot(d2.out1, 2, 2000, 'normalized');
+dej_est_scatter_plot(d2.out4, 2, 2000, 'normalized');
 
-err = dat.out.haf_err;
-tj = dat.out.tjett;
-err1 = nan(1000,1);
-err2 = err1;
-for i = 1:1000
-%     err1(ind1) = err(i);
-%     tj1(ind1) = tj(i,1);
-%     ind1 = ind1 + 1;
-%     
-%     if (~isnan(tj(i,2)))
-%         err2(ind2) = err(i);
-%         tj2(ind2) = tj(i,2);
-%         ind2 = ind2 + 1;
+
+
+
+% dat = load('C:\Users\Evan Roelke\Documents\research\venus_ac\dej_n\HYDRA\2stage\data\2k\v11_5.4deg_b_ijs3_10.mat');
+% % dat = load('..\venus_ac\dej_n\HYDRA\2stage\data\2k\rss_data\v11_5.4deg_b21=3_b31=10.mat');
+% time_history_plot(dat.out, 2);
+% 
+% dej_scatter_plot(dat.out, 2);
+% 
+% compare_stds(2, -5.4);
+% 
+% err = dat.out.haf_err;
+% tj = dat.out.tjett;
+% err1 = nan(1000,1);
+% err2 = err1;
+% for i = 1:1000
+% %     err1(ind1) = err(i);
+% %     tj1(ind1) = tj(i,1);
+% %     ind1 = ind1 + 1;
+% %     
+% %     if (~isnan(tj(i,2)))
+% %         err2(ind2) = err(i);
+% %         tj2(ind2) = tj(i,2);
+% %         ind2 = ind2 + 1;
+% %     end
+% 
+%     if (isnan(tj(i,2)))
+%         err1(i) = err(i);
+% %         ind1 = ind1 + 1;
+%     else
+%         err1(i) = nan;
+%         err2(i) = err(i);
 %     end
+% end
+% ind = find(err1 == min(err(err1 < 0))); %max err
+% 
+% for i = 1:size(dat.out.traj.rho(:,ind),1)
+%     dens_err(i) = (log(dat.out.traj.rho(i,ind)) - log(dat.out.g.rho_est(i,ind)))/log(dat.out.traj.rho(i,ind));
+% end
+% 
+% tjr1 = dat.out.traj.t(dat.out.idj(ind,1),ind)/dat.out.traj.t(dat.out.idxend(ind),ind);
+% 
+% min_err = -500;
+% max_err = 1000;
+% 
+% figure(); hold on
+% grid on
+% set(gca,'FontSize',14)
+% yyaxis left
+% plot(dat.out.traj.t(:,ind)/dat.out.traj.t(dat.out.idxend(ind),ind), dat.out.g.ha_err(:,ind),'LineWidth',2)
+% ylabel('Estimated Apoapsis Error (km)')
+% ylim([min_err max_err])
+% yyaxis right
+% plot(dat.out.traj.t(:,ind)/dat.out.traj.t(dat.out.idxend(ind),ind), dens_err * 100,'LineWidth',2)
+% ylim([-2 3])
+% xlabel('Normalized Time, t/t_f')
+% ylabel('% Error of Log(\rho) (%)')
+% plot([tjr1 tjr1],[min_err max_err],'k--','LineWidth',2)
+% legend('Estimated Error (km)','Density Error','Jettison 1')
+% 
+% % dens RSS err vs. estimated err at jett2
+% dens_err1 = nan(1000,1);
+% dens_err2 = dens_err1;
+% est_err = dens_err1;
+% true_err = dens_err1;
+% dens_diff = dens_err1;
+% rss_K = dens_err1;
+% ind_tot = length(find(~isnan(dat.out.tjett(:,2))));
+% ind1 = 0; ind2 = 0; ind3 = 0; ind4 = 0;
+% for i = 1:1000
+%     if (~isnan(tj(i,2)))
+%         ind = dat.out.idj(i,2);
+%         if (dat.out.traj.t(dat.out.idxend(i),i) < tj(i,2))
+%             ind = dat.out.idxend(i);
+%         end
+%         dens_err1(i) = (log(dat.out.traj.rho(dat.out.idj(i,1),i)) - ... 
+%             log(dat.out.g.rho_est(dat.out.idj(i,1),i)))/log(dat.out.traj.rho(dat.out.idj(i,1),i));
+%         dens_err2(i) = (log(dat.out.traj.rho(ind,i)) - ... 
+%             log(dat.out.g.rho_est(ind,i)))/log(dat.out.traj.rho(ind,i));
+%         est_err(i) = dat.out.g.ha_err(ind,i);
+%         true_err(i) = err(i);
+%         rss_K(i) = dat.out.g.atm.rss_K(ind,i);
+%         
+%         if (rss_K(i) > 1 && est_err(i) < 0)
+%             ind1 = ind1 + 1; %bottom right
+%         elseif (rss_K(i) > 1 && est_err(i) > 0)
+%             ind2 = ind2 + 1; %top right
+%         elseif (rss_K(i) < 1 && est_err(i) > 0)
+%             ind3 = ind3 + 1; %top left
+%         elseif (rss_K(i) < 1 && est_err(i) < 0)
+%             ind4 = ind4 + 1; %bottom left
+%         end
+%             
+%         
+%         % density difference between tj2 and tj1
+%         dens_diff(i) = dens_err2(i) - dens_err1(i);
+%     end
+% end
+% 
+% ymin = -200;
+% ymax = 500;
+% % xmin = floor(min(rss_K));
+% % xmax = ceil(max(rss_K));
+% xmin = 0.5;
+% xmax = 1.5;
+% figure(); hold on
+% title(['betas: ' dat.betas ', ha*=' num2str(dat.gnc.ha_tgt)]);
+% grid on
+% set(gca,'FontSize',14)
+% plot(rss_K, est_err,'*b','LineWidth',1.5)
+% % plot(dens_err, true_err,'*r','LineWidth',1.5)
+% ylim([ymin ymax])
+% xlim([xmin xmax])
+% plot([1 1], [ymin ymax],'k--','LineWidth',1.5)
+% plot([xmin xmax], [1 1],'k--','LineWidth',1.5)
+% xlabel('Density RSS Error (kg/m^3)')
+% ylabel('\Delta h_a at Jettison 2 (km)')
+% % bottom right
+% dim = [0.7 0.5 0.6 0.3];
+% str = {[num2str(100 * ind1 / ind_tot) '%']};
+% annotation('textbox',dim,'String',str,'FitBoxToText','on');
+% % top right
+% dim = [0.7 0.1 0.6 0.2];
+% str = {[num2str(100 * ind2 / ind_tot) '%']};
+% annotation('textbox',dim,'String',str,'FitBoxToText','on');
+% % top left
+% dim = [0.2 0.5 0.3 0.3];
+% str = {[num2str(100 * ind3 / ind_tot) '%']};
+% annotation('textbox',dim,'String',str,'FitBoxToText','on');
+% % bottom left
+% dim = [0.2 0.1 0.3 0.2];
+% str = {[num2str(100 * ind4 / ind_tot) '%']};
+% annotation('textbox',dim,'String',str,'FitBoxToText','on');
 
-    if (isnan(tj(i,2)))
-        err1(i) = err(i);
-%         ind1 = ind1 + 1;
-    else
-        err1(i) = nan;
-        err2(i) = err(i);
-    end
-end
-ind = find(err1 == min(err(err1 < 0))); %max err
 
-for i = 1:size(dat.out.traj.rho(:,ind),1)
-    dens_err(i) = (log(dat.out.traj.rho(i,ind)) - log(dat.out.g.rho_est(i,ind)))/log(dat.out.traj.rho(i,ind));
-end
+%}
 
-tjr1 = dat.out.traj.t(dat.out.idj(ind,1),ind)/dat.out.traj.t(dat.out.idxend(ind),ind);
+%% Conditional 2stage Post Process
+%{
 
-min_err = -500;
-max_err = 1000;
+% % 400, -5.4
+% d2 = load('..\venus_ac\dej_n\HYDRA\2stage\data\400\v11_5.4deg_b_ijs3_10.mat');
+% d2c = load('..\venus_ac\dej_n\HYDRA\2stage\data\conditional\400\v11_5.4deg_b_ijs3_10.mat');
+% out_stats_tj(d2.out);
+% out_stats_tj(d2c.out);
+% dej_scatter_plot(d2.out, 2, 400, 'normalized',[-200 800])
+% dej_scatter_plot(d2c.out, 2, 400, 'normalized')
 
-figure(); hold on
-grid on
-set(gca,'FontSize',14)
-yyaxis left
-plot(dat.out.traj.t(:,ind)/dat.out.traj.t(dat.out.idxend(ind),ind), dat.out.g.ha_err(:,ind),'LineWidth',2)
-ylabel('Estimated Apoapsis Error (km)')
-ylim([min_err max_err])
-yyaxis right
-plot(dat.out.traj.t(:,ind)/dat.out.traj.t(dat.out.idxend(ind),ind), dens_err * 100,'LineWidth',2)
-ylim([-2 3])
-xlabel('Normalized Time, t/t_f')
-ylabel('% Error of Log(\rho) (%)')
-plot([tjr1 tjr1],[min_err max_err],'k--','LineWidth',2)
-legend('Estimated Error (km)','Density Error','Jettison 1')
+% d2 = load('..\venus_ac\dej_n\HYDRA\2stage\data\400\v11_5.4deg_b_ijs9_10.mat');
+% d2c = load('..\venus_ac\dej_n\HYDRA\2stage\data\conditional\400\v11_5.4deg_b_ijs9_10.mat');
+% out_stats_tj(d2.out);
+% out_stats_tj(d2c.out);
+% dej_scatter_plot(d2.out, 2, 400, 'normalized',[-100 300])
+% dej_scatter_plot(d2c.out, 2, 400, 'normalized',[-100 300])
 
-% dens RSS err vs. estimated err at jett2
-dens_err1 = nan(1000,1);
-dens_err2 = dens_err1;
-est_err = dens_err1;
-true_err = dens_err1;
-dens_diff = dens_err1;
-rss_K = dens_err1;
-ind_tot = length(find(~isnan(dat.out.tjett(:,2))));
-ind1 = 0; ind2 = 0; ind3 = 0; ind4 = 0;
-for i = 1:1000
-    if (~isnan(tj(i,2)))
-        ind = dat.out.idj(i,2);
-        if (dat.out.traj.t(dat.out.idxend(i),i) < tj(i,2))
-            ind = dat.out.idxend(i);
-        end
-        dens_err1(i) = (log(dat.out.traj.rho(dat.out.idj(i,1),i)) - ... 
-            log(dat.out.g.rho_est(dat.out.idj(i,1),i)))/log(dat.out.traj.rho(dat.out.idj(i,1),i));
-        dens_err2(i) = (log(dat.out.traj.rho(ind,i)) - ... 
-            log(dat.out.g.rho_est(ind,i)))/log(dat.out.traj.rho(ind,i));
-        est_err(i) = dat.out.g.ha_err(ind,i);
-        true_err(i) = err(i);
-        rss_K(i) = dat.out.g.atm.rss_K(ind,i);
-        
-        if (rss_K(i) > 1 && est_err(i) < 0)
-            ind1 = ind1 + 1; %bottom right
-        elseif (rss_K(i) > 1 && est_err(i) > 0)
-            ind2 = ind2 + 1; %top right
-        elseif (rss_K(i) < 1 && est_err(i) > 0)
-            ind3 = ind3 + 1; %top left
-        elseif (rss_K(i) < 1 && est_err(i) < 0)
-            ind4 = ind4 + 1; %bottom left
-        end
-            
-        
-        % density difference between tj2 and tj1
-        dens_diff(i) = dens_err2(i) - dens_err1(i);
-    end
-end
+% % 2000, -5.4
+% d2 = load('..\venus_ac\dej_n\HYDRA\2stage\data\2k\v11_5.4deg_b_ijs3_10.mat');
+% d2c = load('..\venus_ac\dej_n\HYDRA\2stage\data\conditional\2k\v11_5.4deg_b_ijs3_10.mat');
+% out_stats_tj(d2.out);
+% out_stats_tj(d2c.out);
+% dej_scatter_plot(d2.out, 2, 2000, 'normalized',[-200 600])
+% dej_scatter_plot(d2c.out, 2, 2000, 'normalized',[-200 600])
+% 
+% d2 = load('..\venus_ac\dej_n\HYDRA\2stage\data\2k\v11_5.4deg_b_ijs9_10.mat');
+% d2c = load('..\venus_ac\dej_n\HYDRA\2stage\data\conditional\2k\v11_5.4deg_b_ijs9_10.mat');
+% out_stats_tj(d2.out);
+% out_stats_tj(d2c.out);
+% dej_scatter_plot(d2.out, 2, 2000, 'normalized')
+% dej_scatter_plot(d2c.out, 2, 2000, 'normalized')
 
-ymin = -200;
-ymax = 500;
-% xmin = floor(min(rss_K));
-% xmax = ceil(max(rss_K));
-xmin = 0.5;
-xmax = 1.5;
-figure(); hold on
-title(['betas: ' dat.betas ', ha*=' num2str(dat.gnc.ha_tgt)]);
-grid on
-set(gca,'FontSize',14)
-plot(rss_K, est_err,'*b','LineWidth',1.5)
-% plot(dens_err, true_err,'*r','LineWidth',1.5)
-ylim([ymin ymax])
-xlim([xmin xmax])
-plot([1 1], [ymin ymax],'k--','LineWidth',1.5)
-plot([xmin xmax], [1 1],'k--','LineWidth',1.5)
-xlabel('Density RSS Error (kg/m^3)')
-ylabel('\Delta h_a at Jettison 2 (km)')
-% bottom right
-dim = [0.7 0.5 0.6 0.3];
-str = {[num2str(100 * ind1 / ind_tot) '%']};
-annotation('textbox',dim,'String',str,'FitBoxToText','on');
-% top right
-dim = [0.7 0.1 0.6 0.2];
-str = {[num2str(100 * ind2 / ind_tot) '%']};
-annotation('textbox',dim,'String',str,'FitBoxToText','on');
-% top left
-dim = [0.2 0.5 0.3 0.3];
-str = {[num2str(100 * ind3 / ind_tot) '%']};
-annotation('textbox',dim,'String',str,'FitBoxToText','on');
-% bottom left
-dim = [0.2 0.1 0.3 0.2];
-str = {[num2str(100 * ind4 / ind_tot) '%']};
-annotation('textbox',dim,'String',str,'FitBoxToText','on');
+% % 400, 5.6deg
+% d2 = load('..\venus_ac\dej_n\HYDRA\2stage\data\400\v11_5.6deg_b_ijs3_10.mat');
+% d2c = load('..\venus_ac\dej_n\HYDRA\2stage\data\conditional\400\v11_5.6deg_b_ijs3_10.mat');
+% dej_scatter_plot(d2.out, 2, 400, 'normalized')
+% dej_scatter_plot(d2c.out, 2, 400, 'normalized')
+
+% d2 = load('..\venus_ac\dej_n\HYDRA\2stage\data\400\v11_5.6deg_b_ijs9_10.mat');
+% d2c = load('..\venus_ac\dej_n\HYDRA\2stage\data\conditional\400\v11_5.6deg_b_ijs9_10.mat');
+% dej_scatter_plot(d2.out, 2, 400, 'normalized',[-1000 20000])
+% dej_scatter_plot(d2c.out, 2, 400, 'normalized',[-1000 20000])
+
+% % 2000, -5.6
+% d2 = load('..\venus_ac\dej_n\HYDRA\2stage\data\2k\v11_5.6deg_b_ijs3_10.mat');
+% d2c = load('..\venus_ac\dej_n\HYDRA\2stage\data\conditional\2k\v11_5.6deg_b_ijs3_10.mat');
+% dej_scatter_plot(d2.out, 2, 2000, 'normalized')
+% dej_scatter_plot(d2c.out, 2, 2000, 'normalized')
+
+
+% d2 = load('..\venus_ac\dej_n\HYDRA\2stage\data\2k\v11_5.6deg_b_ijs9_10.mat');
+% d2c = load('..\venus_ac\dej_n\HYDRA\2stage\data\conditional\2k\v11_5.6deg_b_ijs9_10.mat');
+% dej_scatter_plot(d2.out, 2, 2000, 'normalized')
+% dej_scatter_plot(d2c.out, 2, 2000, 'normalized')
+
+
 %}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%% 3-STAGE JETTISON %%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Regular 3stage
 %{
 clearvars -except save_path ;clc
 [x0,aero,gnc,sim, mc] = base_venus_ac();
 br41 = 10;
-br21s = [9];
-br31s = [9.5];
+br21s = [3 9];
+br31s = [5 9.5];
 
-% br21s = [5];
-% br31s = [7];
+fpas = [-5.4 -5.6];
+ha_tgts = [400 2000];
+rates = [0.5];
 
-fpas = [-5.6];
-ha_tgts = [2000 10000];
-rates = [0.5 5];
-
-% br21s = [9];
-% br31s = [9.5];
-
-% fpas = [-5.4 -5.6];
+for jj = 1:length(ha_tgts)
+for kk = 1:length(fpas)
+for k = 1:length(br31s)
+%     
+%     br31 = br31s(k);
 % 
+% % ratios = [4 3 3];
+% % m1 = 200;
+
+br21 = br21s(k);
+br31 = br31s(k);
+
+aero.m = [150 60 40 20];
+aero.rcs(1) = 1;
+aero.rcs(2) = sqrt( (aero.m(2) * aero.rcs(1)^2) / ...
+    (aero.m(1) * br21) );
+aero.rcs(3) = sqrt( (aero.m(3) * aero.rcs(1)^2) / ...
+    (aero.m(1) * br31) );
+aero.rcs(4) = sqrt( (aero.m(4) * aero.rcs(1)^2) / ...
+    (aero.m(1) * br41) );
+
+if (aero.rcs(4) > aero.rcs(3)) || (aero.rcs(3) > aero.rcs(2)) ... 
+ || (aero.rcs(2) > aero.rcs(1))
+    error('Impossible Geometry')
+end
+% 
+aero.rn = 0.75/2;
+aero.cds = [1.05 1.05 1.05 1.05];
+aero.cls = [0 0 0 0];
+% 
+% gnc.ha_tgt = 10000;
+gnc.ha_tgt = ha_tgts(jj);
+gnc.n = 3;
+gnc.tj0 = [90 170 260];
+gnc.guid_rate = 0.5;
+
+sim.t_max = 1500;
+% 
+for i = 1:4
+    b(i) = aero.m(i)/( aero.cds(1) * pi * aero.rcs(i)^2 );
+end
+br41 = b(4)/b(1);
+br31 = b(3)/b(1);
+br21 = b(2)/b(1);
+br32 = b(3)/b(2);
+br43 = b(4)/b(3);
+br42 = b(4)/b(2);
+
+betas = ['b_ijs' num2str(br21) '_' num2str(br31) '_' num2str(br41)];
+% 
+mc.flag = true;
+mc.N = 1000;
+mc.sigs = default_sigs();
+mc.sigs.cd = (0.05 * aero.cds(1) / 3);
+% mc.Kflag = uint8(0);
+
+sim.traj_rate = 200;
+sim.planet = 'venus';
+sim.efpa_flag = false;
+gnc.dtj_lim = 10;
+
+gnc.iters = uint8(1);
+gnc.guid_rate = 0.5;
+gnc.npc_mode = uint8(2); %multi stage
+gnc.comp_curr = false;
+gnc.force_jett = true;
+
+% mc.debug = true;
+
+sim.parMode = true;
+sim.nWorkers = 10;
+
+t = datetime();
+x0.fpa0 = fpas(kk);
+fprintf(['Starting 3stage, betas = ' ... 
+    num2str(br21) ',' num2str(br31) ',' num2str(br41)]); print_current_time();
+
+for zz = 1:length(rates)
+    gnc.guid_rate = rates(zz);
+    out = run_dej_n(x0,gnc,aero,sim,mc);
+end %gnc rates
+fprintf(['Finished 3stage sim, betas = ' ... 
+    num2str(br21) ',' num2str(br31) ',' num2str(br41)]); print_current_time();
+
+if (gnc.ha_tgt < 1000)
+    save([save_path 'dej_n\HYDRA\3stage\data\' num2str(floor(gnc.ha_tgt)) ... 
+        '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
+else
+    save([save_path 'dej_n\HYDRA\3stage\data\' num2str(floor(gnc.ha_tgt/1000)) ... 
+        'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat']);
+end
+
+
+end %k betas
+end %kk fpas
+end %jj ha tgts
+% keyboard;
+
+%}
+
+%% Conditional 3stage
+%{
+clearvars -except save_path ;clc
+[x0,aero,gnc,sim, mc] = base_venus_ac();
+br41 = 10;
+br21s = [3 9];
+br31s = [5 9.5];
+
+fpas = [-5.4 -5.6];
+ha_tgts = [400 2000];
+rates = [0.5];
+
 for jj = 1:length(ha_tgts)
 for kk = 1:length(fpas)
 for k = 1:length(br31s)
@@ -2482,7 +2672,7 @@ gnc.iters = uint8(1);
 gnc.guid_rate = 0.5;
 gnc.npc_mode = uint8(2); %multi stage
 gnc.comp_curr = false;
-gnc.force_jett = true;
+gnc.force_jett = false;
 
 % mc.debug = true;
 
@@ -2502,12 +2692,11 @@ fprintf(['Finished 3stage sim, betas = ' ...
     num2str(br21) ',' num2str(br31) ',' num2str(br41)]); print_current_time();
 
 if (gnc.ha_tgt < 1000)
-%     save([save_path 'dej_n\HYDRA\3stage\data\' num2str(floor(gnc.ha_tgt)) ... 
-%         '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
+    save([save_path 'dej_n\HYDRA\3stage\data\conditional\' num2str(floor(gnc.ha_tgt)) ... 
+        '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat'])
 else
-    save([save_path 'dej_n\HYDRA\3stage\data\' num2str(floor(gnc.ha_tgt/1000)) ... 
-        'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' ... 
-        num2str(gnc.guid_rate) 'hz_' betas '.mat']);
+    save([save_path 'dej_n\HYDRA\3stage\data\conditional\' num2str(floor(gnc.ha_tgt/1000)) ... 
+        'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' betas '.mat']);
 end
 
 
@@ -2515,14 +2704,6 @@ end %k betas
 end %kk fpas
 end %jj ha tgts
 keyboard;
-% 
-% 
-
-
-header = ['\beta_n/\beta_1=10,beta_ratios=' ... 
-    num2str(out.nom.beta_ratios(1)) ' & ' ... 
-    num2str(out.nom.beta_ratios(2)) ' & ' ...
-    num2str(out.nom.beta_ratios(3))];
 %}
 
 %% 3stage post process
@@ -2733,13 +2914,13 @@ histogram_plot(250, 1800/2000, 2200/2000, d1, d2);
 %}
 
 %% tj scatter plots
-%{
+% %{
 %%%%%%%%% -5.4, 2k
-% clear;clc
-% tgt = 2000;
-% [d1, d2, d3, names] = load_dej_n_data(tgt, -5.4);
+clear;clc
+tgt = 2000;
+[d1, d2, d3, names] = load_dej_n_data(tgt, -5.4);
 % dej_scatter_plot(d2.out1, 2, tgt,'normalized');
-% dej_scatter_plot(d2.out4, 2, tgt,'normalized');
+dej_scatter_plot(d2.out4, 2, tgt,'normalized');
 % dej_scatter_plot(d3.out1, 3, tgt, 'normalized');
 % dej_scatter_plot(d3.out4, 3, tgt, 'normalized');
 

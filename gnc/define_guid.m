@@ -45,7 +45,7 @@ p_atm = struct( ...
     'Kflag', logical(false), ...      % density corrector flag (for monte carlo)
     'K_bounds', double([0.1, 2]), ...     % density corrector range
     'K_gain', double(0.1), ...    % density corrector gain
-    'mode', uint8(1), ...   % atmospheric estimation mode (default density factor)
+    'mode', uint8(0), ...   % atmospheric estimation mode (default density factor)
     'rss_flag', logical(false), ... %flag to save atm rss error
     'mc_ind', double(0), ...     % true atmosphere index (debugging, plotting purposes only)
     'ens_tol', double(0.01) ...   % ensemble tolerance (% of estimated density)
@@ -61,6 +61,9 @@ planet = struct( ...
     'j2', double(0), ... % nd, J2 gravity coefficient  
     'npole', double(zeros(3,1)), ... % nd, planetary north pole
     'omega', double(zeros(3,1)), ... % rad/s, planetary rotation rate
+    'rho0', double(0), ...  %surface density, kg/m3
+    'H', double(0), ... %scale height
+    'mode',uint8(3), ...   % density mode (1=exponential, 3=table look up w/ winds)
     'atm_nom', double(zeros(1000,7)), ...  % expected (nominal) atm table
     'atm_true', double(zeros(1000,7)) ... %true atm table (for debugging/plotting only)
 );
