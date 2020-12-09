@@ -43,12 +43,20 @@ if mod(si-1,nav.s.sn_ratio) == 0 % rate limit calls to navigation
             n_noise = (1 - exp(-2*nav.s.dt/nav.p.tau))*nav_rnd(:,si);
             nav.s.x_ercv = exp(-1*nav.s.dt/nav.p.tau) * nav.s.x_ercv + n_noise;
             nav.s.rva_error = nav.p.P_SS*nav.s.x_ercv;
-                        
+            
             % Update state parameters
             nav.s.r_pci = calcs.pos_ii + nav.s.rva_error(1:3);
             nav.s.v_inrtl_pci = calcs.vel_ii + nav.s.rva_error(4:6);
             nav.s.a_sens_pci = (calcs.force_ii-calcs.gravity_ii)/calcs.mass + nav.s.rva_error(7:9);
-
+        
+        case 3 % IMU bias + noise (randomly-sampled gaussian distributions)
+            nav.s.rva_error = [normrnd(0, nav.p.noise); normrnd(0, nav.p.noise); normrnd(0, nav.p.noise)];
+%             bias = normrnd(0, nav.p.bias);
+            
+            nav.s.r_pci = calcs.pos_ii + nav.s.rva_error(1:3);
+            nav.s.v_inrtl_pci = calcs.vel_ii + nav.s.rva_error(4:6);
+            nav.s.a_sens_pci = (calcs.force_ii-calcs.gravity_ii)/calcs.mass + nav.s.rva_error(7:9);
+                        
         otherwise  % Assume perfect navigation (pass-through)
 
             nav.s.r_pci = calcs.pos_ii;

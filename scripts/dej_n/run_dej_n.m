@@ -19,9 +19,9 @@
 %       n_jett:     number of jettison stages - [1x1]
 %       tj0:        initial jettison time(s) guess (sec) - [nx1]
 %       dtj_lim:    jettison time update limit
-%       npc_mode:  bisection method(0) or newton method(1)
+%       npc_mode:   bisection method(0) or newton method(1)
 %       guid_rate:  guidance rate (Hz) 
-%       atm_mode: uint8 flag for atmospheric capture
+%       atm_mode:   uint8 flag for atmospheric estimation
 %       iters:      maximum guidance iterations per call
 %       t_init:     guidance initialization time
 %       p_tol:      ensemble tolerance
@@ -68,7 +68,7 @@ max_alt = sim.h_max * 1e3;
 min_alt = sim.h_min * 1e3;
 
 %% Base Input Structure
-in0 = dej_n_in(gnc.mode, max_alt, sim.planet, 3); % nominal dej-n input structure
+in0 = dej_n_in(gnc.mode, max_alt, sim.planet, sim.atm_mode); % nominal dej-n input structure
 
 % Get updated atmospheric profile
 [in0.p.atm.table, mc_atm] = parse_atm_data(in0, sim.planet);
@@ -117,10 +117,12 @@ in0.v.aero.nose_radius = aero.rn; % Nose radius (m)
 in0.v.gnc.g.p.atm.K_gain = 0.2;
 in0.v.gnc.g.p.atm.K_bounds = [0.01 2];
 in0.v.gnc.g.p.atm.Kflag = false;     % flag to do density estimate (for monte carlo)
-in0.v.gnc.g.p.planet.alt_max = max_alt;
-in0.v.gnc.g.p.planet.alt_min = min_alt;
 in0.v.gnc.g.p.atm.ens_tol = gnc.p_tol;  % tolerance on ensemble search range (% of density estimate)
 in0.v.gnc.g.p.atm.rss_flag = gnc.rss_flag;
+in0.v.gnc.g.p.atm.mode = uint8(gnc.atm_mode);   %atmospheric estimation mode
+in0.v.gnc.g.p.planet.alt_max = max_alt;
+in0.v.gnc.g.p.planet.alt_min = min_alt;
+in0.v.gnc.g.p.planet.mode = uint8(sim.atm_mode); %guidance density mode
 
 % Simulation Rates
 in0.s.traj.rate = sim.traj_rate;           % double, Hz, integration rate
@@ -190,8 +192,7 @@ switch (gnc.mode)
         in0.v.gnc.c.p.rate = sim.traj_rate;
 end
 
-
-% check efpa solving
+%% check efpa solving
 if (sim.efpa_flag)
     fpa_tol = 0.05; %deg
 %     [fpa_f,~,haf_err,~] = fpa_given_haf(x0.fpa0, gnc.ha_tgt, in0, fpa_tol, gnc.ha_tol);    
@@ -284,20 +285,38 @@ if (mc.flag)
     clear out;  % delete nominal trajectory
     out.nom = out_nom;  % init new output struct
     
+    % navigation settings
+    if (gnc.nav.mode > 1)
+        in0.v.gnc.n.p.mode = uint8(gnc.nav.mode); % Use Markov process/ECRV error model
+        in0.v.gnc.n.p.rate = gnc.nav.rate; % Hz
+        in0.v.gnc.n.p.seed = uint32(gnc.nav.seed); % nd, Error model seed
+        in0.v.gnc.n.p.tau = gnc.nav.tau; % s, time constant
+        in0.v.gnc.n.p.omega = in0.p.omega; % rad/s, planet angular velocity vector
+        in0.v.gnc.n.p.r_e = in0.p.r_e; % m, planet equatorial radius
+        in0.v.gnc.n.p.r_p = in0.p.r_p; % m, planet polar radius
+        in0.v.gnc.n.p.P_SS = gnc.nav.P_SS;
+        in0.v.gnc.n.p.P_SS(7:9,7:9) = eye(3)*(90*in0.c.earth_g*1e-6 / 3)^2; % m/s^2, 90 micro-g, 3-sigma
+        
+        in0.v.gnc.n.p.bias = mc.sigs.imu_bias;
+        in0.v.gnc.n.p.noise = mc.sigs.imu_noise;
+    end
+    
     in0.v.gnc.g.p_dej_n.npc_mode = gnc.npc_mode;
     
     in0.v.gnc.g.p.atm.Kflag = mc.flag;
-    in0.v.gnc.g.p.atm.mode = gnc.atm_mode; % atmospheric capture mode (1-factor, 2-interp, 3-ens filter)
+    in0.v.gnc.g.p.atm.mode = uint8(gnc.atm_mode); % atmospheric capture mode (1-factor, 2-interp, 3-ens filter)
     
     % prellocate data storage variables
     len = in0.s.traj.t_ini:(1/in0.s.data_rate):in0.s.traj.t_max;
-    len = length(len)+1;
+    len = length(len) + gnc.n;  % 1 extra per jettison event, and 1 for terminal point
     vmag = nan(len,mc.N);
     alt = vmag; fpa = vmag; t = vmag; 
     rho = vmag;
     t_jett = nan(mc.N,5);
+    tjr = t_jett;
     idj = t_jett;
     ha = vmag; ha_err = vmag; 
+    rva_err = nan(len,9,mc.N);
 %     ncalls = vmag; 
     tj_curr = vmag; K_dens = vmag; rho_est = vmag;
     atm_err = vmag;
@@ -317,17 +336,23 @@ if (mc.flag)
     debug = mc.debug;
     ha_tgt = gnc.ha_tgt;
     
-    rnd = nan(1000,1);
+    rnd = nan(size(mc_atm,2),1);
     % pre-determine random atmospheres to reduce broadcast overhead
-    temp = nan(1000, 7, N);
-    for i = 1:N
-%         rnd(i) = randi(1000);
-%         temp(:,:,i) = mc_atm(rnd(i)).table;
-        temp(:,:,i) = mc_atm(i).table;
+    temp = nan(size(mc_atm,2), 7, N);
+    if isempty(mc.mcIndex)
+        for i = 1:N
+            rnd(i) = randi(size(mc_atm,2));
+            temp(:,:,i) = mc_atm(rnd(i)).table; %random disperse atmosphere
+    %         temp(:,:,i) = mc_atm(i).table;    %atmospheres in order
+        end
+    else
+        rnd(1:length(mc.mcIndex)) = mc.mcIndex;
+        for i = 1:length(mc.mcIndex)
+            temp(:,:,i) = mc_atm(rnd(i)).table;
+        end
     end
-%     tic
 
-    if (sim.parMode == false || mc.debug == true)
+    if (sim.parMode == false || mc.debug == true || ~isempty(mc.mcIndex))
         parArg = 0;
     else
         parArg = sim.nWorkers;
@@ -335,16 +360,12 @@ if (mc.flag)
         par.NumWorkers = sim.nWorkers;
     end
 
-    parfor (i = 1:N, parArg)  % run in parallel processing (need parallel computing
+%     parfor (i = 1:N, parArg)  % run in parallel processing (need parallel computing
 %     toolbox)
-%     for i = 1:N
+    for i = 1:N
         in_mc = in0;        % copy nominal input struct
 
         in_mc.p.atm.table = temp(:,:,i);    % new atmospheric table
-        if (gnc.rho_truth)
-            in_mc.v.gnc.g.p.atm.Kflag = false;
-            in_mc.v.gnc.g.p.planet.atm_nom = in_mc.p.atm.table;
-        end
         
 %         in_mc.v.gnc.g.p_dej_n.atm.mc_ind = rnd(i);  % atmosphere index
         in_mc.v.gnc.g.p.atm.mc_ind = rnd(i);
@@ -362,11 +383,19 @@ if (mc.flag)
             out_mc = main1_mex(in_mc);  % output struct for disperse case
         end
         
+        % get final index
+        if isnan(out_mc.traj.alt(end))
+            idxend = find(isnan(out_mc.traj.alt),1)-1;
+        else
+            idxend = length(out_mc.traj.alt);
+        end
+        
         vmag(:,i) = out_mc.traj.vel_pp_mag./1000;   %km/s
         alt(:,i) = out_mc.traj.alt./1000;       %km
         fpa(:,i) = out_mc.traj.gamma_pp.*180/pi;    %deg
         t(:,i) = out_mc.traj.time;                  %s
         rho(:,i) = out_mc.traj.rho;     % kg/m3
+        rva_err(:,:,i) = out_mc.nav.rva_error;
         
 %         out.traj(i).vmag = out_mc.traj.vel_pp_mag./1000;
 %         out.traj(i).alt = out_mc.traj.alt./1000;
@@ -378,9 +407,11 @@ if (mc.flag)
             tjett = (find(out_mc.g.(mode).stage == j,1)-1)/(in0.s.data_rate);
             if isempty(tjett)
                 t_jett(i,j) = nan;
+                tjr(i,j) = nan;
                 idj(i,j) = nan;
             else
                 t_jett(i,j) = tjett;
+                tjr(i,j) = tjett / out_mc.traj.time(idxend);
                 idjTemp = find(t(:,i) >= t_jett(i,j),1);    % check if jettison final time step
                 if isempty(idjTemp)
                     idj(i,j) = nan;
@@ -408,13 +439,6 @@ if (mc.flag)
         rss_nom(i) = out_mc.g.rss_nom;
         rss_K(:,i) = out_mc.g.rss_K;
         rss_ecf(:,i) = out_mc.g.rss_ens;
-        
-        % get final index
-        if isnan(out_mc.traj.alt(end))
-            idxend = find(isnan(out_mc.traj.alt),1)-1;
-        else
-            idxend = length(out_mc.traj.alt);
-        end
         
         % calculate apoapsis
         rv = [out_mc.traj.pos_ii(idxend,:), out_mc.traj.vel_ii(idxend,:)]';
@@ -462,13 +486,15 @@ if (mc.flag)
             out.g.dr_ap = ha_err;
         case 'manual'
     end
-            
+    
     out.haf = haf;
     out.haf_err = haf_err;
     out.dv = dv;
     out.tjett = t_jett;
+    out.tjr = tjr;
     out.idj = idj;
     out.idxend = idend;
+    out.rva_err = rva_err;
     
     
 end % monte carlo check

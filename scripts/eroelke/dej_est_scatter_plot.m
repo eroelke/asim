@@ -1,7 +1,7 @@
-% dej_scatter_plot.m
-% 
+% dej_est_scatter_plot.m
+%  estimated error vs. time for each stage
 
-function dej_scatter_plot(out, n, haTgt, type, ylims)
+function dej_est_scatter_plot(out, n, haTgt, type, ylims)
 
 haf_err = nan(1000,n);
 tj = haf_err;
@@ -11,23 +11,25 @@ jetts = zeros(n,1);
 switch (n)
     case 2
         for i = 1:1000
-            if (~isnan(out.tjett(i,2)))
-                haf_err(i,2) = out.haf_err(i);
+            if (~isnan(out.idj(i,2)))
+                haf_err(i,2) = out.g.ha_err(out.idj(i,2),i);
 
                 if (out.tjett(i,2) < 0.99 * out.traj.t(out.idxend(i),i))
                     tj(i,2) = out.tjett(i,2);
                     ttf(i,2) = tj(i,2)/out.traj.t(out.idxend(i),i);
 %                     jetts(2) = jetts(2) + 1;
                 end
-                jetts(2) = jetts(2) + 1;
-            else
-                haf_err(i,1) = out.haf_err(i);
+%                 jetts(2) = jetts(2) + 1;
+            end
+            
+            if (~isnan(out.idj(i,1)))
+                haf_err(i,1) = out.g.ha_err(out.idj(i,1),i);
                 if (out.tjett(i,1) < 0.99 * out.traj.t(out.idxend(i),i))
                     tj(i,1) = out.tjett(i,1);
                     ttf(i,1) = tj(i,1)/out.traj.t(out.idxend(i),i);
-%                     jetts(1) = jetts(1) + 1;
+    %                     jetts(1) = jetts(1) + 1;
                 end
-                jetts(1) = jetts(1) + 1;
+    %                 jetts(1) = jetts(1) + 1;
             end
         end
     case 3
@@ -60,39 +62,12 @@ switch (n)
         end
 end
 
-% for j = 1:n
-%     ind = n - (j - 1);
-%     for i = 1:1000
-%         if (~isnan(out.tjett(i,ind)))
-%             haf_err(i,ind) = out.haf_err(i);
-%             
-%             if (out.tjett(i,ind) < 0.99 * out.traj.t(out.idxend(i),i))
-%                 tj(i,ind) = out.tjett(i,ind);
-%                 ttf(i,ind) = tj(i,ind)/out.traj.t(out.idxend(i),i);
-%                 jetts(ind) = jetts(ind) + 1;
-%             end
-% %             jetts(ind) = jetts(ind) + 1;
-%         end
-%     end
-% end
-
-% switch (n)
-%     case 2
-%         jett_pc(n) = 100 * jetts(n)/1000;
-%         jett_pc(n - 1) = 100 * (jetts(1) - jetts(2))/1000;
-%     case 3
-%         jett_pc(n) = 100 * jetts(n)/1000;
-%         jett_pc(n - 1) = 100 * (jetts(2) - jetts(3))/1000;
-%         jett_pc(n - 2) = 100 * (jetts(1) - jetts(2))/1000;
-% end
-
 jetts = 100 * jetts / 1000;
 
 for j = 1:n
-    entries{j} = ['Jettison ' num2str(j) ', ' ... 
-        num2str(jetts(j)) '%'];
+    entries{j} = ['Jettison ' num2str(j)];
 end
-colors = {'r','b','g'};
+colors = get_plot_colors();
 
 figure(); hold on
 grid on;
@@ -103,7 +78,7 @@ set(gca,'FontSize',16);
 switch (type)
     case 'normalized'
         for i = 1:n
-            plot(ttf(:,i),haf_err(:,i),'LineStyle','none','Marker','x','Color',colors{i},'LineWidth',2)
+            plot(ttf(:,i),haf_err(:,i),'LineStyle','none','Marker','x','Color',colors(i,:),'LineWidth',2)
         end
         xlabel('t/t_f');
     case 'regular'
@@ -112,11 +87,11 @@ switch (type)
         xlabel('Time (s)');
 end
 legend(entries, 'location','ne')
-ylabel('Apoapsis Error (km)');
-if (nargin == 5)
-    ylim(ylims)
-end
+ylabel('Expected Apoapsis Error (km)');
 % xlim([0.25 0.99])
+if (nargin == 5)
+    ylim(ylims);
+end
 
 % if (~isempty(find(haf_err) > 1000))
 %     set(gca, 'YScale', 'log')

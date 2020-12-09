@@ -66,10 +66,10 @@ function dat = store_dat( calcs, i, ti, y, veh, guid, nav, ctrl, dat, in )
     dat.veh.area_ref(i) = veh.s.area_ref; % m^2
     
     % Navigation data
-%     dat.nav.r_pci(i,:) = nav.s.r_pci;
-%     dat.nav.v_inrtl_pci(i,:) = nav.s.v_inrtl_pci;
-%     dat.nav.a_sens_pci(i,:) = nav.s.a_sens_pci;
-%     dat.nav.rva_error(i,:) = nav.s.rva_error;
+    dat.nav.r_pci(i,:) = nav.s.r_pci;
+    dat.nav.v_inrtl_pci(i,:) = nav.s.v_inrtl_pci;
+    dat.nav.a_sens_pci(i,:) = nav.s.a_sens_pci;
+    dat.nav.rva_error(i,:) = nav.s.rva_error;
 %     dat.nav.r_pcpf(i,:) = nav.s.r_pcpf;
 %     dat.nav.v_pf_pci(i,:) = nav.s.v_pf_pci;
 %     dat.nav.v_pf_pcpf(i,:) = nav.s.v_pf_pcpf;

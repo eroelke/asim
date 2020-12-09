@@ -1,5 +1,5 @@
-function [x0,aero,gnc,sim,mc] = base_venus_ac()
-[x0,aero,gnc,sim,mc] = base_ac(true);
+function [x0,aero,gnc,sim,mc] = base_venus_ac(isMc)
+[x0,aero,gnc,sim,mc] = base_ac(isMc);
 x0.pci = 0;
 x0.fpa0 = -5.4;
 x0.v0 = 11;
@@ -11,10 +11,11 @@ gnc.guid_rate = 0.5;
 gnc.force_jett = true;
 gnc.iters = uint8(1);
 gnc.mode = 4;   %dej_n
-gnc.rho_truth = false;
 gnc.stage_skip = 1000;
+gnc.atm_mode = 0;   %density factor
 
 sim.planet = 'venus';
+sim.atm_mode = 3;
 sim.h_max = 150;
 sim.h_min = 50;
 sim.t_max = 1500;

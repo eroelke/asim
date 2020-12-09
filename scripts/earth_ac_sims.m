@@ -1,6 +1,52 @@
 %% Evan Roelke
 % Earth Aerocapture Simulations
 % 
+% clear;clc
+
+%% Basic Lifting Sim
+clear; clc;
+cd = 1;
+beta1 = 80;
+b21 = 12;
+plotTraj = true;
+
+[x0,aero,gnc,mc,sim] = BaseInputs();
+x0.v0 = 13;
+x0.fpa0 = -5.6;
+mc.flag = false;
+x0.az0 = 0;
+aero.m = [250 75];
+aero.rcs(1) = sqrt(aero.m(1) / (cd * pi * beta1)); %1.231162606;
+aero.rcs(2) = sqrt(aero.m(2) / (cd * pi * beta1*b21));
+aero.cds(1:2) = [cd cd];
+aero.cls(1:2) = [0 0];
+sim.efpa_flag = false;
+mc.debug = false;
+gnc.atm_mode = uint8(1);    %exponential atm
+gnc.guid_rate = 1;
+gnc.mode = 4;   %dej
+gnc.ha_tgt = 42164;
+sim.traj_rate = 250;
+sim.data_rate = 10;
+sim.atm_mode = 1;
+sim.t_max = 500;
+gnc.tj0 = 100;
+gnc.dtj_lim = 10;
+sim.h_min = 25;
+
+sim.debug = false;
+out = run_dej_n(x0,gnc,aero,sim,mc);
+fprintf('tj: %g s\ndh_a: %g km\n',out.t_jett, out.haf_err);
+
+if (plotTraj == true)
+figure(); hold on; grid on;
+set(gca,'FontSize',14);
+plot(out.traj.vel_pp_mag./1000,out.traj.alt./1000,'LineWidth',2)
+xlabel('Velocity (km/s)')
+ylabel('Altitude (km)')
+end
+
+% keyboard
 
 %% Trade Studies EFPA va Vatm - Jan 2019
 %{
@@ -807,7 +853,7 @@ out = run_dej_n(x0,gnc,aero,sim,mc);
 
 
 %% nominal trajectory atmospheric test - Apr 2019
-
+%{
 clear;clc;
 % get nominal atm.
 [x0,aero,gnc,mc,sim] = BaseInputs();
@@ -843,7 +889,7 @@ gnc.atm_mode = uint8(3);
 gnc.guid_rate = 0.5;
 sim.traj_rate = 50;
 out = run_dej_n(x0,gnc,aero,sim,mc);
-
+%}
 
 %% visualize atm dispersion
 %{
@@ -967,13 +1013,10 @@ plot(RvarS2,h./1000,'r');
 plot(RvarMC,h./1000,'b');
 %}
 
-
-
-
-
-
 %%%%%%% base setup
 function [x0,aero,gnc,mc,sim] = BaseInputs()
+[x0,aero,gnc,sim,mc] = base_venus_ac(false);
+
 x0.fpa0 = -5.7;
 x0.v0 = 12;
 x0.h0 = 125;
@@ -990,6 +1033,7 @@ gnc.root_mode = uint8(1);
 gnc.guid_rate = 0.1;
 gnc.iters = uint8(1);
 gnc.atm_mode = uint8(0);
+gnc.mode = 4;   %dej_n
 
 aero.rcs = [0.75 0.175];
 aero.m = [80 40];
@@ -1011,6 +1055,8 @@ sim.h_max = x0.h0;
 sim.h_min = 40;
 sim.planet = 'earth';
 sim.efpa_flag = true;
+sim.atm_mode = 3;
+sim.ignore_nominal = false;
 end
 
 

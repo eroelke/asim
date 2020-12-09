@@ -49,23 +49,35 @@ else
 end
 
 % Get expected (nominal) atmospheric params
-atm = lin_interp(guid.p.planet.atm_nom(:,1), guid.p.planet.atm_nom(:,2:7), alt);
-wind = [atm(4) atm(5) atm(6)];  % east; north; vertical
-rho = atm(1);   %default, expected value
-% get atmospheric density
-if (guid.p.atm.Kflag)
-    switch (guid.p.atm.mode)
-        case 1 %density factor
-            rho = atm(1) * K_dens; % density corrector on nominal atm model (for monte carlo)    
-        case 2 %density interp
-            rho = calc_rho_interp( alt, guid.s.atm.atm_hist, K_dens*atm(1) );
-        case 3 %ensemble filter
-            atm_curr = guid.s.atm.atm_curr; %current atmospheric model
-            rho = interp1( atm_curr(:,1), atm_curr(:,2), alt );
-        otherwise %density factor
-            rho = atm(1) * K_dens; % density corrector on nominal atm model (for monte carlo)    
-    end
+
+switch (guid.p.planet.mode)
+    case 1  %exponential
+        wind = [0 0 0];
+        rho = guid.p.planet.rho0 * exp(-alt / guid.p.planet.H);
+    case 3 %table look up w winds
+        atm = lin_interp(guid.p.planet.atm_nom(:,1), guid.p.planet.atm_nom(:,2:7), alt);
+        wind = [atm(4) atm(5) atm(6)];  % east; north; vertical
+        rho = atm(1);   %default, expected value
+        % get atmospheric density
+        if (guid.p.atm.Kflag)
+            switch (guid.p.atm.mode)
+                case 1 %density factor
+                    rho = atm(1) * K_dens; % density corrector on nominal atm model (for monte carlo)    
+                case 2 %density interp
+                    rho = calc_rho_interp( alt, guid.s.atm.atm_hist, K_dens*atm(1) );
+                case 3 %ensemble filter
+                    atm_curr = guid.s.atm.atm_curr; %current atmospheric model
+                    rho = interp1( atm_curr(:,1), atm_curr(:,2), alt );
+                otherwise %density factor
+                    rho = atm(1) * K_dens; % density corrector on nominal atm model (for monte carlo)    
+            end
+        end
+    otherwise
+        wind = [0 0 0];
+        rho = guid.p.planet.rho0 * exp(-alt / guid.p.planet.H);
 end
+
+
 
 
 % Convert wind to pp (PCPF) frame
