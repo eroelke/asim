@@ -30,7 +30,7 @@ sigs.efpa = (0.25 * pi/180) /3;      % 0.25deg 3sigma
 sigs.lat0 = 5e-4;
 sigs.lon0 = 5e-4;
 sigs.az0 = 5e-4;
-sigs.imu_bias = zeros(3,1);
-sigs.imu_noise = zeros(3,1);
+sigs.imu_bias = zeros(9,1); % per axis
+sigs.imu_noise = zeros(9,1);    % per axis
 
 end

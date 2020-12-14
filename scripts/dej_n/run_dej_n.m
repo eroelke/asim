@@ -316,7 +316,7 @@ if (mc.flag)
     tjr = t_jett;
     idj = t_jett;
     ha = vmag; ha_err = vmag; 
-    rva_err = nan(len,9,mc.N);
+    rva_err = nan(len,9,mc.N); ercv = rva_err; x_ercv = ercv;
 %     ncalls = vmag; 
     tj_curr = vmag; K_dens = vmag; rho_est = vmag;
     atm_err = vmag;
@@ -396,6 +396,8 @@ if (mc.flag)
         t(:,i) = out_mc.traj.time;                  %s
         rho(:,i) = out_mc.traj.rho;     % kg/m3
         rva_err(:,:,i) = out_mc.nav.rva_error;
+        ercv(:,:,i) = out_mc.nav.ercv;
+        x_ercv(:,:,i) = out_mc.nav.x_ercv;
         
 %         out.traj(i).vmag = out_mc.traj.vel_pp_mag./1000;
 %         out.traj(i).alt = out_mc.traj.alt./1000;
@@ -495,6 +497,8 @@ if (mc.flag)
     out.idj = idj;
     out.idxend = idend;
     out.rva_err = rva_err;
+    out.ercv = ercv;
+    out.x_ercv = x_ercv;
     
     
 end % monte carlo check
