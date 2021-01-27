@@ -170,6 +170,7 @@ switch (gnc.mode)
         in0.v.gnc.g.p_dej_n.tgt_ap = gnc.ha_tgt*1000; % m, target apoapse
         in0.v.gnc.g.p_dej_n.tol_ap = gnc.ha_tol*1000; % m, apoapse tolerance
         in0.v.gnc.g.p_dej_n.npc_mode = uint8(gnc.npc_mode);   % root finding method (1 = newton, 0=bisection)
+        in0.v.gnc.g.p_dej_n.pred_mode = uint8(gnc.pred_mode);   % predictor mode (0 normal, 1 verbose)
         in0.v.gnc.g.p_dej_n.t_init = gnc.t_init;
 
         in0.v.gnc.g.p_dej_n.multi.force_jett = gnc.force_jett;
@@ -286,50 +287,85 @@ if (mc.flag)
     out.nom = out_nom;  % init new output struct
     
     % navigation settings
-    if (gnc.nav.mode > 1)
-        in0.v.gnc.n.p.mode = uint8(gnc.nav.mode); % Use Markov process/ECRV error model
-        in0.v.gnc.n.p.rate = gnc.nav.rate; % Hz
-        in0.v.gnc.n.p.seed = uint32(gnc.nav.seed); % nd, Error model seed
-        in0.v.gnc.n.p.tau = gnc.nav.tau; % s, time constant
-        in0.v.gnc.n.p.omega = in0.p.omega; % rad/s, planet angular velocity vector
-        in0.v.gnc.n.p.r_e = in0.p.r_e; % m, planet equatorial radius
-        in0.v.gnc.n.p.r_p = in0.p.r_p; % m, planet polar radius
-        in0.v.gnc.n.p.P_SS = gnc.nav.P_SS;
-        in0.v.gnc.n.p.P_SS(7:9,7:9) = eye(3)*(90*in0.c.earth_g*1e-6 / 3)^2; % m/s^2, 90 micro-g, 3-sigma
+    if (gnc.nav.rate == 0)
+        gnc.nav.rate = 20;
+    end
+    switch (gnc.nav.mode)
+        case 2 %ecrvs
+            in0.v.gnc.n.p.mode = uint8(gnc.nav.mode); % Use Markov process/ECRV error model
+            in0.v.gnc.n.p.rate = gnc.nav.rate; % Hz
+            in0.v.gnc.n.p.seed = uint32(gnc.nav.seed); % nd, Error model seed
+            in0.v.gnc.n.p.ecrv.tau = gnc.nav.tau; % s, time constant
+            in0.v.gnc.n.p.atm.omega = in0.p.omega; % rad/s, planet angular velocity vector
+            in0.v.gnc.n.p.atm.r_e = in0.p.r_e; % m, planet equatorial radius
+            in0.v.gnc.n.p.atm.r_p = in0.p.r_p; % m, planet polar radius
+            in0.v.gnc.n.p.ecrv.P_SS = gnc.nav.P_SS;
+            in0.v.gnc.n.p.ecrv.P_SS(7:9,7:9) = eye(3)*(90*in0.c.earth_g*1e-6 / 3)^2; % m/s^2, 90 micro-g, 3-sigma
         
-        in0.v.gnc.n.p.bias = mc.sigs.imu_bias;
-        in0.v.gnc.n.p.noise = mc.sigs.imu_noise;
+        case 3  %exponential decay
+            in0.v.gnc.n.p.mode = uint8(gnc.nav.mode); % Use Markov process/ECRV error model
+            in0.v.gnc.n.p.rate = gnc.nav.rate; % Hz
+            in0.v.gnc.n.p.seed = uint32(gnc.nav.seed); % nd, Error model seed
+            in0.v.gnc.n.p.atm.omega = in0.p.omega; % rad/s, planet angular velocity vector
+            in0.v.gnc.n.p.atm.r_e = in0.p.r_e; % m, planet equatorial radius
+            in0.v.gnc.n.p.atm.r_p = in0.p.r_p; % m, planet polar radius
+            in0.v.gnc.n.p.n_exp.tau_r = gnc.nav.tau_r;
+            in0.v.gnc.n.p.n_exp.tau_v = gnc.nav.tau_v;
+            in0.v.gnc.n.p.n_exp.tau_a = gnc.nav.tau_a;
+            in0.v.gnc.n.p.n_exp.P0 = gnc.nav.P_SS;
+        
+        case 5 %exp-decay ecrv
+            in0.v.gnc.n.p.mode = uint8(gnc.nav.mode);
+            in0.v.gnc.n.p.rate = gnc.nav.rate;
+            in0.v.gnc.n.p.seed = uint32(gnc.nav.seed);
+            in0.v.gnc.n.p.atm.omega = in0.p.omega; % rad/s, planet angular velocity vector
+            in0.v.gnc.n.p.atm.r_e = in0.p.r_e; % m, planet equatorial radius
+            in0.v.gnc.n.p.atm.r_p = in0.p.r_p; % m, planet polar radius
+            % ecrv data
+            in0.v.gnc.n.p.ecrv.tau = gnc.nav.tau_ecrv; % s, ecrv time constant
+            % n_exp data
+            in0.v.gnc.n.p.n_exp.tau_r = gnc.nav.tau_r;
+            in0.v.gnc.n.p.n_exp.tau_v = gnc.nav.tau_v;
+            in0.v.gnc.n.p.n_exp.tau_a = gnc.nav.tau_a;
+            in0.v.gnc.n.p.n_exp.P0 = gnc.nav.P_SS;
+            in0.v.gnc.n.p.n_exp.ercv0 = gnc.nav.ercv0;
     end
     
-    in0.v.gnc.g.p_dej_n.npc_mode = gnc.npc_mode;
+    in0.v.gnc.g.p_dej_n.npc_mode = uint8(gnc.npc_mode);
     
     in0.v.gnc.g.p.atm.Kflag = mc.flag;
     in0.v.gnc.g.p.atm.mode = uint8(gnc.atm_mode); % atmospheric capture mode (1-factor, 2-interp, 3-ens filter)
     
     % prellocate data storage variables
+    if (~isempty(mc.mcIndex) && mc.N ~= length(mc.mcIndex))
+        N = length(mc.mcIndex);
+    else
+        N = mc.N;
+    end
+    
     len = in0.s.traj.t_ini:(1/in0.s.data_rate):in0.s.traj.t_max;
     len = length(len) + gnc.n;  % 1 extra per jettison event, and 1 for terminal point
-    vmag = nan(len,mc.N);
+    vmag = nan(len,N);
     alt = vmag; fpa = vmag; t = vmag; 
     rho = vmag;
     t_jett = nan(mc.N,5);
     tjr = t_jett;
     idj = t_jett;
     ha = vmag; ha_err = vmag; 
-    rva_err = nan(len,9,mc.N); ercv = rva_err; x_ercv = ercv;
+    rva_err = nan(len,9,N); ercv = rva_err; x_ercv = ercv;
 %     ncalls = vmag; 
-    tj_curr = vmag; K_dens = vmag; rho_est = vmag;
+    tj_curr = vmag; K_dens = vmag; K_true = vmag; rho_est = vmag;
     atm_err = vmag;
-    rss_nom = nan(len,1);
+    rss_nom = nan(mc.N,1);
     rss_K = vmag; rss_ecf = vmag;
+    ind_curr = vmag;
     
     % more preallocation
-    haf = nan(mc.N,1);
+    haf = nan(N,1);
     haf_err = haf; dv = haf;
     idend = haf;
     
 %     tjett = nan;
-    N = mc.N;
     sigs = mc.sigs;
     n = gnc.n;
     
@@ -360,13 +396,12 @@ if (mc.flag)
         par.NumWorkers = sim.nWorkers;
     end
 
-%     parfor (i = 1:N, parArg)  % run in parallel processing (need parallel computing
-%     toolbox)
-    for i = 1:N
+    parfor (i = 1:N, parArg)  % run in parallel processing (need parallel computing toolbox)
+%     for i = 1:N
         in_mc = in0;        % copy nominal input struct
 
         in_mc.p.atm.table = temp(:,:,i);    % new atmospheric table
-        
+        in_mc.v.gnc.g.p.planet.atm_true = temp(:,:,i);
 %         in_mc.v.gnc.g.p_dej_n.atm.mc_ind = rnd(i);  % atmosphere index
         in_mc.v.gnc.g.p.atm.mc_ind = rnd(i);
         
@@ -396,7 +431,7 @@ if (mc.flag)
         t(:,i) = out_mc.traj.time;                  %s
         rho(:,i) = out_mc.traj.rho;     % kg/m3
         rva_err(:,:,i) = out_mc.nav.rva_error;
-        ercv(:,:,i) = out_mc.nav.ercv;
+%         ercv(:,:,i) = out_mc.nav.ercv;
         x_ercv(:,:,i) = out_mc.nav.x_ercv;
         
 %         out.traj(i).vmag = out_mc.traj.vel_pp_mag./1000;
@@ -424,8 +459,10 @@ if (mc.flag)
         end
        
         ha_err(:,i) = out_mc.g.(mode).dr_ap./1000;  %km
-        K_dens(:,i) = out_mc.g.K_dens;  %estimated density variation (nd)
-        rho_est(:,i) = out_mc.g.rho_est;    %estimated density (kg/m3)
+        K_dens(:,i) = out_mc.g.K_dens;  % estimated density variation (nd)
+        K_true(:,i) = out_mc.g.K_true;
+        
+        rho_est(:,i) = out_mc.g.rho_est;    % estimated density (kg/m3)
         switch (mode)
             case 'dej_n'
                 ha(:,i) = out_mc.g.dej_n.r_ap./1000;
@@ -437,10 +474,11 @@ if (mc.flag)
             case 'manual'
         end
 
-        % atmospheric stuff
+        % atmospheric estimation stuff
         rss_nom(i) = out_mc.g.rss_nom;
         rss_K(:,i) = out_mc.g.rss_K;
         rss_ecf(:,i) = out_mc.g.rss_ens;
+        ind_curr(:,i) = out_mc.g.ind_curr;
         
         % calculate apoapsis
         rv = [out_mc.traj.pos_ii(idxend,:), out_mc.traj.vel_ii(idxend,:)]';
@@ -471,9 +509,10 @@ if (mc.flag)
     out.traj.rho = rho;
     
     out.g.ha_err = ha_err;
-    out.g.K_dens = K_dens;
-    out.g.rho_est = rho_est;
-    out.g.atm_err = atm_err;
+    out.g.K_dens = K_dens;  %density scale factor
+    out.g.K_true = K_true;  %true density dispersion factor
+    out.g.rho_est = rho_est;    % density estimate
+%     out.g.atm_err = atm_err;    % atmospheric density error
     switch (mode)
         case 'dej_n'
             out.g.ha = ha;
@@ -481,9 +520,10 @@ if (mc.flag)
             out.g.tj_curr = tj_curr;
 
             % atmospheric estimation
-            out.g.atm.rss_nom = rss_nom;    % nominal error
-            out.g.atm.rss_K = rss_K;        % scale factor error
-            out.g.atm.rss_ecf = rss_ecf;    % ensemble filter
+            out.g.atm.rss_nom = rss_nom;    % nominal RSS error
+            out.g.atm.rss_K = rss_K;        % scale factor RSS error
+            out.g.atm.rss_ecf = rss_ecf;    % ensemble filter RSS error
+            out.g.atm.ind_curr = ind_curr;  % ecf index
         case 'pd'
             out.g.dr_ap = ha_err;
         case 'manual'
@@ -496,9 +536,11 @@ if (mc.flag)
     out.tjr = tjr;
     out.idj = idj;
     out.idxend = idend;
-    out.rva_err = rva_err;
-    out.ercv = ercv;
-    out.x_ercv = x_ercv;
+    
+    % nav
+%     out.rva_err = rva_err;
+%     out.ercv = ercv;
+%     out.x_ercv = x_ercv;
     
     
 end % monte carlo check

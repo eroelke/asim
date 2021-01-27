@@ -114,6 +114,7 @@ dat.g.atm_hist = nan(1000,4); % internal atmosphere model
 dat.g.rss_nom = nan(1,1);  % nominal atm rss error (static)
 dat.g.rss_K = ldat1;  % density factor rss err
 dat.g.rss_ens = ldat1;    % ensemble rss err
+dat.g.ind_curr = ldat1;     % ensemble current mc index
 
 % Vehicle
 dat.veh.area_ref = ldat1; % m^2
@@ -124,7 +125,7 @@ dat.nav.r_pci = ldat3;
 dat.nav.v_inrtl_pci = ldat3;
 dat.nav.a_sens_pci = ldat3;
 dat.nav.rva_error = nan(t_length,9);
-dat.nav.ercv = nan(t_length, 9);
+% dat.nav.ercv = nan(t_length, 9);
 dat.nav.x_ercv = nan(t_length, 9);
 % dat.nav.r_pcpf = ldat3;
 % dat.nav.v_pf_pci = ldat3;

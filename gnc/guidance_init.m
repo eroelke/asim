@@ -58,8 +58,7 @@ guid.cmd.aoa = guid.p.const_aoa;
 
 %% Initialize atm model - E. Roelke Feb 2019
 a = guid.p.planet.alt_min;
-b = guid.p.planet.alt_min;
-
+b = guid.p.planet.alt_max;
 % atm model altitudes exponentially spaced to better capture higher density effects
 n = 1000;
 for k = 1:n
@@ -67,5 +66,6 @@ for k = 1:n
     guid.s.atm.atm_hist(k,1) = f;
 end
 guid.s.atm.atm_hist(:,1) = flip(guid.s.atm.atm_hist(:,1));
+guid.s.atm.ind_curr = nan;
 
 end % guidance_init

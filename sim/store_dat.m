@@ -62,6 +62,7 @@ function dat = store_dat( calcs, i, ti, y, veh, guid, nav, ctrl, dat, in )
     dat.g.rss_nom = guid.s.atm.rss_nom; %static value, nominal/true profiles never changes
     dat.g.rss_K(i) = guid.s.atm.rss_K;
     dat.g.rss_ens(i) = guid.s.atm.rss_ens;
+    dat.g.ind_curr(i) = guid.s.atm.ind_curr - 1;
     % Vehicle data
     dat.veh.area_ref(i) = veh.s.area_ref; % m^2
     
@@ -70,7 +71,7 @@ function dat = store_dat( calcs, i, ti, y, veh, guid, nav, ctrl, dat, in )
     dat.nav.v_inrtl_pci(i,:) = nav.s.v_inrtl_pci;
     dat.nav.a_sens_pci(i,:) = nav.s.a_sens_pci;
     dat.nav.rva_error(i,:) = nav.s.rva_error;
-    dat.nav.ercv(i,:) = nav.s.ercv;
+%     dat.nav.ercv(i,:) = nav.s.ercv;
     dat.nav.x_ercv(i,:) = nav.s.x_ercv;
 %     dat.nav.r_pcpf(i,:) = nav.s.r_pcpf;
 %     dat.nav.v_pf_pci(i,:) = nav.s.v_pf_pci;

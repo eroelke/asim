@@ -25,6 +25,7 @@ function [x0,aero,gnc,sim,mc] = base_ac(isMc)
     gnc.tj0 = 120;
     gnc.dtj_lim = 30;
     gnc.npc_mode = uint8(1);   %newton method
+    gnc.pred_mode = uint8(0);   %regular predictor
     gnc.guid_rate = 0.5;
     gnc.atm_mode = uint8(1);    %density factor
     gnc.iters = uint8(1);
@@ -46,7 +47,7 @@ function [x0,aero,gnc,sim,mc] = base_ac(isMc)
     aero.rcs = [0.75 0.175];
     aero.m = [80 40];
     aero.rn = 0.175/2;
-    aero.cds = [1.23 1.05];
+    aero.cds = [1.05 1.05];
     aero.cls = [0 0];
 
     if (isMc)
@@ -54,6 +55,7 @@ function [x0,aero,gnc,sim,mc] = base_ac(isMc)
         mc.Kflag = true;
         mc.N = 1;
         mc.sigs = default_sigs();
+        mc.sigs.cd = .05 * aero.cds(1) / 3;  %5% 3sigma
         mc.debug = false;
     else
         mc.flag = false;

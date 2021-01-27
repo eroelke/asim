@@ -24,6 +24,10 @@ mc.N = 1000;
 sim.data_rate = 1;
 sim.ignore_nominal = false;
 
+if (isMc)
+    sim.parMode = true;
+end
+
 % beta ratio = 10
 aero.m = [150 60]; 
 aero.rcs = [1 0.2];

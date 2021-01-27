@@ -1,32 +1,27 @@
-% npc_eom.m
+% gnc_eom.m
 %   numerical predictor-corrector force calcs
-%   updated to include improved atm model
-%       verbose output for figures
+%	mirrors main integration traj_calcs to reduce predictor bias
 % 
 % Entry systems Design Lab (EsDL)
 % University of Colorado Boulder
 % 
-% Written by: Evan Roelke, Feb 2019
+% Written by: Evan Roelke, Oct 2018
+%   Oct 2019: atmospheric estimation stuff combined
 % 
-% E. Roelke - I don't recommend using this at all. It is mainly for
-% personal research and is a nightmare of code attempts and ideas.
-%
-function [ydot,alt,rho_dat] = ... 
-    npc_eom_atm(t, y, area_ref, atm_model, ...
-    atm_true, K_dens, p, s, cd, cl, mass, guid)
+function [ydot,alt,rho_dat] = npc_eom_atm(t, y, area_ref, ... 
+    K_dens, p, s, cd, cl, mass, guid)
 %#codegen
-
 % Assign states
 r_ii = y(1:3); % Inertial position
 v_ii = y(4:6); % Inertial velocity
 rmag_ii = norm(r_ii); % Inertial position magnitude
 
 % planet params
-omega = p.planet.omega;     % planet rotation rate (rad/s)
-rp = p.planet.r_p;
-re = p.planet.r_e;
-mu = p.planet.mu;
-J2 = p.planet.j2;
+omega = guid.p.planet.omega;     % planet rotation rate (rad/s)
+rp = guid.p.planet.r_p;
+re = guid.p.planet.r_e;
+mu = guid.p.planet.mu;
+J2 = guid.p.planet.j2;
 
 % PCI -> PCPF
 theta = norm(omega)*t; % Rotation angle [rad]
@@ -36,8 +31,6 @@ L_PI = get_LPI(theta);  % DCM for PCI->PCPF
 r_pp = L_PI*r_ii; % Position vector planet/planet [m]
 v_pp = L_PI*(v_ii - cross(omega,r_ii)); % Velocity vector planet/planet [m/s]
 
-pos_pp_mag = norm(r_pp);
-vel_pp_mag = norm(v_pp);
 
 % Angular Momentum Calculations
 h_pp = cross(r_pp,v_pp);
@@ -49,20 +42,6 @@ hhat_pp = h_pp/hmag_pp;
 % Compute NED basis unit vectors
 [uN,uE,uD] = get_unit_NED( lat, lon ); % nd
 
-% Inertial flight path angle
-% arg = median([-1, 1, h_ii_mag/(pos_ii_mag*vel_ii_mag)]); % limit to [-1,1]
-% gamma_ii = acos(arg);
-% if dot(pos_ii,vel_ii) < 0
-%     gamma_ii = -gamma_ii;
-% end
-
-% Relative flight path angle
-arg = median([-1, 1, hmag_pp/(pos_pp_mag*vel_pp_mag)]); % limit to [-1,1]
-gamma_pp = acos(arg);
-if dot(r_pp,v_pp) < 0
-    gamma_pp = -gamma_pp;
-end
-
 % Compute Altitude
 if re == rp
     alt = rmag_ii - re;
@@ -70,154 +49,68 @@ else
     alt = get_alt(r_pp,re,rp,lat);
 end
 
-% Get expected (nominal) atmospheric params
-% [rho,~,~,wind] = get_atm_data(in,alt);
-
-atm = interp1(p.planet.atm_table(:,1), p.planet.atm_table(:,2:7), alt);
-rho_nom = atm(1);
-rho_K = rho_nom*K_dens; % density corrector on nominal atm model (for monte carlo)    
-wind = [atm(4) atm(5) atm(6)];  % east; north; vertical
-
-
-% rho_mc = nan(1000,1);
-% for i = 1:1000
-%     rho_mc(i) = lin_interp(mc(i).table(:,1),mc(i).table(:,2),alt);
+% if (isnan(alt))
+%     keyboard
 % end
 
+% Get atmospheric density params
+atm = lin_interp(guid.p.planet.atm_nom(:,1), ... 
+    guid.p.planet.atm_nom(:,2:7), alt); %better than interp1, handles OOB cases
+rho_nom = atm(1);
+wind = [atm(4) atm(5) atm(6)];  % east; north; vertical
+atm_curr = guid.s.atm.atm_curr; %current atmospheric model
 
-% interpolate altitude against saved model to get density
-idend = find(isnan(atm_model(:,2))==true,1)-1;
+rho_K = rho_nom*K_dens; % density corrector on nominal atm model (for monte carlo)    
+rho_true = rho_nom * guid.s.atm.K_true;
+rho_di = calc_rho_interp( alt, guid.s.atm.atm_hist, K_dens*atm(1) );
+rho_ecf = lin_interp( atm_curr(:,1), atm_curr(:,2), alt );
 
-
-% curr = atm_model(1:idend,:);
-% cov0 = cov(curr);   %covariance on current atmos model
-% rho0 = rho_nom;   % expected density
-
-% keyboard;
-
-if p.atm.atm_mode > uint8(0)
-    if alt >= atm_model(idend,1)
-
-        ind = find(alt >= atm_model(:,1),1); % find first index for altitude
-        ind = ind(1);   % force scalar (dumbass mex compiler...)
-        if ~isempty(ind)
-            if ind == 1
-                rho_model = atm_model(1,2);
-                T = atm_model(1,3);
-                P = atm_model(1,4);
-            else
-                rho_model = interp1(atm_model(ind-1:ind,1),atm_model(ind-1:ind,2),alt);
-                T = interp1(atm_model(ind-1:ind,1),atm_model(ind-1:ind,3),alt);
-                P = interp1(atm_model(ind-1:ind,1),atm_model(ind-1:ind,4),alt);
-            end
-        else
-            rho_model = nan;
-            T = nan;
-            P = nan;
-        end
-
-        % save density estimate
-        if isnan(rho_model) == false
-            rho = rho_model;
-        else
-            rho = rho_K;
-        end
-    else
-        % kalman filter - to do
-
-        % use density corrector
-        rho = rho_K;
-        rho_model = nan;
-        T = nan;
-        P = nan;
-    end
+% hybrid di/ecf
+atm_model = guid.s.atm.atm_hist;
+% find first non-NaN density value
+idend = find(isnan(atm_model(:,2)) == true, 1) - 1;
+if (alt >= atm_model(idend,1))
+    rho_hybrid = calc_rho_interp( alt, guid.s.atm.atm_hist, K_dens*atm(1) );
 else
-    rho = rho_K;
-    rho_model = nan;
-    T = nan;
-    P = nan;
+    atm_curr = guid.s.atm.atm_curr; %current atmospheric model
+    rho_hybrid = lin_interp( atm_curr(:,1), atm_curr(:,2), alt );
 end
 
-% save density data (visualization purposes)
-rho_true = interp1(atm_true(:,1),atm_true(:,2),alt);
-rho_dat.rho_true = rho_true(1);
-rho_dat.rho_model = rho_model;
+switch (guid.p.planet.mode)
+    case {0, 1}  %exponential
+        wind = [0 0 0];
+        rho = guid.p.planet.rho0 * exp(-alt / guid.p.planet.H);
+    case 3 %table look up w winds
+        atm = lin_interp(guid.p.planet.atm_nom(:,1), guid.p.planet.atm_nom(:,2:7), alt);
+        rho = atm(1);   %default, expected value
+        
+        % get atmospheric density
+        if (guid.p.atm.Kflag)
+            switch (guid.p.atm.mode)
+                case 1 %density factor
+                    rho = rho_K;    
+                case 2 %density interp
+                    rho = rho_di;
+                case 3 %ensemble filter
+                    rho = rho_ecf;
+                case 4 %DI/ECF hybrid
+                    rho = rho_hybrid;
+                otherwise %density factor
+                    rho = rho_nom; % density corrector on nominal atm model (for monte carlo)    
+            end
+        end
+    otherwise %exponential
+        wind = [0 0 0];
+        rho = guid.p.planet.rho0 * exp(-alt / guid.p.planet.H);
+end
+
+% save density data
+rho_dat.rho_true = rho_true;
+rho_dat.rho_di = rho_di;
 rho_dat.rho_K = rho_K;
 rho_dat.rho_nom = rho_nom;
-rho_dat.T = T;
-rho_dat.P = P;
-% rho_dat = nan;
-
-
-% if (p.atm.atm_mode == uint8(5))
-   
-%     keyboard;
-    
-    % spline
-%     model_ind = guid.s.atm_ind-1;
-%     a = spline(atm_model(1:model_ind,1),atm_model(1:model_ind,2));
-%     
-%     s = spline(guid.dej_n.p.planet.atm_table(:,1),guid.dej_n.p.planet.atm_table(:,2));
-%     figure(); hold on
-%     plot(atm_model(1:model_ind,1),log(ppval(s,atm_model(1:model_ind))))
-%     plot(atm_model(1:model_ind,1),log(ppval(a,atm_model(1:model_ind))))
-%     plot(atm_true(:,1),log(atm_true(:,2)));
-%     plot(flip(guid.dej_n.p.planet.atm_table(:,1)),log(flip(guid.dej_n.p.planet.atm_table(:,2))),'--');
-%         
-%     figure(); hold on
-%     plot(atm_model(:,1),log(atm_model(:,2)))
-%     plot(atm_true(:,1),log(atm_true(:,2)))
-    
-    
-    % nonlinear regression - not working
-%     func = @(b,x) b(1) + b(2)*x(:,1).^b(3) + b(4)*x(:,2).^b(5);
-%     beta0 = 0.2*ones(1,5);
-%     model = fitnlm(atm_model(1:idend,1),atm_model(1:idend,2),func,beta0);
-% end
-
-
-
-% if (p.atm.atm_mode == uint8(3))
-%     
-%     % justus1969
-%     [L1, L3] = getAtmL(alt,'rho');
-%     L = L1*L3/sqrt( L1^2 * sin(gamma_pp)^2 + L3^2 * cos(gamma_pp)^2 );
-%     
-%     rho_dat.rhoE = rho_nom*(exp(-rho_nom/L));
-%     
-%     val = sin(2*pi*r_pp(1)/(1000*L1))*sin(2*pi*r_pp(3)/(1000*L3));
-%     vari = (.004^2 / 2)*(1 - cos(2*pi*r_pp(1)/1000/L1)*cos(2*pi*r_pp(3)/1000/L3));
-%     rhoF = rho_nom*(val+1);
-%         
-%     rho_dat.rhoF = median([rhoF - vari, rhoF, rhoF + vari]);
-%     
-%     
-%     % justus1974
-%     model = atm_model(1:idend,2);
-%     R = nan(length(model)-1,1);
-%     for i = 1:length(model)-1
-%         R(i) = corrcoef(model(i)/rho_nom,model(i+1)/rho_nom);
-% 
-%         h = atm_model(i,1);
-%         nom(i) = interp1(p.planet.atm_table(:,1),p.planet.atm_table(:,2),h);
-%         
-%         covariance = cov(atm_model(i,:),atm_model(i+1,:));
-% 
-%         sigRR(i) = covariance(1,1);
-%         K(i) = atm_model(i,2)/nom(i);  %density var        
-%     end
-%     
-%     R = cov(K);
-%     A = R*K_dens/K(end);
-%     B = K_dens*sqrt(1-R^2);
-%     
-%     rho_dat.rhoR = rho_nom*(A*K(end) + B);   
-%     
-% else
-%     rho_dat.rhoE = nan;
-%     rho_dat.rhoR = nan;
-% end
-
+rho_dat.rho_ecf = rho_ecf;
+rho_dat.rho_hybrid = rho_hybrid;
 
 % Convert wind to pp (PCPF) frame
 wE = wind(1); % positive to the east, m/s
@@ -261,19 +154,8 @@ force_ii = drag_ii + lift_ii + Fg_ii;   % no thrust or decelerator
 % total acceleration on body
 a_ii = force_ii/mass;
 
-% if (p.atm.atm_mode == uint8(2))
-% %     A_mag = norm(drag_ii);  % norm of drag accel
-% % %     V_pf_mag = norm(v_pp);   % norm of vel
-% %     dens_est = (2*mass*A_mag) / ( (vel_pp_rw_mag^2)*area_ref*cd );
-% %     K_new = dens_est/rho_nom;
-% %     K_new = median([guid.K_bounds(1), K_new, guid.K_bounds(2)]); % nd
-% %     K_new = guid.K_gain*K_new + (1 - guid.K_gain)*K_new; % nd
-% 
-%     % get dynamics
-%     dv = -(rho*vel_pp_rw_mag^2)/(2*beta) + g*sin(gamma)
-% 
-% end
-
 % eom output
 ydot = [v_ii;a_ii];
-end % eom
+end % gnc_eom
+
+

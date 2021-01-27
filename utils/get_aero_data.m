@@ -75,23 +75,23 @@ switch in.v.aero.mode
     %% DEPRECIATE: Replace with general Mach-aoa aerodynamics
     % DC angle-of-attack, Mach dependent aerodynamics, undeflected actuators
     
-        [cl,cd] = get_dcaero_clcd(mach,veh.s.aoa,in.v.aero.dc.basic);
+%         [cl,cd] = get_dcaero_clcd(mach,veh.s.aoa,in.v.aero.dc.basic);
         
         
     case 4
-    %% DC full aerodynamics model
-    % Options: 
-    %   1: Undeflected actuators, specify Mach and angle-of-attack
-    %   2: Undeflected actuators, specify Mach, compute trim
-    %       angle-of-attack
-
-        % Call master Dream Chaser aerodynamics function
-        [C,F,M,veh.s.aoa,act] = get_dc_aero( veh.s.aoa, veh.s.ssa, veh.s.compute_trim, ...
-            alt, v_wind_mag, mach, dynp, cg, in ); % [nd,N,N*m,rad,deg]
-
-        % Assign outputs
-        cl = C(3); % nd, lift coefficient
-        cd = C(1); % nd, drag coefficient
+%     %% DC full aerodynamics model
+%     % Options: 
+%     %   1: Undeflected actuators, specify Mach and angle-of-attack
+%     %   2: Undeflected actuators, specify Mach, compute trim
+%     %       angle-of-attack
+% 
+%         % Call master Dream Chaser aerodynamics function
+%         [C,F,M,veh.s.aoa,act] = get_dc_aero( veh.s.aoa, veh.s.ssa, veh.s.compute_trim, ...
+%             alt, v_wind_mag, mach, dynp, cg, in ); % [nd,N,N*m,rad,deg]
+% 
+%         % Assign outputs
+%         cl = C(3); % nd, lift coefficient
+%         cd = C(1); % nd, drag coefficient
     
         
     case 5 % analytical coeffs

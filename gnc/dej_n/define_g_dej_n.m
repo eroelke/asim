@@ -53,6 +53,7 @@ p = struct( ...
     'n_jett', uint8(0), ...     % number of jettison stages feasible
     't_max', double(0), ... %max predictor time
     'area_refs', double(zeros(6,1)), ... % m^2, n+1 stages
+    'pred_mode', uint8(0), ...  % 0 reg, 1 saves data (for debugging)
     'npc_mode', uint8(0), ...  % corrector type (0 bisection, 1 newton, 2 multi, 3 ensemble)
     'traj_rate', double(0), ...  % integration rate for NPC (Hz) (bias if != sim rate)
     'hydra', p_hydra, ...      % hybrid NPC struct
@@ -67,7 +68,7 @@ s_hydra = struct( ...
     'dtj', double(0), ...   % last jettison time update
     'dtj_lim', double(0), ...   %current jettison time update limit
     'dtj_lim_count', double(0) ... % counter of dtj limit update
-);    
+);
 
 s = struct( ...
     'jettison', false(5,1), ... % nd, jettison flag

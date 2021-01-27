@@ -25,6 +25,7 @@ if (guid.p.atm.Kflag)
 %                 guid.s.atm.K_dens = 1;
 %                 return;
 %             end
+
             area_ref = guid.pd.p.area_refs(j_ind);  % get current stage area (1-indexed)
             mass = guid.pd.p.masses(j_ind); %expected mass
             cd = guid.pd.p.cds(j_ind);  %expected cd
@@ -32,10 +33,10 @@ if (guid.p.atm.Kflag)
         case 4  % dej_n
             j_ind = guid.dej_n.s.stage+1;  % current jettison stage
             
-            if (j_ind > guid.dej_n.p.n_jett)
-                guid.s.atm.K_dens = 1;
-                return;
-            end
+%             if (j_ind > guid.dej_n.p.n_jett)
+%                 guid.s.atm.K_dens = 1;
+%                 return;
+%             end
             area_ref = guid.dej_n.p.area_refs(j_ind);  % get current stage area (1-indexed)
             mass = guid.dej_n.p.masses(j_ind);
             cd = guid.dej_n.p.cds(j_ind);
@@ -82,49 +83,37 @@ if (guid.p.atm.Kflag)
     
     % low-pass filter
     guid.s.atm.K_dens = K_gain*K_dens + (1 - K_gain)*guid.s.atm.K_dens; % nd
-%     guid.s.K_dens = K_dens;
 
     % save truth value
-    guid.s.atm.rho_est = interp1(in.p.atm.table(:,1),in.p.atm.table(:,2),alt);
+    guid.s.atm.rho_est = lin_interp(in.p.atm.table(:,1),in.p.atm.table(:,2),alt);    
     guid.s.atm.K_true = guid.s.atm.rho_est / dens_model;
-
-    % save atmospheric data
-    if (atm_mode > 0)
-        if alt <= guid.s.atm.atm_hist(guid.s.atm.atm_ind,1)
-            % this alt hasnt saved atm data yet
-            T = calcs.T + normrnd(0,in.s.sigs.T_sens);
-            pres = calcs.pres + normrnd(0,in.s.sigs.P_sens);
-
-            % rewrite alt at this step
-            guid.s.atm.atm_hist(guid.s.atm.atm_ind,:) = [alt dens_est T pres];
-            guid.s.atm.atm_ind = guid.s.atm.atm_ind + 1;    %index++
-        else
-            % on upswing out of atm
-            %  -> horizontal atmospheric modeling
-        end
-
-        % get rss error for atmospheric estimates
-        if (guid.p.atm.rss_flag) %ensemble filter
-            guid.s.atm.rss_K = 0;
-            guid.s.atm.rss_ens = 0;
-            
-            atm_true = flip(in.p.atm.table(:,1:2));   % true density table
-            if (guid.p.atm.mode == uint8(2))
+    
+    % get rss error of atmospheric estimates
+    if (guid.p.atm.rss_flag)
+        guid.s.atm.rss_K = 0;   %init rss
+        guid.s.atm.rss_ens = 0; %init rss
+        
+        atm_true = flip(in.p.atm.table(:,1:2));   % true density profile
+        switch (uint8(guid.p.atm.mode)) 
+            case {3,4}  % ensemble filter, hybrid
                 atm_ens = flip(guid.s.atm.atm_curr);
-            else
+            otherwise
                 atm_ens = nan;
-            end
-            h_ind = nan(1,1);
-            h_ind(1) = find(atm_true(:,1) <= 70e3,1,'first');
-            for i = 1:h_ind
-%                 rho_true = interp1(atm_true(:,1),atm_true(:,2),alt);
-%                 rho_nom = interp1(atm_nom(:,1),atm_nom(:,2),alt);
-%                 rho_ens = interp1(atm_ens(:,1),atm_ens(:,2),alt);
-                
-                guid.s.atm.rss_K = guid.s.atm.rss_K + ... 
-                    (K_dens*atm_nom(i,2) - atm_true(i,2))^2;
-                
-                if (guid.p.atm.mode == uint8(2))
+        end
+        
+        h_ind = nan(1,1);
+        h_ind(1) = find(atm_true(:,1) <= 70e3,1,'first');   % get altitude index. also sum's N
+            
+        for i = 1:h_ind
+            % rho_true = lin_interp(atm_true(:,1),atm_true(:,2),alt);
+            % rho_nom = lin_interp(atm_nom(:,1),atm_nom(:,2),alt);
+            % rho_ens = lin_interp(atm_ens(:,1),atm_ens(:,2),alt);
+            
+            guid.s.atm.rss_K = guid.s.atm.rss_K + ...
+                (guid.s.atm.K_dens*atm_nom(i,2) - atm_true(i,2))^2;
+            
+            switch (uint8(guid.p.atm.mode))
+                case {3,4}  %ECF, DI/ECF hybrid
                     if (atm_ens(1,1) == 0)
                         % ensemble not done yet, use k_dens
                         guid.s.atm.rss_ens = guid.s.atm.rss_K;
@@ -132,33 +121,48 @@ if (guid.p.atm.Kflag)
                         guid.s.atm.rss_ens = guid.s.atm.rss_ens + ...
                             (atm_ens(i,2) - atm_true(i,2))^2;
                     end
-                else
+                otherwise
                     guid.s.atm.rss_ens = 0;
-                end
-                
-                % get nominal atm rss err if not done yet (const value)
-                if guid.s.atm.rss_nom == 0
-                    guid.s.atm.rss_nom = guid.s.atm.rss_nom + ...
-                        (atm_nom(i,2) - atm_true(i,2))^2;
-                end
-            
-            end %for loop  
-            
-            if (guid.s.atm.rss_nom ~= 0)
-                guid.s.atm.rss_nom = sqrt(guid.s.atm.rss_nom)/h_ind;
             end
-            guid.s.atm.rss_ens = sqrt(guid.s.atm.rss_ens)/h_ind;
-            guid.s.atm.rss_K = sqrt(guid.s.atm.rss_K)/h_ind;
-        else
-            guid.s.atm.rss_nom = nan;
-            guid.s.atm.rss_K = nan;
-            guid.s.atm.rss_ens = nan;
-        end %check save rss
+            
+            % get nominal atm rss err if not done yet (const value)
+            % only needed once
+            if (guid.s.atm.rss_nom == 0)
+                guid.s.atm.rss_nom = guid.s.atm.rss_nom + ...
+                    (atm_nom(i,2) - atm_true(i,2))^2;
+            end
+        end %rss err loop
         
-    end
+        if (guid.s.atm.rss_nom ~= 0)
+            guid.s.atm.rss_nom = sqrt(guid.s.atm.rss_nom)/h_ind;
+        end
+        guid.s.atm.rss_ens = sqrt(guid.s.atm.rss_ens)/h_ind;
+        guid.s.atm.rss_K = sqrt(guid.s.atm.rss_K)/h_ind;
+    else
+        guid.s.atm.rss_nom = nan;
+        guid.s.atm.rss_K = nan;
+        guid.s.atm.rss_ens = nan;
+    end %check save rss
     
+    % save density history
+    switch (atm_mode)
+        case {2,3,4}  % density interpolator, ensemble filter, hybrid
+            if alt <= guid.s.atm.atm_hist(guid.s.atm.atm_ind,1)
+                % this alt hasnt saved atm data yet
+                T = calcs.T + normrnd(0,in.s.sigs.T_sens);
+                pres = calcs.pres + normrnd(0,in.s.sigs.P_sens);
+                
+                % rewrite alt at this step
+                guid.s.atm.atm_hist(guid.s.atm.atm_ind,:) = [alt dens_est T pres];
+                guid.s.atm.atm_ind = guid.s.atm.atm_ind + 1;    %index++
+            else
+                % on upswing out of atm
+                %  -> horizontal atmospheric modeling
+            end
+        otherwise
+            % do nothing
+    end
 else
     guid.s.atm.K_dens = 1;
-end
-
-end % est_atm
+end % if Kflag set
+end % est_atm.m

@@ -3,7 +3,7 @@
 function [] = out_stats(out)
 
 % count crashes
-nCrashes = length(find(out.haf < out.nom.traj.alt(1)/1000));
+nCrashes = length(find(out.haf < out.traj.alt(1,1)));
 nEscapes = length(find(out.haf < 0));
 
 fprintf([ ... 

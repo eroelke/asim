@@ -22,11 +22,11 @@ function sigs = default_sigs()
 
 sigs.m = 0.5 / 100 / 3; %.5 3sigma
 sigs.cl = 0;
-sigs.cd = 5 / 100 / 3;  %5% 3sigma
+sigs.cd = 5 / 100 / 3;  %5% 3sigma - see set_jettison.m
 sigs.aoa = 0;
-sigs.vmag_atm = 10/3;  %10 m/s 3sigma
-sigs.hmag_atm = 100;     %m
-sigs.efpa = (0.25 * pi/180) /3;      % 0.25deg 3sigma
+sigs.vmag_atm = 10 / 3;  %10 m/s 3sigma
+sigs.hmag_atm = 150;     %m, 1sigma
+sigs.efpa = (0.25 * pi/180) / 3;      % 0.25deg 3sigma
 sigs.lat0 = 5e-4;
 sigs.lon0 = 5e-4;
 sigs.az0 = 5e-4;

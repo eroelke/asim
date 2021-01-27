@@ -102,11 +102,12 @@ s_atm = struct( ...
     'atm_hist',double(nan(1000,4)), ...  % atmospheric history (alt, rho, T, P)
     'rho_K', double(0), ...   % density estimate from main guidance comp
     'atm_err', double(0), ...   % std error in the total atmosphere
-    'atm_curr', zeros(1000,2), ...  % altitude, rho table of current best atm estimate
-    'ind_curr', double(0), ...   %ensemble filter index
     'rss_nom', double(0), ...   %rss error for nominal atm
     'rss_K', double(0), ... % rss error for density corrector
-    'rss_ens', double(0) ...    %rss error for ensemble filter
+    'rss_ens', double(0), ...    %rss error for ensemble filter
+    'atm_curr', zeros(1000,2), ...  % altitude, rho table of current best atm estimate
+    'ecf_scores', zeros(1002,1), ...    % score for monte carlo indices
+    'ind_curr', double(0) ...  % ensemble filter mc index
 );
 
 % master state struct
