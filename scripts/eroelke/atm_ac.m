@@ -3,13 +3,13 @@
 clear;clc
 
 %% get venus atms
-% atm = load('./data/atm_data/atm_venus_mc.mat');
-% mcs = nan(1000,1001);
-% mcs(:,1) = atm.nom_table(:,1); %alt
-% for i = 1:1000
-%     mcs(:,i+1) = atm.mc(i).table(:,2);
-% end
-% save('./data/atm_data/atm_venus_all.mat','mcs');
+atm = load('./data/atm_data/atm_venus_mc.mat');
+mcs = nan(1000,1001);
+mcs(:,1) = atm.nom_table(:,1); %alt
+for i = 1:1000
+    mcs(:,i + 1) = atm.mc(i).table(:,2);
+end
+save('./data/atm_data/atm_venus_all.mat','mcs');
 
 %% get earth atms
 % atm = load('./data/atm_data/atm_earth_gram2016.mat');

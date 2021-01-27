@@ -1,5 +1,7 @@
 codegen/
 ./main1_mex.mexw64
 *.asv
-*.mat
+data/aero_data/
+data/dcfj_data/
+data/*.mat
 

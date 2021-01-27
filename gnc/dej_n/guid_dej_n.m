@@ -67,9 +67,7 @@ elseif (s.A_mag >= p.A_sens_atm && i.t >= p.t_init)
 %         s.ae = [0;0];
         npc_flag = 0;           % nd, corrector flag
         %     pred_mode = p.mode;     % set predictor to single-stage or two-stage mode
-        
-        [guid.p, guid.s] = run_ensemble_filter(y0, t0, guid.p, guid.s);
-        
+                
         while ~npc_flag % while loop until convergence, iter limit, atm exit
             
             switch (p.npc_mode)
@@ -83,7 +81,19 @@ elseif (s.A_mag >= p.A_sens_atm && i.t >= p.t_init)
                     d_lim = p.hydra.dtj_lim;
                     dtj = 0; %init
                     
-                    [s.r_ap,s.dr_ap,s.dr_ap_true,pflag] = guid_dej_n_pred(y0, t0, s, p, j_ind, 0, guid);
+                    switch (p.pred_mode)
+                        case 0  %reg
+                            [s.r_ap,s.dr_ap,s.dr_ap_true,pflag] = ... 
+                                guid_dej_n_pred(y0, t0, s, p, j_ind, 0, guid);
+                        case 1  %verbose-ish. saves data through predictor (for debugging)
+                            [s.r_ap,s.dr_ap,s.dr_ap_true,pflag] = ... 
+                                guid_dej_n_pred_v(y0, t0, s, p, j_ind, 0, guid);
+                        otherwise %reg
+                            [s.r_ap,s.dr_ap,s.dr_ap_true,pflag] = ... 
+                                guid_dej_n_pred(y0, t0, s, p, j_ind, 0, guid);
+                    end
+                    
+                    
                     if (pflag == 2)   % impact surface (cut-off to save time)
                         dtj = d_lim;
                         s.tj_next(j_ind) = s.tj_next(j_ind) - dtj; % try jettison much earier
@@ -121,7 +131,18 @@ elseif (s.A_mag >= p.A_sens_atm && i.t >= p.t_init)
                         % only look at current vehicle stage
                         dr_ap = nan;    %to appease the compiler gods
                         r_ap = nan;
-                        [s.r_ap,s.dr_ap,s.dr_ap_true,pflag] = guid_dej_n_pred(y0, t0, s, p, j_ind, 0, guid);
+                        
+                        switch (p.pred_mode)
+                            case 0  %reg
+                                [s.r_ap,s.dr_ap,s.dr_ap_true,pflag] = ... 
+                                    guid_dej_n_pred(y0, t0, s, p, j_ind, 0, guid);
+                            case 1  %verbose-ish. saves data through predictor (for debugging)
+                                [s.r_ap,s.dr_ap,s.dr_ap_true,pflag] = ... 
+                                    guid_dej_n_pred_v(y0, t0, s, p, j_ind, 0, guid);
+                            otherwise %reg
+                                [s.r_ap,s.dr_ap,s.dr_ap_true,pflag] = ...
+                                    guid_dej_n_pred(y0, t0, s, p, j_ind, 0, guid);
+                        end
                     end %predictor
                     
 %                     if (abs(s.dr_ap) <= p.tol_ap)

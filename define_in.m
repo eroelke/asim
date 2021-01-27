@@ -135,10 +135,10 @@ p = struct( ...
 
 %% Vehicle data structure
 
-% Dream Chaser aerodynamics data
-dc = define_aero_dc;
-dc_unc = define_aero_dc_unc;
-dc_act = define_aero_dc_act;
+% Dream Chaser aerodynamics data - add to aero struct below if needed
+% dc = define_aero_dc;
+% dc_unc = define_aero_dc_unc;
+% dc_act = define_aero_dc_act;
 
 % Construct aerodynamics data structure
 aero = struct( ...
@@ -153,9 +153,6 @@ aero = struct( ...
     'chord_ref', double(0), ... % aerodynamic reference chord, m
     'span_ref', double(0), ... % aerodynamic reference span, m
     'table', zeros(100,3), ... % mach-dependent cl and cd, nd
-    'dc', dc, ... % Dream Chaser aerodynamics
-    'dc_unc', dc_unc, ... % Dream Chaser aerodynamics uncertianties 
-    'dc_act', dc_act, ... % Dream Chaser aerodynamics uncertianties 
     'delta_c', double(45), ...  % sphere-cone half-angle (rad)
     'nose_radius', double(0) ); % effective nose radius, m
 

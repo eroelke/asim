@@ -24,24 +24,31 @@ nav = define_nav;
 
 %% Copy navigation parameters
 nav.p = in.v.gnc.n.p;
-if nav.p.mode ~= 2
-    nav.p.omega = in.p.omega;
-    nav.p.r_e = in.p.r_e;
-    nav.p.r_p = in.p.r_p;
-end
+nav.p.atm.omega = in.p.omega;
+nav.p.atm.r_e = in.p.r_e;
+nav.p.atm.r_p = in.p.r_p;
 
 %% Initialize random numbers for navigation error model
 t_length = round((in.s.traj.t_max-in.s.traj.t_ini)*in.s.traj.rate)+1;
-if nav.p.mode == 2
-%     rng(nav.p.seed,'combRecursive'); % use input seed
-%     rng('shuffle')
-    nav_rnd = randn(9,t_length); % create repeatable set of random numbers on U[-1,1] for navigation model
-    nav.s.x_ercv = (1 - exp(-2*nav.s.dt/nav.p.tau))*nav_rnd(:,1);
-    nav.s.rva_error = nav.p.P_SS*nav.s.x_ercv;
-else
-    nav_rnd = zeros(9,t_length+1);
-    nav.s.x_ercv = zeros(9,1);
-    nav.s.rva_error = zeros(9,1);
+
+switch nav.p.mode
+    case 2 % ecrv
+    %     rng(nav.p.seed,'combRecursive'); % use input seed
+    %     rng('shuffle')
+        nav_rnd = randn(9,t_length); % preallocate randomly-sampled standard gaussian
+        nav.s.x_ercv = (1 - exp(-2*nav.s.dt/nav.p.ecrv.tau))*nav_rnd(:,1);
+        nav.s.rva_error = nav.p.ecrv.P_SS*nav.s.x_ercv;
+    case 5 % exponentially-decaying ecrv
+        nav_rnd = randn(9,t_length); % preallocate randomly-sampled standard gaussian
+        P = nav.p.n_exp.P0;
+
+        nav.s.ercv = nav.p.n_exp.ercv0;%(1 - exp(-nav.s.dt/nav.p.ecrv.tau))*nav_rnd(:,1);    %n_noise
+        nav.s.x_ercv = nav.s.ercv;
+        nav.s.rva_error = real(sqrtm(P))*nav.s.x_ercv;      
+    otherwise
+        nav_rnd = zeros(9,t_length+1);
+        nav.s.x_ercv = zeros(9,1);
+        nav.s.rva_error = zeros(9,1);
 end
 
 %% Set states

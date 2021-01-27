@@ -17,15 +17,26 @@ switch mode
 
         nav_rnd = randn(9,length(t));
 
-        ecrv(:,1) = (1 - exp(-2*dt/tau))*nav_rnd(:,1);    %n_noise
+        ecrv(:,1) = ecrv0;%(1 - exp(-2*dt/tau))*nav_rnd(:,1);    %n_noise
         x_ecrv(:,1) = ecrv(:,1);
-        rva_err(:,1) = P_SS*x_ecrv(:,1);
+        
+        rva_err(:,1) = real(sqrtm(P_SS)*x_ecrv(:,1));
         vmag(1) = mean(x_ecrv(4:6,1));
         ecrvmag(1) = norm(ecrv(4:6,1));
         for i = 2:length(t)
-            ecrv(:,i) = (1 - exp(-dt/tau))*nav_rnd(:,i);    %n_noise
-            x_ecrv(:,i) = exp(-2*dt/tau) * x_ecrv(:,i-1) + ecrv(:,i);
-            rva_err(:,i) = P_SS*x_ecrv(:,i);
+            
+            E00 = eye(3) * exp(-t(i)/tau(2));
+            E22 = eye(3) * exp(-t(i)/tau(3));
+            E33 = eye(3) * exp(-t(i)/tau(4));
+            
+            E = [E00 zeros(3,3) zeros(3,3); ... 
+                zeros(3,3) E22 zeros(3,3); ... 
+                zeros(3,3) zeros(3,3) E33];
+            P = P_SS*E;
+            
+            ecrv(:,i) = (1 - exp(-2*dt/tau(1)))*nav_rnd(:,i);    %n_noise
+            x_ecrv(:,i) = exp(-dt/tau(1)) * x_ecrv(:,i-1) + ecrv(:,i);
+            rva_err(:,i) = real(sqrtm(P))*x_ecrv(:,i);
             
             vmag(i) = mean(x_ecrv(4:6,i));
             ecrvmag(i) = norm(ecrv(4:6,i));
