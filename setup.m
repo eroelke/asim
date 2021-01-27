@@ -11,23 +11,26 @@
 % 
 function setup()
 
-% define path to main folder
-path_to_asim = 'C:\Users\Evan Roelke\Documents\research\asim';
 
-if ~(exist(path_to_asim, 'dir'))
-    error('Directory does not exist');
-end
+addpath(genpath('./'));
 
-% main directories
-main_dirs = {'codegen','data','tools','utils','gnc','scripts','sim'};
-for i = 1:length(main_dirs)
-    addpath(genpath(strcat(path_to_asim,'\',main_dirs{i})));
-end
-
-% custom directories
-custom_dirs = {};
-for i = 1:length(custom_dirs)
-    addpath(genpath(strcat(path_to_asim,'\',custom_dirs{i})));
-end
+% % define path to main folder
+% path_to_asim = 'C:\Users\Evan Roelke\Documents\research\asim';
+% 
+% if ~(exist(path_to_asim, 'dir'))
+%     error('Directory does not exist');
+% end
+% 
+% % main directories
+% main_dirs = {'codegen','data','tools','utils','gnc','scripts','sim'};
+% for i = 1:length(main_dirs)
+%     addpath(genpath(strcat(path_to_asim,'\',main_dirs{i})));
+% end
+% 
+% % custom directories
+% custom_dirs = {};
+% for i = 1:length(custom_dirs)
+%     addpath(genpath(strcat(path_to_asim,'\',custom_dirs{i})));
+% end
 
 end
