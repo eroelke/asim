@@ -29,7 +29,7 @@ end
 in0.p = get_planetary_data(planet, sim.atm_mode); % Load planet model, GRAM atmosphere + winds
 
 % Get updated atmospheric profile
-[in0.p.atm.table, ~] = parse_atm_data(in0, sim.planet);
+[in0.p.atm.table, ~] = load_atm_data(in0, sim.planet);
 in0.p.atm.dh = in0.p.atm.table(2,1) - in0.p.atm.table(1,1);
 in0.v.gnc.g.p.planet.atm_nom = in0.p.atm.table(:,1:7);
 in0.v.gnc.g.p.planet.atm_true = in0.p.atm.table(:,1:7);

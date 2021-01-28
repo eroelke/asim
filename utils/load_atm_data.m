@@ -1,4 +1,4 @@
-% parse_atm_data.m
+% load_atm_data.m
 %   split up monte carlo atm data for sims, loads best atmospheric data
 %   asim offers
 % 
@@ -15,7 +15,7 @@
 %   nom: nominal atm table
 %   mc: mc atm table
 
-function [nom, mc] = parse_atm_data(in, planet)
+function [nom, mc] = load_atm_data(in, planet)
 
 % fix planet input
 if ischar(planet) == true
@@ -57,4 +57,4 @@ switch planet
 end
 
 
-end %parse_atm_data
+end %load_atm_data

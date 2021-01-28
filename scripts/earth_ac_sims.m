@@ -893,7 +893,7 @@ out = run_dej_n(x0,gnc,aero,sim,mc);
 
 %% visualize atm dispersion
 %{
-[nom, mc] = parse_atm_data(0, 'earth');
+[nom, mc] = load_atm_data(0, 'earth');
 Nk = 20;
 avgRho = nan(Nk,1);
 stdRho = avgRho;

@@ -71,7 +71,7 @@ min_alt = sim.h_min * 1e3;
 in0 = dba_n_in(max_alt,sim.planet,sim.atm_mode); % nominal dej-n input structure
 
 % Get updated atmospheric profile
-[in0.p.atm.table, ~] = parse_atm_data(in0, sim.planet);
+[in0.p.atm.table, ~] = load_atm_data(in0, sim.planet);
 in0.v.gnc.g.p.planet.atm_nom = in0.p.atm.table(:,1:7);
 in0.v.gnc.g.p.planet.atm_true = in0.p.atm.table(:,1:7);
 

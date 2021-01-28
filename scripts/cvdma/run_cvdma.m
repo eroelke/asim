@@ -71,7 +71,7 @@ chord = aero.rc0/tan(delta_c*pi/180);
 in0 = cvdma_in(sim.alt_max*1e3,sim.planet,sim.atm_mode); %create default cvdma at venus
 
 % Get updated atmospheric profile
-[in0.p.atm.table, mc_atm] = parse_atm_data(in0, sim.planet);
+[in0.p.atm.table, mc_atm] = load_atm_data(in0, sim.planet);
 
 % copy nominal table to guidance system
 in0.v.gnc.g.p_cvdma.planet.atm_table = in0.p.atm.table;

@@ -3,6 +3,10 @@
 % 
 clear;clc;
 
+%% Uniqueness of GRAM
+atm = load('./data/atm_data/atm_venus_mc.mat');
+
+
 %% DI/ECF hybrid - mc
 %{
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
@@ -55,7 +59,7 @@ legend([p1],'Jettison')
 %}
 
 %% DI/ECF hybrid - hybrid sigma v vs. performance
-% %{
+%{
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
 mc.mcIndex = 100;
 mc.N = 1;
@@ -219,8 +223,8 @@ out = run_dej_n(x0,gnc,aero,sim,mc);
 
 %}
 
-%% interpolator - MC
-%% interpolator - 'nominal' sim
+%% DI - MC
+%% DI - 'nominal' sim
 %{
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
 mc.N = 500;
@@ -248,7 +252,7 @@ out_ecrv = run_dej_n(x0,gnc,aero,sim,mc);
 
 %}
 
-%% interpolator - MEJ
+%% DI - MEJ
 %{
 [x0,aero,gnc,sim, mc] = base_venus_ac_mej(9, true);
 sim.ignore_nominal = true;
