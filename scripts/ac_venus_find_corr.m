@@ -34,7 +34,7 @@ cd = aero.cd;
 in0 = dme_venus_in; % nominal input structure
 % temp = load('C:\Users\Evan\Documents\Academics\Research\asim\data\atm_venus_mc.mat');
 % temp = load('C:\Users\Evan\Documents\Academics\Research\asim\data\atm_venus_JPL.mat');
-[nom, ~] = parse_atm_data(in0, 'venus');
+[nom, ~] = load_atm_data(in0, 'venus');
 in0.p.atm.table = nom;
 
 % Initial state: Trajectory properties
