@@ -30,11 +30,12 @@ function [x0,aero,gnc,sim,mc] = base_ac(isMc)
     gnc.atm_mode = uint8(1);    %density factor
     gnc.iters = uint8(1);
     gnc.t_init = 0;
-    gnc.p_tol = 0.05;
     gnc.hydra_flag = true;   %hybrid newton-bisection
     gnc.force_jett = false;   % don't force jettison in multi case
     gnc.comp_curr = false;   %compare secondary stage error to only last stage
     gnc.rss_flag = false;   %no atm estimation rss stuff
+    gnc.ecf.mode = uint8(0);
+    gnc.ecf.p_tol = 0.05;
     
     %navigation
     gnc.nav.mode = 1;   %monte carlo nav mode - perfect nav

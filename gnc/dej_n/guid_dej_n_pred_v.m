@@ -119,7 +119,7 @@ end % while ~plag
 % keyboard;
 % 
 % 
-% model = rho_hybrid;
+% model = rho_ecf;
 % 
 % K_nom = rho_nom / rho_true;
 % for i = 1:length(model)
@@ -142,6 +142,11 @@ end % while ~plag
 % xlabel('Density Variation');
 % ylabel('Altitude (km)');
 % legend('Hybrid','Truth','location','ne')
+% 
+% 
+% % figure(); hold on
+% % semilogy(guid.p.planet.atm_true(:,2)); hold on
+% % semilogy(guid.s.atm.atm_curr(:,2))
 % 
 % end
 

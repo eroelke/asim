@@ -46,6 +46,7 @@ p_atm = struct( ...
     'K_bounds', double([0.1, 2]), ...     % density corrector range
     'K_gain', double(0.1), ...    % density corrector gain
     'mode', uint8(0), ...   % atmospheric estimation mode (default density factor)
+    'ecf_mode', uint8(0), ...   % 0: add density factor
     'rss_flag', logical(false), ... %flag to save atm rss error
     'mc_ind', double(0), ...     % true atmosphere index (debugging, plotting purposes only)
     'ens_tol', double(0.01) ...   % ensemble tolerance (% of estimated density)

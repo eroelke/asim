@@ -94,7 +94,7 @@ if (guid.p.atm.Kflag)
         guid.s.atm.rss_ens = 0; %init rss
         
         atm_true = flip(in.p.atm.table(:,1:2));   % true density profile
-        switch (uint8(guid.p.atm.mode)) 
+        switch (atm_mode) 
             case {3,4}  % ensemble filter, hybrid
                 atm_ens = flip(guid.s.atm.atm_curr);
             otherwise
@@ -112,7 +112,7 @@ if (guid.p.atm.Kflag)
             guid.s.atm.rss_K = guid.s.atm.rss_K + ...
                 (guid.s.atm.K_dens*atm_nom(i,2) - atm_true(i,2))^2;
             
-            switch (uint8(guid.p.atm.mode))
+            switch (atm_mode)
                 case {3,4}  %ECF, DI/ECF hybrid
                     if (atm_ens(1,1) == 0)
                         % ensemble not done yet, use k_dens

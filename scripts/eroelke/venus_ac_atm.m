@@ -3,9 +3,77 @@
 % 
 clear;clc;
 
+%% Check potential of hybrid method - cheating mode, MC
+%{
+[x0,aero,gnc,sim, mc] = base_venus_ac(true);
+mc.N = 20;
+% mc.mcIndex = 10;
+sim.ignore_nominal = true;
+mc.sigs = default_sigs();
+gnc.rss_flag = true;
+gnc = exp_decay_ecrv(gnc);
+
+% gnc.atm_mode = uint8(1);    %dsf
+out_k = run_dej_n(x0,gnc,aero,sim,mc);
+% 
+gnc.atm_mode = uint8(2);    %di
+out_di = run_dej_n(x0,gnc,aero,sim,mc);
+% 
+gnc.atm_mode = uint8(3);    %hybrid
+% gnc.ecf.mode = 0x80;
+% gnc.ecf.p_tol = 0.1;
+% % scaled
+% out_ecf_scaled = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+
+% not scaled
+% mc.debug = true;
+% gnc.pred_mode = 1;  % verbose
+% gnc.ecf.mode = 0x81;    % force correct mode
+out_ecf = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+
+
+% save('../venus_ac/dej_n/atmospheric_estimation/data/ecf/test_mc.mat')
+
+%}
+
 %% Uniqueness of GRAM
+%{
 atm = load('./data/atm_data/atm_venus_mc.mat');
 
+alt = atm.nom_table(:,1);
+nom = atm.nom_table(:,2);
+disp = nan(1000,1000);
+rss_err = nan(1000,1);
+indices = 1:1:1000;
+for i = 1:1000
+    disp(:,i) = atm.mc(i).table(:,2);
+
+    % compute rss error to nom
+    rss = 0;
+    for j = 1:1000
+        err = (disp(j,i) - nom(j))^2;
+        rss = rss + err;
+    end
+    rss_err(i) = sqrt(rss);
+end
+
+
+figure(); hold on; grid on
+title('VenusGRAM RSS Errors')
+set(gca,'FontSize',14)
+%histogram(rss_err,'NumBins',50)
+plot(indices, rss_err,'*')
+plot(100, rss_err(100),'k*','LineWidth',2)
+plot(369,rss_err(369),'r*','LineWidth',2)
+plot(68,rss_err(68),'b*','LineWidth',2)
+plot(227,rss_err(227),'g*','LineWidth',2)
+plot(780,rss_err(780),'y*','LineWidth',2)
+plot(798,rss_err(798),'c*','LineWidth',2)
+xlabel('GRAM Index')
+ylabel('RSS Error')
+legend('Range','Truth-100','369','68','227','780','798')
+
+%}
 
 %% DI/ECF hybrid - mc
 %{
@@ -24,7 +92,7 @@ gnc.atm_mode = uint8(2);    %di
 out_di = run_dej_n(x0,gnc,aero,sim,mc);
 
 gnc.atm_mode = uint8(4);    %hybrid
-gnc.p_tol = 0.1;
+gnc.ecf.p_tol = 0.1;
 out_ecf = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 
 
@@ -68,7 +136,7 @@ mc.sigs = zero_sigs();
 gnc.rss_flag = true;
 % gnc.pred_mode = 1;  % verbose
 gnc.atm_mode = uint8(4);    %hybrid
-gnc.p_tol = 0.02;
+gnc.ecf.p_tol = 0.02;
 
 sigs = linspace(0, 1, 100)'; % percent
 
@@ -109,7 +177,7 @@ title(['GRAM Index ' num2str(mc.mcIndex)]);
 %}
 
 %% DI/ECF hybrid - mc on single index
-%{
+% %{
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
 mc.mcIndex = 100;
 mc.N = 1;
@@ -118,10 +186,12 @@ mc.sigs = default_sigs();
 gnc.rss_flag = true;
 gnc = exp_decay_ecrv(gnc);
 gnc.atm_mode = uint8(4);    %hybrid
-gnc.p_tol = 0.02;
+gnc.ecf.p_tol = 0.02;
 % mc.debug = true;
 
-for i = 1:1000
+N = 50;
+
+for i = 1:N
 out = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 err(i) = out.haf_err;
 t(:,i) = out.traj.t;
@@ -165,7 +235,7 @@ gnc = exp_decay_ecrv(gnc);
 
 % out_k = run_dej_n(x0,gnc,aero,sim,mc);
 gnc.atm_mode = uint8(4);    %hybrid
-gnc.p_tol = 0.02;
+gnc.ecf.p_tol = 0.02;
 mc.debug = true;
 out = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 %}
@@ -182,7 +252,7 @@ gnc.rss_flag = true;
 
 out_k = run_dej_n(x0,gnc,aero,sim,mc);
 gnc.atm_mode = uint8(3);    %ecf
-gnc.p_tol = 0.05;
+gnc.ecf.p_tol = 0.05;
 % mc.debug = true;
 out = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 
@@ -217,7 +287,7 @@ gnc.atm_mode = uint8(1);    %dsf
 out_k = run_dej_n(x0,gnc,aero,sim,mc);
 
 gnc.atm_mode = uint8(3);    %ecf
-gnc.p_tol = 0.05;
+gnc.ecf.p_tol = 0.05;
 % mc.debug = true;
 out = run_dej_n(x0,gnc,aero,sim,mc);
 
@@ -578,27 +648,3 @@ legend([p1,p2],'\mu \pm 3\sigma', ...
 
 %}
 
-
-function gnc = exp_decay_ecrv(gnc)
-gnc.nav = nav_msl();
-gnc.nav.mode = 5;
-gnc.nav.rate = 100;  %hz
-gnc.nav.tau_ecrv = 100;
-gnc.nav.tau_r = 400;
-gnc.nav.tau_v = 400;
-gnc.nav.tau_a = 1000;
-sx0 = 100 / 3;   % position sigma each axis
-sy0 = sx0;
-sz0 = sx0;
-svx0 = 3.7e-3 / 3;   % velocity sigma each acis
-svy0 = svx0;
-svz0 = svx0;
-% P0 = zeros(9,9);
-P0 = diag([sx0^2, sy0^2, sz0^2, svx0^2, svy0^2, svz0^2]);   %covariance matrix
-P0(7:9,7:9) = eye(3)*(9.81*.05*1e-6 / 3)^2;  %.05 micro-gs
-gnc.nav.mode = 5;
-gnc.nav.P_SS = P0;
-gnc.nav.ercv0 = [normrnd(0,sx0,[3,1]); ...      %r_atm uncertainty
-    normrnd(0,svx0,[3,1]); ...   %v_atm uncertainty
-    normrnd(0,P0(7,7),[3,1])]; 
-end
