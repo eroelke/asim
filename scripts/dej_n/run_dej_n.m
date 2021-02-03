@@ -117,9 +117,10 @@ in0.v.aero.nose_radius = aero.rn; % Nose radius (m)
 in0.v.gnc.g.p.atm.K_gain = 0.2;
 in0.v.gnc.g.p.atm.K_bounds = [0.01 2];
 in0.v.gnc.g.p.atm.Kflag = false;     % flag to do density estimate (for monte carlo)
-in0.v.gnc.g.p.atm.ens_tol = gnc.p_tol;  % tolerance on ensemble search range (% of density estimate)
+in0.v.gnc.g.p.atm.ens_tol = gnc.ecf.p_tol;  % tolerance on ensemble search range (% of density estimate)
 in0.v.gnc.g.p.atm.rss_flag = gnc.rss_flag;
 in0.v.gnc.g.p.atm.mode = uint8(gnc.atm_mode);   %atmospheric estimation mode
+in0.v.gnc.g.p.atm.ecf_mode = uint8(gnc.ecf.mode);
 in0.v.gnc.g.p.planet.alt_max = max_alt;
 in0.v.gnc.g.p.planet.alt_min = min_alt;
 in0.v.gnc.g.p.planet.mode = uint8(sim.atm_mode); %guidance density mode
@@ -328,7 +329,10 @@ if (mc.flag)
             in0.v.gnc.n.p.n_exp.tau_v = gnc.nav.tau_v;
             in0.v.gnc.n.p.n_exp.tau_a = gnc.nav.tau_a;
             in0.v.gnc.n.p.n_exp.P0 = gnc.nav.P_SS;
-            in0.v.gnc.n.p.n_exp.ercv0 = gnc.nav.ercv0;
+%             in0.v.gnc.n.p.n_exp.ercv0 = ...            
+%                 [normrnd(0,gnc.nav.ercv0(1:3),[3,1]); ...      %r_atm uncertainty
+%                 normrnd(0,gnc.nav.ercv0(4:6),[3,1]); ...   %v_atm uncertainty
+%                 normrnd(0,gnc.nav.ercv0(7:9),[3,1])];
     end
     
     in0.v.gnc.g.p_dej_n.npc_mode = uint8(gnc.npc_mode);
@@ -395,7 +399,24 @@ if (mc.flag)
         par = parcluster('local');
         par.NumWorkers = sim.nWorkers;
     end
-
+    
+    % nav error values
+    nav_mode = gnc.nav.mode;
+    if (nav_mode == uint8(5))
+        if (isempty(mc.mcIndex))
+            len = N;
+        else
+            len = length(mc.mcIndex);
+        end
+            
+        ecrv0 = zeros(9,len);
+        for i = 1:len
+            ecrv0(:,i) = [normrnd(0,gnc.nav.ercv0(1:3),[3,1]); ...      %r_atm uncertainty
+                normrnd(0,gnc.nav.ercv0(4:6),[3,1]); ...   %v_atm uncertainty
+                normrnd(0,gnc.nav.ercv0(7:9),[3,1])];
+        end
+    end
+        
     parfor (i = 1:N, parArg)  % run in parallel processing (need parallel computing toolbox)
 %     for i = 1:N
         in_mc = in0;        % copy nominal input struct
@@ -404,6 +425,12 @@ if (mc.flag)
         in_mc.v.gnc.g.p.planet.atm_true = temp(:,:,i);
 %         in_mc.v.gnc.g.p_dej_n.atm.mc_ind = rnd(i);  % atmosphere index
         in_mc.v.gnc.g.p.atm.mc_ind = rnd(i);
+        
+        % nav error
+        switch (nav_mode)
+            case 5 %ecrv hybrid
+                in_mc.v.gnc.n.p.n_exp.ercv0 = ecrv0(:,i);
+        end
         
         % apply input perturbations (only to traj. guid struct has nominal)
         in_mc = apply_dispersions(in_mc,sigs);
@@ -512,6 +539,7 @@ if (mc.flag)
     out.g.K_dens = K_dens;  %density scale factor
     out.g.K_true = K_true;  %true density dispersion factor
     out.g.rho_est = rho_est;    % density estimate
+    out.g.mc_inds = rnd;
 %     out.g.atm_err = atm_err;    % atmospheric density error
     switch (mode)
         case 'dej_n'
@@ -538,9 +566,10 @@ if (mc.flag)
     out.idxend = idend;
     
     % nav
-%     out.rva_err = rva_err;
-%     out.ercv = ercv;
-%     out.x_ercv = x_ercv;
+    out.g.nav.ecrv0 = ecrv0;
+%     out.g.nav.rva_err = rva_err;
+%     out.g.nav.ercv = ercv;
+%     out.g.nav.x_ercv = x_ercv;
     
     
 end % monte carlo check
