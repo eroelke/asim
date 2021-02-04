@@ -358,7 +358,8 @@ if (mc.flag)
     ha = vmag; ha_err = vmag; 
     rva_err = nan(len,9,N); ercv = rva_err; x_ercv = ercv;
 %     ncalls = vmag; 
-    tj_curr = vmag; K_dens = vmag; K_true = vmag; rho_est = vmag;
+    tj_curr = vmag; K_dens = vmag; K_true = vmag;
+    K_model = vmag; rho_model = vmag;
     atm_err = vmag;
     rss_nom = nan(mc.N,1);
     rss_K = vmag; rss_ecf = vmag;
@@ -382,8 +383,11 @@ if (mc.flag)
     if isempty(mc.mcIndex)
         for i = 1:N
             rnd(i) = randi(size(mc_atm,2));
-            temp(:,:,i) = mc_atm(rnd(i)).table; %random disperse atmosphere
-    %         temp(:,:,i) = mc_atm(i).table;    %atmospheres in order
+            if (mc.ordered)
+                temp(:,:,i) = mc_atm(i).table;    %atmospheres in order
+            else
+                temp(:,:,i) = mc_atm(rnd(i)).table; %random disperse atmosphere
+            end
         end
     else
         rnd(1:length(mc.mcIndex)) = mc.mcIndex;
@@ -402,14 +406,13 @@ if (mc.flag)
     
     % nav error values
     nav_mode = gnc.nav.mode;
+    if (isempty(mc.mcIndex))
+        len = N;
+    else
+        len = length(mc.mcIndex);
+    end
+    ecrv0 = zeros(9,len);
     if (nav_mode == uint8(5))
-        if (isempty(mc.mcIndex))
-            len = N;
-        else
-            len = length(mc.mcIndex);
-        end
-            
-        ecrv0 = zeros(9,len);
         for i = 1:len
             ecrv0(:,i) = [normrnd(0,gnc.nav.ercv0(1:3),[3,1]); ...      %r_atm uncertainty
                 normrnd(0,gnc.nav.ercv0(4:6),[3,1]); ...   %v_atm uncertainty
@@ -417,8 +420,8 @@ if (mc.flag)
         end
     end
         
-    parfor (i = 1:N, parArg)  % run in parallel processing (need parallel computing toolbox)
-%     for i = 1:N
+%     parfor (i = 1:N, parArg)  % run in parallel processing (need parallel computing toolbox)
+    for i = 1:N
         in_mc = in0;        % copy nominal input struct
 
         in_mc.p.atm.table = temp(:,:,i);    % new atmospheric table
@@ -468,28 +471,33 @@ if (mc.flag)
 %         out.traj(i).rho = out_mc.traj.rho;
         
         for j = 1:n
-            tjett = (find(out_mc.g.(mode).stage == j,1)-1)/(in0.s.data_rate);
-            if isempty(tjett)
+            % get jettison index. +1 to account for extra data point at
+            % jettison
+            idj = (find(out_mc.g.(mode).stage == j,1)-1) + 1;
+%             tjett = (find(out_mc.g.(mode).stage == j,1)-1)/(in0.s.data_rate);
+            if isempty(idj)
                 t_jett(i,j) = nan;
                 tjr(i,j) = nan;
                 idj(i,j) = nan;
             else
-                t_jett(i,j) = tjett;
-                tjr(i,j) = tjett / out_mc.traj.time(idxend);
-                idjTemp = find(t(:,i) >= t_jett(i,j),1);    % check if jettison final time step
-                if isempty(idjTemp)
-                    idj(i,j) = nan;
+                if (idxend > idj)
+                    idj(i,j) = idj;
                 else
-                    idj(i,j) = idjTemp;
+                    idj(i,j) = out.idxend;
                 end
+                t_jett(i,j) = out_mc.traj.time(idj(i,j));
+                tjr(i,j) = t_jett(i,j) / out_mc.traj.time(idxend);
+%                 idjTemp = find(t(:,i) >= t_jett(i,j),1);    % check if jettison final time step
+                idj(i,j) = idj;
             end
         end
        
         ha_err(:,i) = out_mc.g.(mode).dr_ap./1000;  %km
         K_dens(:,i) = out_mc.g.K_dens;  % estimated density variation (nd)
         K_true(:,i) = out_mc.g.K_true;
+        K_model(:,i) = out_mc.g.K_model;
+        rho_model(:,i) = out_mc.g.rho_model;    % estimated density (kg/m3)
         
-        rho_est(:,i) = out_mc.g.rho_est;    % estimated density (kg/m3)
         switch (mode)
             case 'dej_n'
                 ha(:,i) = out_mc.g.dej_n.r_ap./1000;
@@ -538,7 +546,8 @@ if (mc.flag)
     out.g.ha_err = ha_err;
     out.g.K_dens = K_dens;  %density scale factor
     out.g.K_true = K_true;  %true density dispersion factor
-    out.g.rho_est = rho_est;    % density estimate
+    out.g.K_model = K_model;
+    out.g.rho_model = rho_model;    % density estimate
     out.g.mc_inds = rnd;
 %     out.g.atm_err = atm_err;    % atmospheric density error
     switch (mode)
@@ -566,7 +575,7 @@ if (mc.flag)
     out.idxend = idend;
     
     % nav
-    out.g.nav.ecrv0 = ecrv0;
+%     out.g.nav.ecrv0 = ecrv0;
 %     out.g.nav.rva_err = rva_err;
 %     out.g.nav.ercv = ercv;
 %     out.g.nav.x_ercv = x_ercv;
