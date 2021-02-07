@@ -65,12 +65,13 @@ if (guid.p.atm.Kflag)
     dens_est = (2*mass*A_mag) / ( (V_pf_mag^2)*area_ref*cd ); % kg/m^3
     [lat,~] = get_lat_lon(nav.s.r_pcpf,re,rp);
     alt = get_alt(nav.s.r_pcpf,re,rp,lat);
+    guid.s.atm.rho_K = dens_est;
     
     % get nominal atmospheric density
-    dens_model = lin_interp(atm_nom(:,1), atm_nom(:,2),alt); % kg/m^3
+    dens_nom = lin_interp(atm_nom(:,1), atm_nom(:,2),alt); % kg/m^3
     
     % Density multiplier
-    K_dens = dens_est/dens_model; % nd
+    K_dens = dens_est/dens_nom; % nd
     
     % if very large K_dens (eg. on jettison time step), keep same
     % sort of defeats the purpose of the low-pass filter but meh
@@ -85,9 +86,10 @@ if (guid.p.atm.Kflag)
     guid.s.atm.K_dens = K_gain*K_dens + (1 - K_gain)*guid.s.atm.K_dens; % nd
 
     % save truth value
-    guid.s.atm.rho_est = lin_interp(in.p.atm.table(:,1),in.p.atm.table(:,2),alt);    
-    guid.s.atm.K_true = guid.s.atm.rho_est / dens_model;
+    guid.s.atm.rho_true = lin_interp(in.p.atm.table(:,1),in.p.atm.table(:,2),alt);    
+    guid.s.atm.K_true = guid.s.atm.rho_true / dens_nom;
     
+    atm_curr = guid.s.atm.atm_curr;
     % get rss error of atmospheric estimates
     if (guid.p.atm.rss_flag)
         guid.s.atm.rss_K = 0;   %init rss
@@ -96,7 +98,7 @@ if (guid.p.atm.Kflag)
         atm_true = flip(in.p.atm.table(:,1:2));   % true density profile
         switch (atm_mode) 
             case {3,4}  % ensemble filter, hybrid
-                atm_ens = flip(guid.s.atm.atm_curr);
+                atm_ens = flip(atm_curr);
             otherwise
                 atm_ens = nan;
         end
@@ -144,20 +146,38 @@ if (guid.p.atm.Kflag)
         guid.s.atm.rss_ens = nan;
     end %check save rss
     
+    % save model density
+    switch (atm_mode)
+        case 2
+            guid.s.atm.rho_model = dens_est;
+            guid.s.atm.K_model = guid.s.atm.K_dens;
+        case {3,4}
+            % save current atmospheric model val
+            guid.s.atm.rho_model = lin_interp(atm_curr(:,1), atm_curr(:,2), alt);
+            if (guid.s.atm.rho_model == 0)
+                guid.s.atm.K_model = 1;
+            else
+                guid.s.atm.K_model = guid.s.atm.rho_model / dens_nom;
+            end
+    end
+    
     % save density history
     switch (atm_mode)
         case {2,3,4}  % density interpolator, ensemble filter, hybrid
-            if alt <= guid.s.atm.atm_hist(guid.s.atm.atm_ind,1)
+            if (guid.s.atm.atm_ind <= 1000 && alt <= guid.s.atm.atm_hist(guid.s.atm.atm_ind,1))
                 % this alt hasnt saved atm data yet
                 T = calcs.T + normrnd(0,in.s.sigs.T_sens);
                 pres = calcs.pres + normrnd(0,in.s.sigs.P_sens);
                 
                 % rewrite alt at this step
                 guid.s.atm.atm_hist(guid.s.atm.atm_ind,:) = [alt dens_est T pres];
-                guid.s.atm.atm_ind = guid.s.atm.atm_ind + 1;    %index++
+                
+                % limit index size of array
+                if (guid.s.atm.atm_ind < 1000)
+                    guid.s.atm.atm_ind = guid.s.atm.atm_ind + 1;    %index++
+                end
             else
                 % on upswing out of atm
-                %  -> horizontal atmospheric modeling
             end
         otherwise
             % do nothing
