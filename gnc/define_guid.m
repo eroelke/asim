@@ -49,6 +49,7 @@ p_atm = struct( ...
     'ecf_mode', uint8(0), ...   % 0: add density factor
     'rss_flag', logical(false), ... %flag to save atm rss error
     'mc_ind', double(0), ...     % true atmosphere index (debugging, plotting purposes only)
+    'ecf_threshold', double(1.3),  ... % threshold to use ECF value
     'ens_tol', double(0.01) ...   % ensemble tolerance (% of estimated density)
 );
 
@@ -98,16 +99,19 @@ p = struct( ...
 s_atm = struct( ...
     'K_dens', double(1), ...    % density factor from main guidance computer
     'K_true', double(1), ...    % density factor of actual atmosphere
-    'rho_est', double(0), ...   % current density estimate
+    'K_model', double(1), ...   % DI/ECF atm model variation
+    'rho_true', double(0), ...   % current density val
+    'rho_K', double(0), ...   % density estimate from main guidance comp
+    'rho_model', double(0), ...  % density estimate from model (DI, ECF)
     'atm_ind', double(1), ...   % index of current density history loc
     'atm_hist',double(nan(1000,4)), ...  % atmospheric history (alt, rho, T, P)
-    'rho_K', double(0), ...   % density estimate from main guidance comp
     'atm_err', double(0), ...   % std error in the total atmosphere
     'rss_nom', double(0), ...   %rss error for nominal atm
     'rss_K', double(0), ... % rss error for density corrector
     'rss_ens', double(0), ...    %rss error for ensemble filter
     'atm_curr', zeros(1000,2), ...  % altitude, rho table of current best atm estimate
     'ecf_scores', zeros(1002,1), ...    % score for monte carlo indices
+    'ind_rss', double(0), ...   % rss error for current ECF index
     'ind_curr', double(0) ...  % ensemble filter mc index
 );
 

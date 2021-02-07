@@ -59,9 +59,11 @@ atm = lin_interp(guid.p.planet.atm_nom(:,1), ...
 rho_nom = atm(1);
 wind = [atm(4) atm(5) atm(6)];  % east; north; vertical
 atm_curr = guid.s.atm.atm_curr; %current atmospheric model
+atm_true = guid.p.planet.atm_true;
 
 rho_K = rho_nom*K_dens; % density corrector on nominal atm model (for monte carlo)    
-rho_true = rho_nom * guid.s.atm.K_true;
+% rho_true = rho_nom * guid.s.atm.K_true;
+rho_true = lin_interp( atm_true(:,1), atm_true(:,2), alt );
 rho_di = calc_rho_interp( alt, guid.s.atm.atm_hist, K_dens*atm(1) );
 rho_ecf = lin_interp( atm_curr(:,1), atm_curr(:,2), alt );
 
