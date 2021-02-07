@@ -56,13 +56,15 @@ function dat = store_dat( calcs, i, ti, y, veh, guid, nav, ctrl, dat, in )
     % general guidance params
     dat.g.K_dens(i) = guid.s.atm.K_dens;    % density corrector variation estimate
     dat.g.K_true(i) = guid.s.atm.K_true;    % true atmospheric density variation
-    dat.g.rho_est(i) = guid.s.atm.rho_est;
+    dat.g.rho_model(i) = guid.s.atm.rho_model;  % estimation mode rho
+    dat.g.K_model(i) = guid.s.atm.K_model;  % estimation mode rho scale
     
     % atmospheric estimate rss errs
     dat.g.rss_nom = guid.s.atm.rss_nom; %static value, nominal/true profiles never changes
     dat.g.rss_K(i) = guid.s.atm.rss_K;
     dat.g.rss_ens(i) = guid.s.atm.rss_ens;
     dat.g.ind_curr(i) = guid.s.atm.ind_curr - 1;
+    dat.g.ind_rss(i) = guid.s.atm.ind_rss;
     % Vehicle data
     dat.veh.area_ref(i) = veh.s.area_ref; % m^2
     

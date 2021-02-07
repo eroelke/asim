@@ -256,7 +256,7 @@ out.haf_err = round((haf - gnc.ha_tgt),5);    %km
 out.dv = round(dv,5);
 out.idxend = idxend;
 for i = 1:gnc.n
-    idj = find(out.g.(mode).stage == i,1);
+    idj = find(out.g.(mode).stage == i,1) +1;   % to handle additional jettison data point
     if ~isempty(idj)
         if (idxend > idj)
             out.idj(i) = idj;
@@ -364,6 +364,7 @@ if (mc.flag)
     rss_nom = nan(mc.N,1);
     rss_K = vmag; rss_ecf = vmag;
     ind_curr = vmag;
+    ind_rss = vmag;
     
     % more preallocation
     haf = nan(N,1);
@@ -420,13 +421,12 @@ if (mc.flag)
         end
     end
         
-%     parfor (i = 1:N, parArg)  % run in parallel processing (need parallel computing toolbox)
-    for i = 1:N
+    parfor (i = 1:N, parArg)  % run in parallel processing (need parallel computing toolbox)
+%     for i = 1:N
         in_mc = in0;        % copy nominal input struct
 
         in_mc.p.atm.table = temp(:,:,i);    % new atmospheric table
         in_mc.v.gnc.g.p.planet.atm_true = temp(:,:,i);
-%         in_mc.v.gnc.g.p_dej_n.atm.mc_ind = rnd(i);  % atmosphere index
         in_mc.v.gnc.g.p.atm.mc_ind = rnd(i);
         
         % nav error
@@ -437,9 +437,6 @@ if (mc.flag)
         
         % apply input perturbations (only to traj. guid struct has nominal)
         in_mc = apply_dispersions(in_mc,sigs);
-        
-        % FOR TESTING ONLY
-%         in_mc.p.atm.mc = mc_atm;
         
         %%% Run Monte Carlo %%%
         if (debug && parArg == 0)
@@ -488,7 +485,7 @@ if (mc.flag)
                 t_jett(i,j) = out_mc.traj.time(idj(i,j));
                 tjr(i,j) = t_jett(i,j) / out_mc.traj.time(idxend);
 %                 idjTemp = find(t(:,i) >= t_jett(i,j),1);    % check if jettison final time step
-                idj(i,j) = idj;
+%                 idj(i,j) = idj;
             end
         end
        
@@ -514,6 +511,7 @@ if (mc.flag)
         rss_K(:,i) = out_mc.g.rss_K;
         rss_ecf(:,i) = out_mc.g.rss_ens;
         ind_curr(:,i) = out_mc.g.ind_curr;
+        ind_rss(:,i) = out_mc.g.ind_rss;
         
         % calculate apoapsis
         rv = [out_mc.traj.pos_ii(idxend,:), out_mc.traj.vel_ii(idxend,:)]';
@@ -561,6 +559,7 @@ if (mc.flag)
             out.g.atm.rss_K = rss_K;        % scale factor RSS error
             out.g.atm.rss_ecf = rss_ecf;    % ensemble filter RSS error
             out.g.atm.ind_curr = ind_curr;  % ecf index
+            out.g.atm.ind_rss = ind_rss;
         case 'pd'
             out.g.dr_ap = ha_err;
         case 'manual'
