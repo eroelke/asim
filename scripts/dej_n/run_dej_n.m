@@ -470,15 +470,15 @@ if (mc.flag)
         for j = 1:n
             % get jettison index. +1 to account for extra data point at
             % jettison
-            temp = (find(out_mc.g.(mode).stage == j,1)-1) + 1;
+            jett_ind = (find(out_mc.g.(mode).stage == j,1)-1) + 1;
 %             tjett = (find(out_mc.g.(mode).stage == j,1)-1)/(in0.s.data_rate);
-            if isempty(temp)
+            if isempty(jett_ind)
                 t_jett(i,j) = nan;
                 tjr(i,j) = nan;
                 idj(i,j) = nan;
             else
-                if (idxend > temp)
-                    idj(i,j) = temp;
+                if (idxend > jett_ind)
+                    idj(i,j) = jett_ind;
                 else
                     idj(i,j) = idxend;
                 end
