@@ -28,9 +28,9 @@ if (alt >= atm_model(idend,1))
             T = atm_model(1,3);
             P = atm_model(1,4);
         else
-            rho_model = interp1(atm_model(ind-1:ind,1),atm_model(ind-1:ind,2),alt);
-            T = interp1(atm_model(ind-1:ind,1),atm_model(ind-1:ind,3),alt);
-            P = interp1(atm_model(ind-1:ind,1),atm_model(ind-1:ind,4),alt);
+            rho_model = lin_interp(atm_model(ind-1:ind,1),atm_model(ind-1:ind,2),alt);
+            T = lin_interp(atm_model(ind-1:ind,1),atm_model(ind-1:ind,3),alt);
+            P = lin_interp(atm_model(ind-1:ind,1),atm_model(ind-1:ind,4),alt);
         end
     else
         rho_model = nan;

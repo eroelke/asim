@@ -69,10 +69,10 @@ while ~pflag
     t = t + h;
     
     %% Check termination conditions
-    if alt > guid.p.planet.alt_max
+    if alt >= guid.p.planet.alt_max
         pflag = 1; % Maximum altitude exceeded
         break;
-    elseif alt < guid.p.planet.alt_min
+    elseif alt <= guid.p.planet.alt_min
         pflag = 2; % Minimum altitude exceeded
         break;
 %     elseif t > p.t_max

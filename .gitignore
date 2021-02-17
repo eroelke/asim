@@ -5,3 +5,4 @@ data/aero_data/
 data/dcfj_data/
 data/*.mat
 
+data/atm_data/*.mat

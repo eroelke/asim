@@ -84,7 +84,6 @@ nav = navigation( ttvec(i), i, calcs_curr, nav_rnd, nav );
 guid = guidance( in, calcs_curr, ttvec(i), i, nav, guid );
 [ctrl,guid,veh] = control( calcs_curr, ttvec(i), i, nav, guid, ctrl, veh );
 
-
 % Store data
 dat = store_dat( calcs_curr, di, ti, y0, veh, guid, nav, ctrl, dat, in );
 
@@ -135,14 +134,13 @@ for i = 2:N
         end
         break; % Terminate integration
     end
-
+    
     %% Flight computer (GNC)
     % density corrector (decouple from guidance func)
     guid = est_atm( in,guid,nav,calcs_curr );
     nav = navigation( ttvec(i), i, calcs_curr, nav_rnd, nav );
     guid = guidance( in, calcs_curr, ttvec(i), i, nav, guid );
     [ctrl,guid,veh] = control( calcs_curr, ttvec(i), i, nav, guid, ctrl, veh );
-    
     
     %% Effectors (vehicle state changes)
     % [Y1, veh] = effectors( ctrl, Y1, veh ); % DOES NOT CURRENTLY EXIST

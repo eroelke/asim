@@ -171,7 +171,9 @@ switch (gnc.mode)
         in0.v.gnc.g.p_dej_n.tgt_ap = gnc.ha_tgt*1000; % m, target apoapse
         in0.v.gnc.g.p_dej_n.tol_ap = gnc.ha_tol*1000; % m, apoapse tolerance
         in0.v.gnc.g.p_dej_n.npc_mode = uint8(gnc.npc_mode);   % root finding method (1 = newton, 0=bisection)
-        in0.v.gnc.g.p_dej_n.pred_mode = uint8(gnc.pred_mode);   % predictor mode (0 normal, 1 verbose)
+        if (mc.debug)
+            in0.v.gnc.g.p_dej_n.pred_mode = uint8(gnc.pred_mode);   % predictor mode (0 normal, 1 verbose)
+        end
         in0.v.gnc.g.p_dej_n.t_init = gnc.t_init;
 
         in0.v.gnc.g.p_dej_n.multi.force_jett = gnc.force_jett;
@@ -289,39 +291,27 @@ if (mc.flag)
     
     % navigation settings
     if (gnc.nav.rate == 0)
-        gnc.nav.rate = 20;
+        gnc.nav.rate = 20;  % default
     end
+    in0.v.gnc.n.p.rate = gnc.nav.rate; % Hz
+    in0.v.gnc.n.p.mode = uint8(gnc.nav.mode);
+    in0.v.gnc.n.p.seed = uint32(gnc.nav.seed);
+    in0.v.gnc.n.p.atm.omega = in0.p.omega; % rad/s, planet angular velocity vector
+    in0.v.gnc.n.p.atm.r_e = in0.p.r_e; % m, planet equatorial radius
+    in0.v.gnc.n.p.atm.r_p = in0.p.r_p; % m, planet polar radius
     switch (gnc.nav.mode)
         case 2 %ecrvs
-            in0.v.gnc.n.p.mode = uint8(gnc.nav.mode); % Use Markov process/ECRV error model
-            in0.v.gnc.n.p.rate = gnc.nav.rate; % Hz
-            in0.v.gnc.n.p.seed = uint32(gnc.nav.seed); % nd, Error model seed
             in0.v.gnc.n.p.ecrv.tau = gnc.nav.tau; % s, time constant
-            in0.v.gnc.n.p.atm.omega = in0.p.omega; % rad/s, planet angular velocity vector
-            in0.v.gnc.n.p.atm.r_e = in0.p.r_e; % m, planet equatorial radius
-            in0.v.gnc.n.p.atm.r_p = in0.p.r_p; % m, planet polar radius
             in0.v.gnc.n.p.ecrv.P_SS = gnc.nav.P_SS;
             in0.v.gnc.n.p.ecrv.P_SS(7:9,7:9) = eye(3)*(90*in0.c.earth_g*1e-6 / 3)^2; % m/s^2, 90 micro-g, 3-sigma
         
         case 3  %exponential decay
-            in0.v.gnc.n.p.mode = uint8(gnc.nav.mode); % Use Markov process/ECRV error model
-            in0.v.gnc.n.p.rate = gnc.nav.rate; % Hz
-            in0.v.gnc.n.p.seed = uint32(gnc.nav.seed); % nd, Error model seed
-            in0.v.gnc.n.p.atm.omega = in0.p.omega; % rad/s, planet angular velocity vector
-            in0.v.gnc.n.p.atm.r_e = in0.p.r_e; % m, planet equatorial radius
-            in0.v.gnc.n.p.atm.r_p = in0.p.r_p; % m, planet polar radius
             in0.v.gnc.n.p.n_exp.tau_r = gnc.nav.tau_r;
             in0.v.gnc.n.p.n_exp.tau_v = gnc.nav.tau_v;
             in0.v.gnc.n.p.n_exp.tau_a = gnc.nav.tau_a;
             in0.v.gnc.n.p.n_exp.P0 = gnc.nav.P_SS;
         
         case 5 %exp-decay ecrv
-            in0.v.gnc.n.p.mode = uint8(gnc.nav.mode);
-            in0.v.gnc.n.p.rate = gnc.nav.rate;
-            in0.v.gnc.n.p.seed = uint32(gnc.nav.seed);
-            in0.v.gnc.n.p.atm.omega = in0.p.omega; % rad/s, planet angular velocity vector
-            in0.v.gnc.n.p.atm.r_e = in0.p.r_e; % m, planet equatorial radius
-            in0.v.gnc.n.p.atm.r_p = in0.p.r_p; % m, planet polar radius
             % ecrv data
             in0.v.gnc.n.p.ecrv.tau = gnc.nav.tau_ecrv; % s, ecrv time constant
             % n_exp data
@@ -384,7 +374,8 @@ if (mc.flag)
     if isempty(mc.mcIndex)
         for i = 1:N
             rnd(i) = randi(size(mc_atm,2));
-            if (mc.ordered)
+            if (mc.ordered) % run MC indices in order
+                rnd(i) = i;
                 temp(:,:,i) = mc_atm(i).table;    %atmospheres in order
             else
                 temp(:,:,i) = mc_atm(rnd(i)).table; %random disperse atmosphere
@@ -413,12 +404,19 @@ if (mc.flag)
         len = length(mc.mcIndex);
     end
     ecrv0 = zeros(9,len);
-    if (nav_mode == uint8(5))
-        for i = 1:len
-            ecrv0(:,i) = [normrnd(0,gnc.nav.ercv0(1:3),[3,1]); ...      %r_atm uncertainty
-                normrnd(0,gnc.nav.ercv0(4:6),[3,1]); ...   %v_atm uncertainty
-                normrnd(0,gnc.nav.ercv0(7:9),[3,1])];
-        end
+    
+    switch (nav_mode)
+        case 5 %ecrv hybrid
+            ecrv_mode = gnc.nav.ecrv_mode;
+            for i = 1:len
+                ecrv0(:,i) = [normrnd(0,gnc.nav.ercv0(1:3),[3,1]); ...      %r_atm uncertainty
+                    normrnd(0,gnc.nav.ercv0(4:6),[3,1]); ...   %v_atm uncertainty
+                    normrnd(0,gnc.nav.ercv0(7:9),[3,1])];
+            end
+        case 6 %predetermined ecrv hybrid
+            r_errors = gnc.nav.r_err;
+            v_errors = gnc.nav.v_err;
+            a_errors = gnc.nav.a_err;
     end
         
     parfor (i = 1:N, parArg)  % run in parallel processing (need parallel computing toolbox)
@@ -433,6 +431,9 @@ if (mc.flag)
         switch (nav_mode)
             case 5 %ecrv hybrid
                 in_mc.v.gnc.n.p.n_exp.ercv0 = ecrv0(:,i);
+            case 6 % pre determined ecrv hybrid errors
+                in_mc.v.gnc.n.p.rva_errs(:,1:size(r_errors(:,:,i),2)) = ... 
+                    [r_errors(:,:,i);v_errors(:,:,i);a_errors(:,:,i)];
         end
         
         % apply input perturbations (only to traj. guid struct has nominal)

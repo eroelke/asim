@@ -63,8 +63,7 @@ if (guid.p.atm.Kflag)
     
     % Estimate density
     dens_est = (2*mass*A_mag) / ( (V_pf_mag^2)*area_ref*cd ); % kg/m^3
-    [lat,~] = get_lat_lon(nav.s.r_pcpf,re,rp);
-    alt = get_alt(nav.s.r_pcpf,re,rp,lat);
+    alt = calcs.alt;
     guid.s.atm.rho_K = dens_est;
     
     % get nominal atmospheric density
@@ -86,12 +85,12 @@ if (guid.p.atm.Kflag)
     guid.s.atm.K_dens = K_gain*K_dens + (1 - K_gain)*guid.s.atm.K_dens; % nd
 
     % save truth value
-    guid.s.atm.rho_true = lin_interp(in.p.atm.table(:,1),in.p.atm.table(:,2),alt);    
+    guid.s.atm.rho_true = calcs.rho;
     guid.s.atm.K_true = guid.s.atm.rho_true / dens_nom;
     
     atm_curr = guid.s.atm.atm_curr;
     % get rss error of atmospheric estimates
-    if (guid.p.atm.rss_flag)
+    if (atm_curr(1,1) ~= 0 && guid.p.atm.rss_flag)
         guid.s.atm.rss_K = 0;   %init rss
         guid.s.atm.rss_ens = 0; %init rss
         

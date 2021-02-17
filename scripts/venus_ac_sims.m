@@ -1970,49 +1970,49 @@ keyboard;
 %}
 
 %% Nominal NPC
-%{
+% %{
 clear;clc
-[x0,aero,gnc,sim,mc] = base_venus_ac();
+[x0,aero,gnc,sim,mc] = base_venus_ac(false);
 gnc.guid_rate = 0.5;
 gnc.ha_tol = 5;
 gnc.tj0 = 90;
 gnc.hydra_flag = true;
 gnc.dtj_lim = 10;
 mc.flag = false;
-sim.traj_rate = 1000;
+sim.traj_rate = 100;
 sim.data_rate = 1;
 gnc.npc_mode = uint8(1);
+gnc.ha_tgt = 10000;
 % mc.flag = true;
 % mc.debug = true;
 % sim.debug = true;
 % mc.sigs = zero_sigs;
+x0.fpa0 = -5.6;
 out = run_dej_n(x0,gnc,aero,sim,mc);
 
 keyboard
 %}
 
-%% NPC Monte Carlo
+%% NPC Monte Carlo - compare bisection, hybrid
 %{
 clearvars -except save_path; clc; close all;
 % ha_tgt = [.4 2 10 105.5].*1000;
-ha_tgt = [10000];
+ha_tgt = [2000];
 % fpas = [-6.5 -6.55 -6.6 -6.65];
 fpas = [-5.4];
-[x0,aero,gnc,sim,mc] = base_venus_ac();
-rates = [1];
+[x0,aero,gnc,sim,mc] = base_venus_ac(true);
+rates = [0.5];
 Nk = length(rates);
 
-gnc.ha_tol = 5;
+gnc.ha_tol = 0.5;
 gnc.tj0 = 110;
-gnc.hydra_flag = true;
 gnc.dtj_lim = 10;
-gnc.iters = uint8(5);
 sim.parMode = true;
 sim.nWorkers = 10;
-sim.t_max = 2000;
+sim.t_max = 1000;
 sim.h_min = 25;
 sim.traj_rate = 200;
-sim.data_rate = 10;
+sim.data_rate = 1;
 
 x0.v0 = 11;
 
@@ -2020,12 +2020,12 @@ Ni = length(fpas);
 Nj = length(ha_tgt);
 
 mc.N = 1000;
-mc.sigs = zero_sigs;
+mc.sigs = default_sigs();
 
 % mc.debug = true;
 % mc.flag = false;
 % sim.debug = true;
-
+sim.ignore_nominal = true;
 for k = 1:Nk %guid rates
 gnc.guid_rate = rates(k);
 for i = 1:Ni %fpas
@@ -2039,14 +2039,14 @@ for i = 1:Ni %fpas
         gnc.npc_mode = uint8(1);
         out_h = run_dej_n(x0,gnc,aero,sim,mc);
         
-        if (gnc.ha_tgt < 1000)
-%             save([save_path 'dej_n\HYDRA\1stage\data\' num2str(floor(gnc.ha_tgt)) ...
-%                 '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg.mat'])
-        else
-            save([save_path 'dej_n\HYDRA\1stage\data\' num2str(floor(gnc.ha_tgt/1000)) ...
-                'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' ... 
-                num2str(gnc.guid_rate) 'hz.mat'])
-        end
+%         if (gnc.ha_tgt < 1000)
+% %             save([save_path 'dej_n\HYDRA\1stage\data\' num2str(floor(gnc.ha_tgt)) ...
+% %                 '\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg.mat'])
+%         else
+%             save([save_path 'dej_n\HYDRA\1stage\data\' num2str(floor(gnc.ha_tgt/1000)) ...
+%                 'k\v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_' ... 
+%                 num2str(gnc.guid_rate) 'hz.mat'])
+%         end
         
     end %j
 end %i
@@ -2056,6 +2056,10 @@ out_stats(out_b)
 out_stats(out_h)
 fprintf('Finished 1stage sim. '); print_current_time();
 keyboard;
+
+figure(); hold on
+plot(out_h.traj.fpa(1,:),out_h.haf_err,'*')
+
 %}
 
 %% 1 stage post process
@@ -2088,7 +2092,7 @@ keyboard;
 %% Regular 2stage
 %{
 clearvars -except save_path ;clc
-[x0,aero,gnc,sim, mc] = base_venus_ac();
+[x0,aero,gnc,sim, mc] = base_venus_ac(true);
 
 b31 = 10;
 % b21s = [3 5 7 9];
@@ -2098,7 +2102,7 @@ x0.v0 = 11;
 efpas = [-5.4 -5.6];
 Nk = length(efpas);
 
-ha_tgts = [400];
+ha_tgts = [2000];
 gnc.ha_tol = 10;
 gnc.n = 2;
 tj0s = [80 170];
@@ -2914,7 +2918,7 @@ histogram_plot(250, 1800/2000, 2200/2000, d1, d2);
 %}
 
 %% tj scatter plots
-% %{
+%{
 %%%%%%%%% -5.4, 2k
 clear;clc
 tgt = 2000;
@@ -3110,10 +3114,6 @@ text(-400,70,entries2)
 
 
 %}
-
-
-
-
 
 %% Param sweep of rc_bounds (min -> 0.75)
 %{

@@ -41,7 +41,7 @@ if ischar(planet) == true
     models = {'venus','earth','mars','jupiter','saturn','titan','uranus','neptune'};
     planet = find(strcmpi(planet,models) == 1);
 end
-if atm_mode > 3 || atm_mode < 1
+if atm_mode > 4 || atm_mode < 1
     fprintf('Warning: Incorrect Atmospheric Mode. Defaulting to Exponential Model\n');
     atm_mode = 1;
 end

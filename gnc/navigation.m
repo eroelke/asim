@@ -34,7 +34,7 @@ if mod(si-1,nav.s.sn_ratio) == 0 % rate limit calls to navigation
     switch nav.p.mode
 
         case 1 % Perfect navigation (pass-through)
-%             nav.s.rva_error = zeros(9,1);
+            nav.s.rva_error = zeros(9,1);
             
         case 2 % Stochastic error model
                % Uses Markov process/ECRV to model navigation system errors
@@ -77,16 +77,18 @@ if mod(si-1,nav.s.sn_ratio) == 0 % rate limit calls to navigation
             nav.s.ercv = (1 - exp(-2*nav.s.dt/nav.p.ecrv.tau))*nav_rnd(:,si);    %n_noise
             nav.s.x_ercv = exp(-nav.s.dt/nav.p.ecrv.tau) * nav.s.x_ercv + nav.s.ercv;
             nav.s.rva_error = real(sqrtm(P))*nav.s.x_ercv;
+        case 6  % pre determined time-decaying ECRVs
+            nav.s.rva_error = nav.p.rva_errs(:,nav.s.rva_ind);
+            nav.s.rva_ind = nav.s.rva_ind + 1;
             
         otherwise  % Assume perfect navigation (pass-through)
-%             nav.s.rva_error = zeros(9,1);
+            nav.s.rva_error = zeros(9,1);
     end % switch nav.p.mode
     
     % Update state parameters
     nav.s.r_pci = calcs.pos_ii + nav.s.rva_error(1:3);
     nav.s.v_inrtl_pci = calcs.vel_ii + nav.s.rva_error(4:6);
     nav.s.a_sens_pci = (calcs.force_ii-calcs.gravity_ii)/calcs.mass + nav.s.rva_error(7:9);
-        
 
     %% Compute derived quantities
     nav.s.t = t; % nav.s.t + nav.s.dt;
@@ -95,7 +97,7 @@ if mod(si-1,nav.s.sn_ratio) == 0 % rate limit calls to navigation
          -sin(theta) cos(theta) 0; ...
           0          0          1];
     % velocity of sc/planet in pci frame
-    nav.s.v_pf_pci = nav.s.v_inrtl_pci - cross(nav.p.atm.omega,nav.s.r_pci);    
+    nav.s.v_pf_pci = nav.s.v_inrtl_pci - cross(nav.p.atm.omega,nav.s.r_pci);
     
     % Coordinate system conversions
     nav.s.r_pcpf = L*nav.s.r_pci;

@@ -50,7 +50,7 @@ switch in.p.atm.mode
             temp = 0;
         end
         
-    case 3 % Table look-up model with winds
+    case {3, 4} % Table look-up model with winds
         
         atm = lin_interp(in.p.atm.table(:,1), in.p.atm.table(:,2:7), alt);
         dens = atm(1);

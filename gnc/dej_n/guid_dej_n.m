@@ -16,7 +16,7 @@
 % Major Revision History:
 %   *Created JUL 2018, E. Roelke
 % 
-function [s] = guid_dej_n( i, s, p, init_flag, guid )
+function [s] = guid_dej_n( i, s, p, init_flag, guid, calcs )
 %#codegenf
 
 if (init_flag)

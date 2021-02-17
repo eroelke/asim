@@ -16,7 +16,7 @@
 %   
 % thus, any GRAM index that is found is 2-indexed
 % 
-function [s] = run_ensemble_filter(y0, t0, p, s, dej_n)
+function [s] = run_ensemble_filter(y0, t0, p, s, dej_n, alt)
 %#codegen
 if (p.atm.Kflag && p.atm.mode >= uint8(3))    
     
@@ -28,6 +28,11 @@ if (p.atm.Kflag && p.atm.mode >= uint8(3))
     model_ind = int32(find(isnan(s.atm.atm_hist(:,2)) == true, 1, 'first') - 1);
     model_ind = model_ind(1);   % for compiler to know it has dimension 1x1
     rho_est = s.atm.atm_hist(model_ind,2);
+    
+    % truth vs history
+%     figure(); hold on
+%     semilogy(s.atm.atm_hist(:,1)./1000,s.atm.atm_hist(:,2)); hold on
+%     semilogy(p.planet.atm_true(:,1)./1000,p.planet.atm_true(:,2)); hold on
     
     tol = rho_est*p.atm.ens_tol;
     
@@ -43,8 +48,6 @@ if (p.atm.Kflag && p.atm.mode >= uint8(3))
             return;
     end
     atms = atm.mcs;
-    alt = alt_from_guid(y0, t0, p.planet);
-    
     
     % cheating to know if its even worth investigating
     if (bitand(p.atm.ecf_mode, 0x80) ~= 0)
@@ -86,7 +89,7 @@ if (p.atm.Kflag && p.atm.mode >= uint8(3))
             diff = (s.atm.atm_hist(jj,2) - rho_curr)^2;
             rss_rho(k) = rss_rho(k) + diff;
             
-            rho_true = interp1(p.planet.atm_true(:,1), p.planet.atm_true(:,2), s.atm.atm_hist(jj,1));
+            rho_true = lin_interp(p.planet.atm_true(:,1), p.planet.atm_true(:,2), s.atm.atm_hist(jj,1));
             diff_true = (rho_curr - rho_true)^2;
             rss_true(k) = rss_true(k) + diff_true;
             
@@ -144,13 +147,16 @@ if (p.atm.Kflag && p.atm.mode >= uint8(3))
     %}
     
     % get lowest rss error (density)
+    min_rss = (rss_rho == min(rss_rho));    
     s.atm.ind_curr = nan(1,1);
     if (t0 < (dej_n.tj_curr(dej_n.stage + 1) - 5))
-        s.atm.ind_curr(1) = inds(rss_rho == min(rss_rho)) + 1;
+        s.atm.ind_curr(1) = inds(min_rss) + 1;
     else
         s.atm.ind_curr(1) = find(s.atm.ecf_scores == ...
             max(s.atm.ecf_scores),1);
     end
+    
+    s.atm.ind_rss(1) = rss_rho(min_rss);
     s.atm.ecf_scores(s.atm.ind_curr) = s.atm.ecf_scores(s.atm.ind_curr) + 1;
     
     if (p.atm.ecf_mode == uint8(0))

@@ -3,34 +3,101 @@
 % 
 clear;clc;
 
-%% Check potential of hybrid method - cheating mode, MC
+%% preallocate ecrv errors
 %{
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
-mc.N = 20;
-% mc.mcIndex = 10;
+mc.N = 1000;
+mc.ordered = true;
 sim.ignore_nominal = true;
-mc.sigs = default_sigs();
+sim.t_max = 600;
+mc.sigs = zero_sigs();
 gnc.rss_flag = true;
-gnc = exp_decay_ecrv(gnc);
+tvec = (0 : 1/sim.traj_rate : sim.t_max)'; % Trajectory time vector, s
+gnc = exp_decay_ecrv(gnc, mc.N, sim, false);    % identical initial nav errors
 
-% gnc.atm_mode = uint8(1);    %dsf
+
+%}
+
+%% investigate GRAM indices
+%{
+temp = load(['./data/atm_data/atm_venus_mc.mat']);
+nom = temp.nom_table;
+mc = temp.mc;
+
+inds = [427];
+
+alt = nom(:,1)./1000;
+K = nan(length(inds),length(nom(:,2)));
+for i = 1:length(inds)
+    dens = mc(inds(i)).table(:,2);
+    for j = 1:length(dens)
+        K(i,j) = dens(j) / nom(j,2);
+    end
+end
+
+
+%}
+
+%% Check potential of hybrid method - cheating mode, MC
+% %{
+[x0,aero,gnc,sim, mc] = base_venus_ac(true);
+mc.N = 1000;
+% mc.mcIndex = 1;
+mc.ordered = true;
+sim.ignore_nominal = true;
+sim.t_max = 600;
+mc.sigs = zero_sigs();
+gnc.rss_flag = true;
+tvec = (0 : 1/sim.traj_rate : sim.t_max)'; % Trajectory time vector, s
+gnc = exp_decay_ecrv(gnc, mc.N, sim, true);    % identical initial nav errors
+gnc.ecf.p_tol = 0.02;
+% mc.debug = true;
+
+% dsf
+gnc.atm_mode = uint8(1);    %dsf
 out_k = run_dej_n(x0,gnc,aero,sim,mc);
-% 
+
+% di
 gnc.atm_mode = uint8(2);    %di
 out_di = run_dej_n(x0,gnc,aero,sim,mc);
-% 
-gnc.atm_mode = uint8(3);    %hybrid
-% gnc.ecf.mode = 0x80;
-% gnc.ecf.p_tol = 0.1;
-% % scaled
-% out_ecf_scaled = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 
-% not scaled
-% mc.debug = true;
-% gnc.pred_mode = 1;  % verbose
-% gnc.ecf.mode = 0x81;    % force correct mode
+% ecf free, no scaling
+gnc.atm_mode = uint8(3);    % ecf
+gnc.ecf.mode = 1;	% no scaling
 out_ecf = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 
+% hybrid free, no scaling
+gnc.atm_mode = uint8(4);
+gnc.ecf.mode = 1;   % no scaling
+out_hyb = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+
+lab{1} = ['DSF, 1\sigma=' num2str(nanstd(out_k.haf_err))];
+lab{2} = ['DI, 1\sigma=' num2str(nanstd(out_di.haf_err))];
+lab{3} = ['ECF, 1\sigma=' num2str(nanstd(out_ecf.haf_err))];
+lab{4} = ['ECF Hybrid, 1\sigma=' num2str(nanstd(out_hyb.haf_err))];
+
+histogram_plot(250, [out_k.haf_err, out_di.haf_err, ... 
+    out_ecf.haf_err, out_hyb.haf_err], lab, 2000);
+
+% for i = 1:mc.N
+%     vSig(i) = norm(gnc.nav.ecrv0(4:6,i));
+% end
+% 
+% % plot(out_ecf.g.mc_inds, vSig,'*')
+% 
+% figure(); hold on; grid on
+% set(gca,'FontSize',14)
+% p1=plot(out_ecf.g.mc_inds, out_ecf.haf_err,'b*');
+% p0=plot(out_di.g.mc_inds, out_di.haf_err,'r*');
+% 
+% 
+% figure(); hold on; grid on
+% set(gca,'FontSize',14)
+% p1=plot(out_ecf.tjr(:,1),out_ecf.haf_err,'b*');
+% p0=plot(out_di.tjr(:,1),out_di.haf_err,'r*');
+% legend([p0 p1],'DI','ECF','location','se')
+% xlabel('t_{jett}/t_f')
+% ylabel('Apoapsis Error (km)')
 
 % save('../venus_ac/dej_n/atmospheric_estimation/data/ecf/test_mc.mat')
 
@@ -177,7 +244,7 @@ title(['GRAM Index ' num2str(mc.mcIndex)]);
 %}
 
 %% DI/ECF hybrid - mc on single index
-% %{
+%{
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
 mc.mcIndex = 100;
 mc.N = 1;
@@ -186,19 +253,19 @@ mc.sigs = default_sigs();
 gnc.rss_flag = true;
 gnc = exp_decay_ecrv(gnc);
 gnc.atm_mode = uint8(4);    %hybrid
-gnc.ecf.p_tol = 0.02;
+gnc.ecf.p_tol = 0.001;
 % mc.debug = true;
 
-N = 50;
-
+N = 100;
+err = nan(N,1);
 for i = 1:N
 out = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 err(i) = out.haf_err;
 t(:,i) = out.traj.t;
 inds(:,i) = out.g.atm.ind_curr;
-end
 
-N = i;
+ecrv0(:,i) = out.g.nav.ecrv0;
+end
 
 % save('../venus_ac/dej_n/atmospheric_estimation/data/hybrid/gram_idx100_mc.mat')
 for i = 1:N
@@ -210,34 +277,107 @@ end
 % set(gca,'FontSize',14)
 % histogram(ind_f,'NumBins',100);
 % xline(mc.mcIndex,'k--','Color',[0 0 0] + 0.5)
+% 
+figure(); hold on; grid on
+title(['Tol: ' num2str(100*gnc.ecf.p_tol) '%, Success Rate: ' num2str(length(find(ind_f == 100))) ' /' ... 
+    num2str(N) ', (' ... 
+    num2str(100 * length(find(ind_f == 100)) / N) '%), 1\sigma=' ... 
+    num2str(round(std(err),1)) ' km'])
+set(gca,'FontSize',14)
+p0=plot(ind_f, err,'+','LineWidth',2);
+yline(0)
+xlabel('Final Ecf Index')
+ylabel('Apoapsis Error (km)')
+xline(mc.mcIndex,'k--','Color',[0 0 0] + 0.5)
 
-% figure(); hold on; grid on
-% set(gca,'FontSize',14)
-% plot(ind_f, err,'*')
-% yline(0)
-% xlabel('Final Ecf Index')
-% ylabel('Apoapsis Error (km)')
-% xline(mc.mcIndex,'k--','Color',[0 0 0] + 0.5)
+
+%try and get entry uncertainty relationship to final index
+for i = 1:N
+    rSig(i) = norm(ecrv0(1:3,i));
+    vSig(i) = norm(ecrv0(4:6,i));
+    aSig(i) = norm(ecrv0(7:9,i));
+    sig(i) = norm(ecrv0(:,i));
+end
+
+figure(); hold on; grid on
+set(gca,'FontSize',14)
+xline(100,'k--','LineWidth',1)
+plot(ind_f, vSig,'+','LineWidth',2)
+xlabel('Final GRAM Index')
+ylabel('|\sigma_v| (m/s)')
 
 %}
 
 %% DI/ECF hybrid - nominal
 %{
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
-mc.mcIndex = 100;
+% mc.mcIndex = 1;
+mc.ordered = false;
+% mc.mcIndex = 454;   %427    % problem children
 mc.N = 1;
+mc.mcIndex = 1;
 sim.ignore_nominal = true;
 mc.sigs = zero_sigs();
 gnc.rss_flag = true;
-% gnc.pred_mode = 1;  % verbose
+sim.traj_rate = 100;
+% sim.data_rate = 10;
+gnc.guid_rate = 0.5;
+gnc.tj0 = 120;
+x0.fpa0 = -5.4;
+gnc.pred_mode = 1;  % verbose
+% sim.atm_mode = uint8(2);  %no winds
+sim.atm_mode = uint8(3);    %winds
+% sim.atm_mode = uint8(4);    %perfect
 gnc = exp_decay_ecrv(gnc);
 
-
+% gnc.atm_mode = uint8(1);    %k
 % out_k = run_dej_n(x0,gnc,aero,sim,mc);
-gnc.atm_mode = uint8(4);    %hybrid
-gnc.ecf.p_tol = 0.02;
+% 
+% gnc.atm_mode = uint8(2);    %DI
+% out_di = run_dej_n(x0,gnc,aero,sim,mc);
+
+gnc.atm_mode = uint8(3);    %ecf
+% gnc.ecf.p_tol = 0.1;
+gnc.ecf.mode = 0x81;    %give index, no scaling
+% gnc.pred_mode = 1;
 mc.debug = true;
 out = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+
+% figure(); hold on
+% yyaxis left
+% plot(out.traj.t,out.g.atm.ind_rss)
+% yyaxis right
+% plot(out.traj.t,out.g.atm.ind_curr)
+
+
+% figure(); hold on; grid on
+% plot(out_k.traj.t,out_k.g.K_dens,'Linewidth',2)
+% plot(out_di.traj.t,out_di.g.K_model,'Linewidth',2)
+% plot(out_ecf.traj.t,out_ecf.g.K_model,'Linewidth',2)
+% plot(out_ecf.traj.t,out_ecf.g.K_true,'k--','LineWidth',2)
+% xlabel('Time')
+% ylabel('rho_{ECF} Error')
+% legend('DSF','DI','ECF Model','Truth','location','ne')
+
+% for i = 1:out.idxend
+%     if (out.g.rho_model(i) == 0)
+%         err(i) = 0;
+%     else
+%         err(i) = 100 * ((out.g.rho_model(i) - out.traj.rho(i))) / out.traj.rho(i);
+%     end
+% end
+
+% figure(); hold on; grid on
+% plot(out.traj.t(1:out.idxend),err,'Linewidth',2)
+% % plot(out.traj.t,out.traj.rho,'k--','LineWidth',2)
+% xlabel('Time')
+% ylabel('rho_{ECF} Error (%)')
+% legend('ECF Model','Truth','location','ne')
+
+% gram index 'nominal' MC performance
+% figure(); hold on; grid on
+% plot(1:1000,out.haf_err,'*')
+
 %}
 
 %% ensemble correlation filter - 'nominal'
@@ -499,7 +639,7 @@ ylabel('Density Scale Factor Error (%)')
 %% navigation errors - ecrv
 %{
 p = nav_msl();
-p.rate = 100;
+p.rate = 50;
 N = 100;
 sigReq = 3.7e-3;
 
@@ -517,7 +657,7 @@ P0(7:9,7:9) = eye(3)*(9.81*.05*1e-6 / 3)^2;  %.05 micro-gs
 
 % p.P_SS = p.P_SS .^2;
 p.P_SS = P0;
-tau = [100 200 200 1000];  %ecrv, tau_r, tau_v, tau_a
+tau = [100 400 400 1000];  %ecrv, tau_r, tau_v, tau_a
 % figure(1); hold on
 for i = 1:N
 ecrv0 = [normrnd(0,100,[3,1]); ...      %r_atm uncertainty

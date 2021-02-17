@@ -26,6 +26,9 @@ sim.ignore_nominal = false;
 
 if (isMc)
     sim.parMode = true;
+else
+    sim.parMode = false;
+    mc.flag = false;
 end
 
 % beta ratio = 10

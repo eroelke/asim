@@ -23,7 +23,8 @@
 % *Created Sep 2018, E. Roelke
 % *Added outside loop for multiple stages, Mar 2019, E. Roelke    
 % 
-function [r_a,dr_ap,dr_ap_true,pflag] = guid_dej_n_pred_v(y0, t0, s, p, j_ind, dt, guid)
+function [r_a,dr_ap,dr_ap_true,pflag] = ... 
+    guid_dej_n_pred_v(y0, t0, s, p, j_ind, dt, guid)
 %#codegen
 
 % Initialize
@@ -146,7 +147,7 @@ end % while ~plag
 % 
 % % figure(); hold on
 % % semilogy(guid.p.planet.atm_true(:,2)); hold on
-% % semilogy(guid.s.atm.atm_curr(:,2))
+% % semilogy(guid.s.atm.atm_curr(:,2)); hold on
 % 
 % end
 

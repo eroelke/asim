@@ -294,9 +294,9 @@ if mod(si-1,guid.s.sg_ratio) == 0 % guidance rate (sg_ratio)
                     if (norm(nav.s.a_sens_pci) >= guid.dej_n.p.A_sens_atm)
                         [guid.s] = run_ensemble_filter( ... 
                             [nav.s.r_pci; nav.s.v_inrtl_pci], ... 
-                            nav.s.t, guid.p, guid.s, guid.dej_n.s);
+                            nav.s.t, guid.p, guid.s, guid.dej_n.s, calcs.alt);
                     end
-            end
+            end      
 
             [guid.dej_n.s] = guid_dej_n( guid.dej_n.i, guid.dej_n.s, ... 
                     guid.dej_n.p, guid.s.init_flag, guid );

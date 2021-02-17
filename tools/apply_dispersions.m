@@ -86,8 +86,6 @@ if (in.v.gnc.g.p.atm.Kflag)
     end
 end
 
-
-
 % update inertial entry state
 [in.s.traj.r_pci_ini, in.s.traj.v_pci_ini] = LLAVFA2RV_I( ...
     in.s.traj.lat, in.s.traj.lon, in.s.traj.alt, ...

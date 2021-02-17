@@ -1,8 +1,8 @@
 % E. Roelke, April 2019
 function [x0,aero,gnc,sim,mc] = base_ac(isMc)
-    x0.fpa0 = -5.9;
-    x0.v0 = 12;
-    x0.h0 = 125;
+    x0.fpa0 = -5.4;
+    x0.v0 = 11;
+    x0.h0 = 150;
     x0.lat0 = 0;
     x0.lon0 = 0;
     x0.az0 = 90;
@@ -12,7 +12,7 @@ function [x0,aero,gnc,sim,mc] = base_ac(isMc)
     sim.t_max = 800;
     sim.h_max = x0.h0;
     sim.h_min = 50;
-    sim.planet = 'earth';
+    sim.planet = 'venus';
     sim.atm_mode = uint8(3);   %atm look up with winds
     sim.efpa_flag = false;
     sim.debug = false;
@@ -23,7 +23,7 @@ function [x0,aero,gnc,sim,mc] = base_ac(isMc)
     gnc.ha_tol = 0.5;
     gnc.n = 1;
     gnc.tj0 = 120;
-    gnc.dtj_lim = 30;
+    gnc.dtj_lim = 10;
     gnc.npc_mode = uint8(1);   %newton method
     gnc.pred_mode = uint8(0);   %regular predictor
     gnc.guid_rate = 0.5;
@@ -43,6 +43,7 @@ function [x0,aero,gnc,sim,mc] = base_ac(isMc)
     gnc.nav.rate = sim.traj_rate;
     gnc.nav.seed = 0;
     gnc.nav.tau = 0;
+    gnc.nav.ecrv0 = zeros(9,1);
 
     
     aero.rcs = [0.75 0.175];
@@ -66,6 +67,7 @@ function [x0,aero,gnc,sim,mc] = base_ac(isMc)
         mc.debug = false;
     end
     mc.mcIndex = [];   %force specific monte carlo index/indices
+    mc.ordered = false;
     
     for i = 1:5
         gnc.bias(i,1).tgt_ap = 0;

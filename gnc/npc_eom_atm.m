@@ -57,14 +57,20 @@ end
 atm = lin_interp(guid.p.planet.atm_nom(:,1), ... 
     guid.p.planet.atm_nom(:,2:7), alt); %better than interp1, handles OOB cases
 rho_nom = atm(1);
-wind = [atm(4) atm(5) atm(6)];  % east; north; vertical
+
+if (guid.p.planet.mode <= uint8(2))
+    wind = [0 0 0];
+else
+    wind = [atm(4) atm(5) atm(6)];  % east; north; vertical
+end
+
 atm_curr = guid.s.atm.atm_curr; %current atmospheric model
 atm_true = guid.p.planet.atm_true;
 
 rho_K = rho_nom*K_dens; % density corrector on nominal atm model (for monte carlo)    
 % rho_true = rho_nom * guid.s.atm.K_true;
 rho_true = lin_interp( atm_true(:,1), atm_true(:,2), alt );
-rho_di = calc_rho_interp( alt, guid.s.atm.atm_hist, K_dens*atm(1) );
+rho_di = calc_rho_interp( alt, guid.s.atm.atm_hist, K_dens*rho_nom );
 rho_ecf = lin_interp( atm_curr(:,1), atm_curr(:,2), alt );
 
 % hybrid di/ecf
@@ -72,7 +78,7 @@ atm_model = guid.s.atm.atm_hist;
 % find first non-NaN density value
 idend = find(isnan(atm_model(:,2)) == true, 1) - 1;
 if (alt >= atm_model(idend,1))
-    rho_hybrid = calc_rho_interp( alt, guid.s.atm.atm_hist, K_dens*atm(1) );
+    rho_hybrid = calc_rho_interp( alt, guid.s.atm.atm_hist, K_dens*rho_nom );
 else
     atm_curr = guid.s.atm.atm_curr; %current atmospheric model
     rho_hybrid = lin_interp( atm_curr(:,1), atm_curr(:,2), alt );
@@ -82,13 +88,13 @@ switch (guid.p.planet.mode)
     case {0, 1}  %exponential
         wind = [0 0 0];
         rho = guid.p.planet.rho0 * exp(-alt / guid.p.planet.H);
-    case 3 %table look up w winds
-        atm = lin_interp(guid.p.planet.atm_nom(:,1), guid.p.planet.atm_nom(:,2:7), alt);
-        rho = atm(1);   %default, expected value
-        
+    case {3,2} %table look up w winds
         % get atmospheric density
+        rho = rho_nom;
         if (guid.p.atm.Kflag)
             switch (guid.p.atm.mode)
+                case 0 %nominal
+                    rho = rho_nom;
                 case 1 %density factor
                     rho = rho_K;    
                 case 2 %density interp
@@ -98,9 +104,12 @@ switch (guid.p.planet.mode)
                 case 4 %DI/ECF hybrid
                     rho = rho_hybrid;
                 otherwise %density factor
-                    rho = rho_nom; % density corrector on nominal atm model (for monte carlo)    
+                    rho = rho_K; % density corrector on nominal atm model (for monte carlo)    
             end
         end
+    case 4
+        atm = lin_interp(guid.p.planet.atm_true(:,1), guid.p.planet.atm_true(:,2:7), alt);
+        rho = atm(1);   %default, expected value
     otherwise %exponential
         wind = [0 0 0];
         rho = guid.p.planet.rho0 * exp(-alt / guid.p.planet.H);
