@@ -251,10 +251,12 @@ ra = oe(1)*(1+oe(2));
 haf = (ra - in0.p.r_e)/1000;
 
 dv = out.traj.vel_ii_mag(1) - out.traj.vel_ii_mag(idxend);
+dv_circ = calc_circularize_dv(oe, in0.p, gnc.ha_tgt * 1000);
 
 out.haf = round(haf,5);                   %km
 out.haf_err = round((haf - gnc.ha_tgt),5);    %km
 out.dv = round(dv,5);
+out.dv_circ = round(dv_circ, 5);
 out.idxend = idxend;
 for i = 1:gnc.n
     idj = find(out.g.(mode).stage == i,1) +1;   % to handle additional jettison data point

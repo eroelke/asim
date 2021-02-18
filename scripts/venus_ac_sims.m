@@ -1720,6 +1720,74 @@ legend('Actual Variation','Variation Estimate','location','se')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%% 1-STAGE JETTISON %%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Manual - investigate circularization delta-v
+% %{
+clear;clc
+
+tj0s = 115:0.5:135;
+Ni = length(tj0s);
+
+[x0,aero,gnc,sim,mc] = base_venus_ac(false);
+gnc.mode = uint8(6);    %manual
+gnc.guid_rate = 0.5;
+gnc.ha_tol = 5;
+% gnc.tj0 = 124;  %from NPC
+gnc.hydra_flag = true;
+gnc.dtj_lim = 10;
+mc.flag = false;
+sim.traj_rate = 100;
+sim.data_rate = 50;
+gnc.npc_mode = uint8(1);
+gnc.ha_tgt = 2000;
+x0.fpa0 = -5.4;
+
+err = nan(Ni,1); tj = err; dv = err; dv_circ = err;
+for i = 1:Ni
+    gnc.tj0 = tj0s(i);
+    out = run_dej_n(x0,gnc,aero,sim,mc);
+    err(i) = out.haf_err;
+    tj(i) = out.t_jett(1);
+    dv(i) = out.dv;
+    dv_circ(i) = out.dv_circ;
+end
+
+min_ind = find(dv_circ == min(dv_circ),1);
+colors = get_plot_colors();
+
+figure(); hold on; grid on
+title('EFPA=-5.4deg, ha_tgt=2000 km,v=11 km/s')
+set(gca,'FontSize',14)
+yyaxis left
+plot(tj0s, dv_circ,'Linewidth',2)
+ylabel('Circularization \Delta v (m/s)')
+yyaxis right
+plot(tj0s, err,'linewidth',2)
+yline(0,'color',colors(:,2),'linewidth',1.3)
+ylabel('Apoapsis Error (km)')
+xline(tj0s(min_ind),'k','linewidth',1.3)
+xlabel('Jettison Time (s)')
+
+figure(); hold on; grid on
+title('EFPA=-5.4deg, ha_tgt=2000 km,v=11 km/s')
+set(gca,'FontSize',14)
+yyaxis left
+plot(tj0s, dv_circ,'Linewidth',2)
+ylabel('Circularization \Delta v (m/s)')
+yyaxis right
+plot(tj0s, dv,'linewidth',2)
+yline(0,'color',colors(:,2),'linewidth',1.3)
+ylabel('Aerocapture \Delta v (m/s)')
+xline(tj0s(min_ind),'k','linewidth',1.3)
+xlabel('Jettison Time (s)')
+
+% figure(); hold on; grid on
+% title('EFPA=-5.4deg, ha_tgt=2000 km,v=11 km/s')
+% set(gca,'FontSize',14)
+% plot(tj0s, dv + dv_circ);
+
+keyboard;
+%}
+
 %% PDG nominal errors vs. fpa - fidelity checks
 %{
 clear; clc; close all;
@@ -1970,7 +2038,7 @@ keyboard;
 %}
 
 %% Nominal NPC
-% %{
+%{
 clear;clc
 [x0,aero,gnc,sim,mc] = base_venus_ac(false);
 gnc.guid_rate = 0.5;
@@ -1982,12 +2050,12 @@ mc.flag = false;
 sim.traj_rate = 100;
 sim.data_rate = 1;
 gnc.npc_mode = uint8(1);
-gnc.ha_tgt = 10000;
+gnc.ha_tgt = 2000;
 % mc.flag = true;
 % mc.debug = true;
 % sim.debug = true;
 % mc.sigs = zero_sigs;
-x0.fpa0 = -5.6;
+x0.fpa0 = -5.4;
 out = run_dej_n(x0,gnc,aero,sim,mc);
 
 keyboard
