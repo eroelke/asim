@@ -359,7 +359,7 @@ if (mc.flag)
     
     % more preallocation
     haf = nan(N,1);
-    haf_err = haf; dv = haf;
+    haf_err = haf; dv = haf; dv_circ = haf;
     idend = haf;
     
 %     tjett = nan;
@@ -524,6 +524,7 @@ if (mc.flag)
         haf(i) = round(err,5);       %km, final apoapsis
         haf_err(i) = round((err - ha_tgt),5);    %km, apoapsis error
         dv(i) = round( out_mc.traj.vel_ii_mag(1) - out_mc.traj.vel_ii_mag(idxend), 5 );
+        dv_circ(i) = calc_circularize_dv(oe, in_mc.p, ha_tgt);
         idend(i) = idxend;
         
 %         if (gnc.atm_mode == uint8(1))
@@ -570,6 +571,7 @@ if (mc.flag)
     out.haf = haf;
     out.haf_err = haf_err;
     out.dv = dv;
+    out.dv_circ = dv_circ;
     out.tjett = t_jett;
     out.tjr = tjr;
     out.idj = idj;
