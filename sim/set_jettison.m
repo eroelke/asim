@@ -45,7 +45,7 @@ switch guid.p.dm_mode
             guid.cmd.delta_mass = veh.s.mass - ...
                 (mass + normrnd(0, sigma_m));
             ctrl.s.cd = cd + normrnd(0, sigma_cd);
-            
+           
             % update stage for high data rate vs. guidance rate
             if guid.dej_n.s.stage < guid.dej_n.p.n_jett
                 guid.dej_n.s.stage = guid.dej_n.s.stage + 1;

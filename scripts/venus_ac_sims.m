@@ -2026,6 +2026,7 @@ mc.sigs = default_sigs();
 % mc.flag = false;
 % sim.debug = true;
 sim.ignore_nominal = true;
+
 for k = 1:Nk %guid rates
 gnc.guid_rate = rates(k);
 for i = 1:Ni %fpas

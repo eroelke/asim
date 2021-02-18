@@ -103,6 +103,7 @@ switch (guid.p.planet.mode)
         rho = guid.p.planet.rho0 * exp(-alt / guid.p.planet.H);
 end
 
+
 % Convert wind to pp (PCPF) frame
 wE = wind(1); % positive to the east, m/s
 wN = wind(2); % positive to the north, m/s

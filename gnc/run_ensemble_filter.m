@@ -34,8 +34,7 @@ if (p.atm.Kflag && p.atm.mode >= uint8(3))
 %     semilogy(s.atm.atm_hist(:,1)./1000,s.atm.atm_hist(:,2)); hold on
 %     semilogy(p.planet.atm_true(:,1)./1000,p.planet.atm_true(:,2)); hold on
     
-    tol = rho_est*p.atm.ens_tol;
-    
+	tol = rho_est*p.atm.ens_tol;
     % C compiler does not like loading dynamic
     % string so this is the way to do it...
     switch (p.planet.p_ind)
@@ -49,7 +48,7 @@ if (p.atm.Kflag && p.atm.mode >= uint8(3))
     end
     atms = atm.mcs;
     
-    % cheating to know if its even worth investigating
+	% cheating to know if its even worth investigating
     if (bitand(p.atm.ecf_mode, 0x80) ~= 0)
         s.atm.ind_curr = p.atm.mc_ind + 1;
         if (bitand(p.atm.ecf_mode, 0x7F) == uint8(0))   %scaled
@@ -155,7 +154,7 @@ if (p.atm.Kflag && p.atm.mode >= uint8(3))
         s.atm.ind_curr(1) = find(s.atm.ecf_scores == ...
             max(s.atm.ecf_scores),1);
     end
-    
+
     s.atm.ind_rss(1) = rss_rho(min_rss);
     s.atm.ecf_scores(s.atm.ind_curr) = s.atm.ecf_scores(s.atm.ind_curr) + 1;
     

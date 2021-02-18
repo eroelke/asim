@@ -181,7 +181,6 @@ switch (gnc.mode)
 
         in0.v.gnc.g.p_dej_n.hydra.dtj_lim = gnc.dtj_lim;   % max step size for newton method
         in0.v.gnc.g.p_dej_n.hydra.dtj_flag = gnc.hydra_flag;    % hydra dtj reduction on/off
-
         in0.v.gnc.g.p_dej_n.sigs.m = 0;
         in0.v.gnc.g.p_dej_n.sigs.cd = 0;
         in0.v.gnc.g.p_dej_n.sigs.aref = 0;
@@ -291,7 +290,7 @@ if (mc.flag)
     
     % navigation settings
     if (gnc.nav.rate == 0)
-        gnc.nav.rate = 20;  % default
+        gnc.nav.rate = 50;  % default
     end
     in0.v.gnc.n.p.rate = gnc.nav.rate; % Hz
     in0.v.gnc.n.p.mode = uint8(gnc.nav.mode);
@@ -404,7 +403,7 @@ if (mc.flag)
         len = length(mc.mcIndex);
     end
     ecrv0 = zeros(9,len);
-    
+
     switch (nav_mode)
         case 5 %ecrv hybrid
             ecrv_mode = gnc.nav.ecrv_mode;

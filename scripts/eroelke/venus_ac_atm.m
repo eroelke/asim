@@ -258,6 +258,7 @@ gnc.ecf.p_tol = 0.001;
 
 N = 100;
 err = nan(N,1);
+
 for i = 1:N
 out = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 err(i) = out.haf_err;
@@ -311,6 +312,7 @@ ylabel('|\sigma_v| (m/s)')
 %% DI/ECF hybrid - nominal
 %{
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
+
 % mc.mcIndex = 1;
 mc.ordered = false;
 % mc.mcIndex = 454;   %427    % problem children

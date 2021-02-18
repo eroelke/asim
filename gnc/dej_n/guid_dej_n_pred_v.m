@@ -147,7 +147,6 @@ end % while ~plag
 % 
 % % figure(); hold on
 % % semilogy(guid.p.planet.atm_true(:,2)); hold on
-% % semilogy(guid.s.atm.atm_curr(:,2)); hold on
 % 
 % end
 

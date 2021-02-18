@@ -182,3 +182,4 @@ else
     gnc.nav.ercv0 = ercv0;
 end %check nargin
     
+end
