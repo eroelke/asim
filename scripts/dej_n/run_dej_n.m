@@ -408,7 +408,7 @@ if (mc.flag)
 
     switch (nav_mode)
         case 5 %ecrv hybrid
-            ecrv_mode = gnc.nav.ecrv_mode;
+%             ecrv_mode = gnc.nav.ecrv_mode;
             for i = 1:len
                 ecrv0(:,i) = [normrnd(0,gnc.nav.ercv0(1:3),[3,1]); ...      %r_atm uncertainty
                     normrnd(0,gnc.nav.ercv0(4:6),[3,1]); ...   %v_atm uncertainty
@@ -418,6 +418,10 @@ if (mc.flag)
             r_errors = gnc.nav.r_err;
             v_errors = gnc.nav.v_err;
             a_errors = gnc.nav.a_err;
+        otherwise
+            r_errors = nan(3, 1, mc.N);
+            v_errors = nan(3, 1, mc.N);
+            a_errors = nan(3, 1, mc.N);
     end
         
     parfor (i = 1:N, parArg)  % run in parallel processing (need parallel computing toolbox)
@@ -435,6 +439,9 @@ if (mc.flag)
             case 6 % pre determined ecrv hybrid errors
                 in_mc.v.gnc.n.p.rva_errs(:,1:size(r_errors(:,:,i),2)) = ... 
                     [r_errors(:,:,i);v_errors(:,:,i);a_errors(:,:,i)];
+            otherwise
+                in_mc.v.gnc.n.p.n_exp.ercv0 = zeros(9,1);
+                in_mc.v.gnc.n.p.rva_errs(1,1) = 0;
         end
         
         % apply input perturbations (only to traj. guid struct has nominal)
@@ -459,9 +466,9 @@ if (mc.flag)
         fpa(:,i) = out_mc.traj.gamma_pp.*180/pi;    %deg
         t(:,i) = out_mc.traj.time;                  %s
         rho(:,i) = out_mc.traj.rho;     % kg/m3
-        rva_err(:,:,i) = out_mc.nav.rva_error;
+%         rva_err(:,:,i) = out_mc.nav.rva_error;
 %         ercv(:,:,i) = out_mc.nav.ercv;
-        x_ercv(:,:,i) = out_mc.nav.x_ercv;
+%         x_ercv(:,:,i) = out_mc.nav.x_ercv;
         
 %         out.traj(i).vmag = out_mc.traj.vel_pp_mag./1000;
 %         out.traj(i).alt = out_mc.traj.alt./1000;
