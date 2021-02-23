@@ -7,13 +7,13 @@ t = t0:dt:tF;
 nav.t = t;
 
 switch mode
-    case 2      % ecrv
+    case 2      % hybrid ecrv
     
         % initialize random nums
         ecrv = nan(9,length(t));
         x_ecrv = ecrv;
         rva_err = ecrv;
-        vmag = nan(length(t),1);
+        vmag = nan(length(t),1); vmag_err = vmag;
 
         nav_rnd = randn(9,length(t));
 
@@ -22,6 +22,7 @@ switch mode
         
         rva_err(:,1) = real(sqrtm(P_SS)*x_ecrv(:,1));
         vmag(1) = mean(x_ecrv(4:6,1));
+        vmag_err(1) = mean(rva_err(4:6,1));
         ecrvmag(1) = norm(ecrv(4:6,1));
         for i = 2:length(t)
             
@@ -38,12 +39,14 @@ switch mode
             x_ecrv(:,i) = exp(-dt/tau(1)) * x_ecrv(:,i-1) + ecrv(:,i);
             rva_err(:,i) = real(sqrtm(P))*x_ecrv(:,i);
             
+            vmag_err(i) = mean(rva_err(4:6,i));
             vmag(i) = mean(x_ecrv(4:6,i));
             ecrvmag(i) = norm(ecrv(4:6,i));
         end
 
         nav.ecrv = ecrv;
         nav.x_ecrv = x_ecrv;
+        nav.vmag_err = vmag_err;
         nav.rva_err = rva_err;
         nav.vErr = rva_err(4:6,:);
         nav.ecrv_v = ecrv(4:6,:);

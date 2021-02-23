@@ -347,11 +347,12 @@ if (mc.flag)
     tjr = t_jett;
     idj = t_jett;
     ha = vmag; ha_err = vmag; 
-    rva_err = nan(len,9,N); ercv = rva_err; x_ercv = ercv;
+    rva_err = nan(len,9,N);
+%     ercv = rva_err; x_ercv = ercv;
 %     ncalls = vmag; 
     tj_curr = vmag; K_dens = vmag; K_true = vmag;
     K_model = vmag; rho_model = vmag;
-    atm_err = vmag;
+%     atm_err = vmag;
     rss_nom = nan(mc.N,1);
     rss_K = vmag; rss_ecf = vmag;
     ind_curr = vmag;
@@ -406,6 +407,9 @@ if (mc.flag)
     end
     ecrv0 = zeros(9,len);
 
+    r_errors = nan(3, 1, mc.N);
+    v_errors = nan(3, 1, mc.N);
+    a_errors = nan(3, 1, mc.N);
     switch (nav_mode)
         case 5 %ecrv hybrid
 %             ecrv_mode = gnc.nav.ecrv_mode;
@@ -418,10 +422,6 @@ if (mc.flag)
             r_errors = gnc.nav.r_err;
             v_errors = gnc.nav.v_err;
             a_errors = gnc.nav.a_err;
-        otherwise
-            r_errors = nan(3, 1, mc.N);
-            v_errors = nan(3, 1, mc.N);
-            a_errors = nan(3, 1, mc.N);
     end
         
     parfor (i = 1:N, parArg)  % run in parallel processing (need parallel computing toolbox)
@@ -466,7 +466,7 @@ if (mc.flag)
         fpa(:,i) = out_mc.traj.gamma_pp.*180/pi;    %deg
         t(:,i) = out_mc.traj.time;                  %s
         rho(:,i) = out_mc.traj.rho;     % kg/m3
-%         rva_err(:,:,i) = out_mc.nav.rva_error;
+        rva_err(:,:,i) = out_mc.nav.rva_error;
 %         ercv(:,:,i) = out_mc.nav.ercv;
 %         x_ercv(:,:,i) = out_mc.nav.x_ercv;
         
@@ -586,7 +586,7 @@ if (mc.flag)
     
     % nav
 %     out.g.nav.ecrv0 = ecrv0;
-%     out.g.nav.rva_err = rva_err;
+    out.g.nav.rva_err = rva_err;
 %     out.g.nav.ercv = ercv;
 %     out.g.nav.x_ercv = x_ercv;
     

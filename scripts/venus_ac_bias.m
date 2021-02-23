@@ -329,7 +329,7 @@ else
     tgt = [num2str(ha_tgts(z)) '_'];
 end
 % keyboard;
-save(['..\venus_ac\dej_n\HYDRA\2stage_bias\bias_val\' tgt ... 
+save(['..\venus_ac\dej_n\npc_hybrid\2stage_bias\bias_val\' tgt ... 
     'v' num2str(v0) '_' num2str(abs(x0.fpa0)) 'deg_b21_' num2str(b21s(j)) '.mat'])
 fprintf('Finished 2stage bias sim. '); print_current_time();
 
@@ -468,7 +468,7 @@ else
     tgt = [num2str(ha_tgts(z)) '_'];
 end
 % keyboard;
-save(['..\venus_ac\dej_n\HYDRA\2stage_bias\entry_trades\' tgt ... 
+save(['..\venus_ac\dej_n\npc_hybrid\2stage_bias\entry_trades\withdv\' tgt ... 
     'v' num2str(v0) '_b21_' num2str(b21s(j)) '.mat'])
 fprintf('Finished 2stage bias sim. '); print_current_time();
 
@@ -606,7 +606,7 @@ else
     tgt = [num2str(ha_tgts(z)) '_'];
 end
 % keyboard;
-save(['..\venus_ac\dej_n\HYDRA\2stage_bias\data\' tgt ... 
+save(['..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\' tgt ... 
     'v' num2str(v0) '_b21=' num2str(b21s(j)) '_bias=' ... 
     num2str(abs(biasing(z)/1000)) '_set2.mat'])
 fprintf('Finished 2stage bias MC. '); print_current_time();
@@ -732,7 +732,7 @@ else
     tgt = [num2str(ha_tgts(z)) '_'];
 end
 
-save(['..\venus_ac\dej_n\HYDRA\2stage_bias\data\mc_bias_val\' tgt ... 
+save(['..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\' tgt ... 
     'v' num2str(v0) '_' num2str(abs(x0.fpa0)) 'deg_b21=' num2str(b21s(j)) '_full.mat'])
 fprintf('Finished 2stage bias val MC. '); print_current_time();
 
@@ -746,7 +746,7 @@ keyboard
 %}
 
 %% Biasing Monte Carlo mean/std trends
-%{
+% %{
 clear;clc
 % kk -> biasing1
 % zz -> biasing2
@@ -758,14 +758,22 @@ clear;clc
 % end
 
 b21 = 9;
-tgt = 400;
-p = '..\venus_ac\dej_n\HYDRA\2stage_bias\data\mc_bias_val\';
+tgt = 2000;
+% p = '..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\';
+p = '..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\withdv\';
 % d = load([p 'mc2500_400_v11_5.4deg_b21=3.mat']);
 % d2 = load([p '400_v11_5.4deg_b21=3_set2.mat']);
-d = load([p '400_v11_5.4deg_b21=9_full.mat']);
 
-fj = load(['..\venus_ac\dej_n\HYDRA\2stage\' ... 
-    'data\400\v11_5.4deg_b_ijs' num2str(b21) '_10.mat']);
+if (tgt < 1000)
+    tgt_str = num2str(tgt);
+else
+    tgt_str = [num2str(tgt/1000) 'k'];
+end
+
+d = load([p tgt_str '_v11_5.4deg_b21=' num2str(b21) '_full.mat']);
+
+fj = load(['..\venus_ac\dej_n\npc_hybrid\2stage\' ... 
+    'data\' num2str(tgt_str) '\v11_5.4deg_b_ijs' num2str(b21) '_10.mat']);
 fj_ind = 'out';
 
 bias1 = 100 * (([d.biasing] ./ 1000) ./ d.gnc.ha_tgt);
@@ -784,42 +792,35 @@ pc = nan(Ni, Nj);
 j1s = pc; j2s = pc;
 pcFJ = nan(Nj,1);
 
-meanHa = nan(Ni,1);
-stdHa = meanHa;
+% preallocate
+meanHa = nan(Ni,1); stdHa = meanHa;
+meanDv = meanHa; stdDv = meanHa;
+meanDvCirc = meanHa; stdDvCirc = meanHa;
+nCrashes = nan(Ni,1);
+
 entries = cell(2, 1);
-
 for i = 1:Ni
-%     for j = 1:Nj
-%         pc(i,j) = get_percent_captured( ... 
-%             d.err(:,i),d.gnc.ha_tgt, tols(j), d.mc.N);
-% 
-%         [j1s(i,j), j2s(i,j), ~] = ... 
-%             count_jettisons(d.tj1(:,i), d.tj2(:,i));            
-%     end
-%     if (i <= length(bias1))
-%         meanHa(i) = mean(d.err(:,i));
-%         stdHa(i) = std(d.err(:,i));
-%     else
-%         ind = i - length(bias1);
-%         for j = 1:size(d2.err,1)
-%             if (abs(d2.err(j,ind) > 3200))
-%                 d2.err(j,ind) = nan;
-%             end  
-%         end
-%         
-%         meanHa(i) = nanmean(d2.err(:,ind));
-%         stdHa(i) = nanstd(d2.err(:,ind));
-%     end
 
-    for j = 1:size(d.err,1)
-        if (abs(d.err(j,i) > prctile(d.err(:,i),99.9)))
-            d.err(j,i) = nan;
-        end
-    end
+%     for j = 1:size(d.err,1)
+%         if (abs(d.err(j,i)) > prctile(d.err(:,i),99.8))
+%             d.err(j,i) = nan;
+%             d.dv(j,i) = nan;
+%             d.dv_circ(j,i) = nan;
+%         end
+%     end
     meanHa(i) = nanmean(d.err(:,i));
     stdHa(i) = nanstd(d.err(:,i));
     
+    meanDv(i) = nanmean(d.dv(:,i));
+    stdDv(i) = nanstd(d.dv(:,i));
+    
+    meanDvCirc(i) = nanmean(d.dv_circ(:,i));
+    stdDvCirc(i) = nanstd(d.dv_circ(:,i));
+    
     nCrashes(i) = length(find(d.err(:,i) <= -(tgt + 150)));
+    if (nCrashes(i) > 0)
+        fprintf('Crash! Index %i\n',i);
+    end
 end
 
 % meanHa(1) = mean(fj.(fj_ind).haf_err);
@@ -843,16 +844,34 @@ grid on
 title(['Mean ha vs. bias, b21 = ' num2str(b21) ', ha_{tgt} = ' num2str(tgt)]);
 set(gca,'FontSize',16);
 yyaxis left
-% plot(b1, ones(Ni,1) * meanHa(1),'--','LineWidth',2);
+% plot(bias, ones(Ni,1) * mean(fj.out.haf_err),'--','LineWidth',2);
 plot(bias, ones(Ni,1) * meanHa(1),'--','LineWidth',2);
 plot(bias, meanHa,'-o','LineWidth',2);
-xlabel('Stage 1 Bias (% of Tgt)')
-ylabel('Mean Apoapsis Error (km)')
+xlabel('Stage 1 Bias (% of Tgt)');
+ylabel('Mean Apoapsis Error (km)');
 yyaxis right
-% plot(b1, ones(Ni,1) * stdHa(1),'--','LineWidth',2);
+% plot(bias, ones(Ni,1) * std(fj.out.haf_err),'--','LineWidth',2);
 plot(bias, ones(Ni,1) * stdHa(1),'--','LineWidth',2);
 plot(bias, stdHa,'-o','LineWidth',2);
 ylabel('Apoapsis 1\sigma (km)');
+legend(entries,'location','best');
+
+% mean & std dv vs. biasing
+figure(); hold on
+grid on
+title(['\Delta v_{circ} vs. bias, b21 = ' num2str(b21) ', ha_{tgt} = ' num2str(tgt)]);
+set(gca,'FontSize',16);
+yyaxis left
+% plot(b1, ones(Ni,1) * meanHa(1),'--','LineWidth',2);
+plot(bias, ones(Ni,1) * meanDvCirc(1),'--','LineWidth',2);
+plot(bias, meanDvCirc,'-o','LineWidth',2);
+xlabel('Stage 1 Bias (% of Tgt)')
+ylabel('Mean Circularization \Delta v (m/s)')
+yyaxis right
+% plot(b1, ones(Ni,1) * stdHa(1),'--','LineWidth',2);
+plot(bias, ones(Ni,1) * stdDvCirc(1),'--','LineWidth',2);
+plot(bias, stdDvCirc,'-o','LineWidth',2);
+ylabel('Circularization \Delta v 1\sigma (m/s)');
 legend(entries,'location','best');
 
 %}
@@ -863,8 +882,8 @@ clear;clc
 % kk -> biasing1
 % zz -> biasing2
 
-d = load('..\venus_ac\dej_n\HYDRA\2stage_bias\data\mc_bias_val\400_v11_5.4deg_b21=3.mat');
-fj = load('..\venus_ac\dej_n\HYDRA\2stage\data\400\v11_5.4deg_b_ijs3_10.mat');
+d = load('..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\400_v11_5.4deg_b21=3.mat');
+fj = load('..\venus_ac\dej_n\npc_hybrid\2stage\data\400\v11_5.4deg_b_ijs3_10.mat');
 fj_ind = 'out';
 Ni = length(d.biasing);
 
@@ -901,10 +920,10 @@ end
 %{
 
 % 400, -5.4 deg, b21 = 3
-dfree = load('..\venus_ac\dej_n\HYDRA\2stage\data\400\v11_5.4deg_b_ijs3_10.mat');
-d = load('..\venus_ac\dej_n\HYDRA\2stage_bias\data\mc_bias_val\400_v11_5.4deg_b21=3.mat');
-% dfree = load('..\venus_ac\dej_n\HYDRA\2stage\data\400\v11_5.4deg_b_ijs9_10.mat');
-% d = load('..\venus_ac\dej_n\HYDRA\2stage_bias\data\mc_bias_val\400_v11_5.4deg_b21=9.mat');
+dfree = load('..\venus_ac\dej_n\npc_hybrid\2stage\data\400\v11_5.4deg_b_ijs3_10.mat');
+d = load('..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\400_v11_5.4deg_b21=3.mat');
+% dfree = load('..\venus_ac\dej_n\npc_hybrid\2stage\data\400\v11_5.4deg_b_ijs9_10.mat');
+% d = load('..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\400_v11_5.4deg_b21=9.mat');
 
 pcBias = [0.01 0.05 0.1 0.15 0.2] .* 100;
 tols = 0:1:50;
@@ -934,10 +953,10 @@ ylabel('Percent Captured (%)')
 
 
 % % 2k, -5.4 deg, b21 = 3,9
-% dfree = load('..\venus_ac\dej_n\HYDRA\2stage\data\2k\v11_5.4deg_b_ijs3_10.mat');
-% d = load('..\venus_ac\dej_n\HYDRA\2stage_bias\data\mc_bias_val\2k_v11_5.4deg_b21=3.mat');
-dfree = load('..\venus_ac\dej_n\HYDRA\2stage\data\2k\v11_5.4deg_b_ijs9_10.mat');
-d = load('..\venus_ac\dej_n\HYDRA\2stage_bias\data\mc_bias_val\2k_v11_5.4deg_b21=9.mat');
+% dfree = load('..\venus_ac\dej_n\npc_hybrid\2stage\data\2k\v11_5.4deg_b_ijs3_10.mat');
+% d = load('..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\2k_v11_5.4deg_b21=3.mat');
+dfree = load('..\venus_ac\dej_n\npc_hybrid\2stage\data\2k\v11_5.4deg_b_ijs9_10.mat');
+d = load('..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\2k_v11_5.4deg_b21=9.mat');
 
 pcBias = [0.01 0.05 0.1 0.15 0.2] .* 100;
 tols = 0:1:20;
@@ -1080,7 +1099,7 @@ else
     tgt = [num2str(ha_tgts(z)) '_'];
 end
 
-save(['..\venus_ac\dej_n\HYDRA\2stage_bias\data\mc2k_b21\' tgt ... 
+save(['..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc2k_b21\' tgt ... 
     'v' num2str(v0) '_' num2str(abs(x0.fpa0)) 'deg_bias=' num2str(biasing(i)*100) '%.mat'])
 fprintf('Finished 2stage bias val MC. '); print_current_time();
 
@@ -1093,11 +1112,11 @@ keyboard
 %% capture rate vs b21 post process
 %{
 clear;clc
-% p = '..\venus_ac\dej_n\HYDRA\2stage_bias\data\mc_b21\';
-p = '..\venus_ac\dej_n\HYDRA\2stage_bias\data\mc2k_b21\';
+% p = '..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_b21\';
+p = '..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc2k_b21\';
 
 % % -5.4deg
-d0 = load(['..\venus_ac\dej_n\HYDRA\2stage_bias\data\mc_b21\2k_v11_5.4deg_bias=0%.mat']);
+d0 = load(['..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_b21\2k_v11_5.4deg_bias=0%.mat']);
 d1 = load([p '2k_v11_5.4deg_bias=1%.mat']);
 d10 = load([p '2k_v11_5.4deg_bias=10%.mat']);
 d20 = load([p '2k_v11_5.4deg_bias=20%.mat']);
@@ -1365,10 +1384,10 @@ fprintf(['Finished 3stage bias sim, b_ijs = ' ...
 end %kk biasing 1
 
 if (gnc.ha_tgt < 1000)
-    save(['..\venus_ac\dej_n\HYDRA\3stage_bias\bias_val\' num2str(floor(gnc.ha_tgt)) ... 
+    save(['..\venus_ac\dej_n\npc_hybrid\3stage_bias\bias_val\' num2str(floor(gnc.ha_tgt)) ... 
         '_v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_bijs=' num2str(bijs) '.mat'])
 else
-    save(['..\venus_ac\dej_n\HYDRA\3stage_bias\bias_val\' num2str(floor(gnc.ha_tgt/1000)) ... 
+    save(['..\venus_ac\dej_n\npc_hybrid\3stage_bias\bias_val\' num2str(floor(gnc.ha_tgt/1000)) ... 
         'k_v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_bijs=' num2str(bijs) '.mat'])
 end
 
@@ -1401,7 +1420,7 @@ plot_tj_vs_bias(3, 2000, -5.6, [9 9.5], 1, inds, true, 0);
 
 
 
-d = load('..\venus_ac\dej_n\HYDRA\3stage_bias\bias_val\2k_v11_5.4deg_bijs=3_5_10.mat');
+d = load('..\venus_ac\dej_n\npc_hybrid\3stage_bias\bias_val\2k_v11_5.4deg_bijs=3_5_10.mat');
 bias1 = d.biasing1;
 bias2 = d.biasing2; [Ni, Nj] = size(bias2);
 err = d.err;
@@ -1586,11 +1605,11 @@ fprintf(['Finished 3stage bias sim, b_ijs = ' ...
     num2str(bijs) ',' num2str(br31) ',' num2str(br41)]); print_current_time();
 
 if (gnc.ha_tgt < 1000)
-    save(['..\venus_ac\dej_n\HYDRA\3stage_bias\entry_trades\' num2str(floor(gnc.ha_tgt)) ... 
+    save(['..\venus_ac\dej_n\npc_hybrid\3stage_bias\entry_trades\' num2str(floor(gnc.ha_tgt)) ... 
         '_v' num2str(x0.v0) '_bijs=' num2str(bijs) '_biasSet' ... 
         '_1.mat'])
 else
-    save(['..\venus_ac\dej_n\HYDRA\3stage_bias\entry_trades\' num2str(floor(gnc.ha_tgt/1000)) ... 
+    save(['..\venus_ac\dej_n\npc_hybrid\3stage_bias\entry_trades\' num2str(floor(gnc.ha_tgt/1000)) ... 
         'k_v' num2str(x0.v0) '_bijs=' num2str(bijs) '_biasSet' ... 
         '_1.mat'])
 end
@@ -1706,9 +1725,9 @@ sim.efpa_flag = false;
 %     out(i) = run_dej_n(x0,gnc,aero,sim,mc);
 % end
 % 
-% save('../venus_ac/dej_n/HYDRA/3stage_bias/entry_trades/investigate_3stage.mat');
+% save('../venus_ac/dej_n/npc_hybrid/3stage_bias/entry_trades/investigate_3stage.mat');
 % keyboard;
-% d = load('../venus_ac/dej_n/HYDRA/3stage_bias/entry_trades/investigate_3stage.mat');
+% d = load('../venus_ac/dej_n/npc_hybrid/3stage_bias/entry_trades/investigate_3stage.mat');
 % Ni = length(d.efpas);
 % out1 = d.out(1);
 % out2 = d.out(2);
@@ -1754,10 +1773,10 @@ for i = 1:Ni
     x0.fpa0 = efpas(i);
     out(i) = run_dej_n(x0,gnc,aero,sim,mc);
 end
-% % save('../venus_ac/dej_n/HYDRA/3stage_bias/entry_trades/investigate_3stage_npc.mat');
+% % save('../venus_ac/dej_n/npc_hybrid/3stage_bias/entry_trades/investigate_3stage_npc.mat');
 % keyboard;
 % % post process
-d = load('../venus_ac/dej_n/HYDRA/3stage_bias/entry_trades/investigate_3stage_npc.mat');
+d = load('../venus_ac/dej_n/npc_hybrid/3stage_bias/entry_trades/investigate_3stage_npc.mat');
 Ni = length(d.efpas);
 out1 = d.out(1);
 out2 = d.out(2);
@@ -1822,12 +1841,12 @@ for j = 1:Nj
     out = run_dej_n(x0,gnc,aero,sim,mc);
     err(j) = out.haf_err;
 end
-save('../venus_ac/dej_n/HYDRA/3stage_bias/entry_trades/3stage_manual_3.mat');
+save('../venus_ac/dej_n/npc_hybrid/3stage_bias/entry_trades/3stage_manual_3.mat');
 keyboard;
 % post process
-d1 = load('../venus_ac/dej_n/HYDRA/3stage_bias/entry_trades/3stage_manual_1.mat');
-d2 = load('../venus_ac/dej_n/HYDRA/3stage_bias/entry_trades/3stage_manual_2.mat');
-d3 = load('../venus_ac/dej_n/HYDRA/3stage_bias/entry_trades/3stage_manual_3.mat');
+d1 = load('../venus_ac/dej_n/npc_hybrid/3stage_bias/entry_trades/3stage_manual_1.mat');
+d2 = load('../venus_ac/dej_n/npc_hybrid/3stage_bias/entry_trades/3stage_manual_2.mat');
+d3 = load('../venus_ac/dej_n/npc_hybrid/3stage_bias/entry_trades/3stage_manual_3.mat');
 
 entries{1} = ['EFPA = ' num2str(d1.x0.fpa0)];
 entries{2} = ['EFPA = ' num2str(d2.x0.fpa0)];
@@ -1934,10 +1953,10 @@ fprintf(['Finished 3stage MC sim, b_ijs = ' ...
 end %kk biasing 1
 
 if (gnc.ha_tgt < 1000)
-    save(['..\venus_ac\dej_n\HYDRA\3stage_bias\mc\' num2str(floor(gnc.ha_tgt)) ... 
+    save(['..\venus_ac\dej_n\npc_hybrid\3stage_bias\mc\' num2str(floor(gnc.ha_tgt)) ... 
         '_v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_bijs=' num2str(bijs) '_2.mat'])
 else
-    save(['..\venus_ac\dej_n\HYDRA\3stage_bias\mc\' num2str(floor(gnc.ha_tgt/1000)) ... 
+    save(['..\venus_ac\dej_n\npc_hybrid\3stage_bias\mc\' num2str(floor(gnc.ha_tgt/1000)) ... 
         'k_v' num2str(x0.v0) '_' num2str(abs(x0.fpa0)) 'deg_bijs=' num2str(bijs) '_2.mat'])
 end
 
@@ -1954,11 +1973,11 @@ keyboard;
 clear;clc
 % kk -> biasing1
 % zz -> biasing2
-% d = load('..\venus_ac\dej_n\HYDRA\3stage_bias\mc\2k_v11_5.4deg_bijs=3_5_10.mat');
-d = load('..\venus_ac\dej_n\HYDRA\3stage_bias\mc\2k_v11_5.4deg_bijs=9_9.5_10.mat');
+% d = load('..\venus_ac\dej_n\npc_hybrid\3stage_bias\mc\2k_v11_5.4deg_bijs=3_5_10.mat');
+d = load('..\venus_ac\dej_n\npc_hybrid\3stage_bias\mc\2k_v11_5.4deg_bijs=9_9.5_10.mat');
 
 
-p = '../venus_ac/dej_n/HYDRA/';
+p = '../venus_ac/dej_n/npc_hybrid/';
 p3 = [p '3stage/data/'];
 temp = load([p3 '2k/v11_5.4deg_b_ijs3_5_10.mat']);
 fj.out1 = temp.out;
@@ -1971,8 +1990,8 @@ fj.out4 = temp.out;
 
 
 % 400 FREE JETTISON MISSING
-% d = load('..\venus_ac\dej_n\HYDRA\3stage_bias\mc\400_v11_5.4deg_bijs=3_5_10.mat');
-% d = load('..\venus_ac\dej_n\HYDRA\3stage_bias\mc\2k_v11_5.4deg_bijs=9_9.5_10.mat');
+% d = load('..\venus_ac\dej_n\npc_hybrid\3stage_bias\mc\400_v11_5.4deg_bijs=3_5_10.mat');
+% d = load('..\venus_ac\dej_n\npc_hybrid\3stage_bias\mc\2k_v11_5.4deg_bijs=9_9.5_10.mat');
 
 % a = 'out1';   %b21=3
 a = 'out4'; %b21 = 9

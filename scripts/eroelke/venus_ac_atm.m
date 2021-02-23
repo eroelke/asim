@@ -3,10 +3,83 @@
 % 
 clear;clc;
 
+%% DI performance vs. efpa - 'nominal'
+%{
+[x0,aero,gnc,sim, mc] = base_venus_ac(true);
+mc.N = 1;
+mc.mcIndex = 500;
+% mc.ordered = true;
+sim.ignore_nominal = true;
+sim.t_max = 1000;
+mc.sigs = zero_sigs();
+gnc.rss_flag = true;
+% tvec = (0 : 1/sim.traj_rate : sim.t_max)'; % Trajectory time vector, s
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);    % identical initial nav errors
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);
+% gnc = exp_decay_ecrv(gnc);
+gnc.ecf.p_tol = 0.02;
+
+sim.traj_rate = 100;
+sim.data_rate = 100;
+gnc.guid_rate = 1;
+
+% ha_tgts = [400:400:2000 2500:500:10000 11000:1000:40000];
+ha_tgts = 2000;
+efpas = linspace(-5.8,-5.2, 20);
+Ni = length(efpas);
+Nj = length(ha_tgts);
+
+haf_tol = 500;
+
+err_k = nan(Ni,Nj); err_di = err_k; err_ecf = err_k;
+tj_k = nan(Ni,Nj); tj_di = tj_k; tj_ecf = tj_k;
+tjr_k = nan(Ni,Nj); tjr_di = tjr_k; tjr_ecf = tj_k;
+dv_k = nan(Ni,Nj); dv_di = dv_k; dv_ecf = dv_k;
+dvCirc_k = nan(Ni,Nj); dvCirc_di = dvCirc_k; dvCirc_ecf = dvCirc_k;
+for j = 1:Nj
+    fprintf('ha tgt %4.0f\n',ha_tgts(j));
+    gnc.ha_tgt = ha_tgts(j);
+    for i = 1:Ni
+        x0.fpa0 = efpas(i);        
+        % dsf
+        gnc.atm_mode = uint8(1);    %dsf
+        out_k = run_dej_n(x0,gnc,aero,sim,mc);
+        [err_k(i,j), tj_k(i,j), tjr_k(i,j), dv_k(i,j), dvCirc_k(i,j)] = ...
+            get_ac_results(out_k, haf_tol);
+        
+        % di
+        gnc.atm_mode = uint8(2);    %di
+        out_di = run_dej_n(x0,gnc,aero,sim,mc);
+        [err_di(i,j), tj_di(i,j), tjr_di(i,j), dv_di(i,j), dvCirc_di(i,j)] = ...
+            get_ac_results(out_di, haf_tol);
+        
+        % ecf free, no scaling
+        gnc.atm_mode = uint8(3);    % ecf
+        gnc.ecf.mode = 1;	% no scaling
+        out_ecf = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator        
+        [err_ecf(i,j), tj_ecf(i,j), tjr_ecf(i,j), dv_ecf(i,j), dvCirc_ecf(i,j)] = ...
+            get_ac_results(out_ecf, haf_tol);
+    end %i
+end %j
+
+figure(); hold on; grid on
+title(['EFPA Trade Study, GRAM Index ' num2str(mc.mcIndex)])
+set(gca,'FontSize',14)
+plot(efpas, err_k,'k--','LineWidth',2)
+plot(efpas, err_di,'r','LineWidth',2)
+plot(efpas, err_ecf','b','LineWidth',2)
+legend('DSF','DI','ECF','location','ne')
+xlabel('EFPA (deg)')
+ylabel('Apoapsis Error (km)')
+xlim([-5.7, -5.35])
+ylim([-200 500])
+
+%}
+
 %% preallocate ecrv errors
 %{
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
-mc.N = 1000;
+mc.N = 100;
 mc.ordered = true;
 sim.ignore_nominal = true;
 sim.t_max = 600;
@@ -39,9 +112,9 @@ end
 %}
 
 %% Check potential of hybrid method - cheating mode, MC
-% %{
+%{
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
-mc.N = 1000;
+mc.N = 100;
 % mc.mcIndex = 1;
 mc.ordered = true;
 sim.ignore_nominal = true;
@@ -49,7 +122,9 @@ sim.t_max = 600;
 mc.sigs = zero_sigs();
 gnc.rss_flag = true;
 tvec = (0 : 1/sim.traj_rate : sim.t_max)'; % Trajectory time vector, s
-gnc = exp_decay_ecrv(gnc, mc.N, sim, true);    % identical initial nav errors
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);    % identical initial nav errors
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);
+gnc = exp_decay_ecrv(gnc);
 gnc.ecf.p_tol = 0.02;
 % mc.debug = true;
 
@@ -76,7 +151,7 @@ lab{2} = ['DI, 1\sigma=' num2str(nanstd(out_di.haf_err))];
 lab{3} = ['ECF, 1\sigma=' num2str(nanstd(out_ecf.haf_err))];
 lab{4} = ['ECF Hybrid, 1\sigma=' num2str(nanstd(out_hyb.haf_err))];
 
-histogram_plot(250, [out_k.haf_err, out_di.haf_err, ... 
+histogram_plot(mc.N / 5, [out_k.haf_err, out_di.haf_err, ... 
     out_ecf.haf_err, out_hyb.haf_err], lab, 2000);
 
 % for i = 1:mc.N
@@ -104,7 +179,7 @@ histogram_plot(250, [out_k.haf_err, out_di.haf_err, ...
 %}
 
 %% Uniqueness of GRAM
-%{
+% %{
 atm = load('./data/atm_data/atm_venus_mc.mat');
 
 alt = atm.nom_table(:,1);
@@ -124,21 +199,24 @@ for i = 1:1000
     rss_err(i) = sqrt(rss);
 end
 
+min_ind = find(rss_err == min(rss_err));
+max_ind = find(rss_err == max(rss_err));
+
 
 figure(); hold on; grid on
 title('VenusGRAM RSS Errors')
 set(gca,'FontSize',14)
 %histogram(rss_err,'NumBins',50)
 plot(indices, rss_err,'*')
-plot(100, rss_err(100),'k*','LineWidth',2)
-plot(369,rss_err(369),'r*','LineWidth',2)
-plot(68,rss_err(68),'b*','LineWidth',2)
-plot(227,rss_err(227),'g*','LineWidth',2)
-plot(780,rss_err(780),'y*','LineWidth',2)
-plot(798,rss_err(798),'c*','LineWidth',2)
+% plot(100, rss_err(100),'k*','LineWidth',2)
+% plot(369,rss_err(369),'r*','LineWidth',2)
+% plot(68,rss_err(68),'b*','LineWidth',2)
+% plot(227,rss_err(227),'g*','LineWidth',2)
+% plot(780,rss_err(780),'y*','LineWidth',2)
+% plot(798,rss_err(798),'c*','LineWidth',2)
 xlabel('GRAM Index')
 ylabel('RSS Error')
-legend('Range','Truth-100','369','68','227','780','798')
+% legend('Range','Truth-100','369','68','227','780','798')
 
 %}
 
@@ -330,6 +408,7 @@ gnc.pred_mode = 1;  % verbose
 % sim.atm_mode = uint8(2);  %no winds
 sim.atm_mode = uint8(3);    %winds
 % sim.atm_mode = uint8(4);    %perfect
+
 gnc = exp_decay_ecrv(gnc);
 
 % gnc.atm_mode = uint8(1);    %k
@@ -342,7 +421,7 @@ gnc.atm_mode = uint8(3);    %ecf
 % gnc.ecf.p_tol = 0.1;
 gnc.ecf.mode = 0x81;    %give index, no scaling
 % gnc.pred_mode = 1;
-mc.debug = true;
+% mc.debug = true;
 out = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 
 % figure(); hold on
@@ -641,36 +720,35 @@ ylabel('Density Scale Factor Error (%)')
 %% navigation errors - ecrv
 %{
 p = nav_msl();
-p.rate = 50;
+p.rate = 20;
 N = 100;
-sigReq = 3.7e-3;
+vSig = 3.7e-3 / 3;
+rSig = 100 / 3;
 
 % ecrv0 = zeros(9,1);
 
-sx0 = 100 / 3;   % position sigma each axis
+sx0 = rSig;   % position sigma each axis
 sy0 = sx0;
 sz0 = sx0;
-svx0 = sigReq / 3;   % velocity sigma each acis
+svx0 = vSig;   % velocity sigma each acis
 svy0 = svx0;
 svz0 = svx0;
 P0 = zeros(9,9);
 P0 = diag([sx0^2, sy0^2, sz0^2, svx0^2, svy0^2, svz0^2]);   %covariance matrix
 P0(7:9,7:9) = eye(3)*(9.81*.05*1e-6 / 3)^2;  %.05 micro-gs
 
+ecrv0(1:3) = rSig;
+ecrv0(4:6) = vSig;
+ecrv0(7:9) = P0(7,7);
+ecrv0 = ecrv0';
+
 % p.P_SS = p.P_SS .^2;
 p.P_SS = P0;
-tau = [100 400 400 1000];  %ecrv, tau_r, tau_v, tau_a
+tau = [100 200 200 1000];  %ecrv, tau_r, tau_v, tau_a
 % figure(1); hold on
 for i = 1:N
-ecrv0 = [normrnd(0,100,[3,1]); ...      %r_atm uncertainty
-    normrnd(0,.1/3,[3,1]); ...   %v_atm uncertainty
-    normrnd(0,P0(7,7),[3,1])];  
-
 nav = simulate_nav(2, 0, 400, 1/p.rate, ...
-    tau, p.P_SS, ecrv0);
-
-nav.stdV = nav.stdV ./ (sigReq / 3);
-
+    tau, p.P_SS, normrnd(0,ecrv0));
 
 % keyboard;
 
@@ -681,9 +759,18 @@ nav.stdV = nav.stdV ./ (sigReq / 3);
 % get vector norms each time step
 for j = 1:length(nav.t)
     
-    vmagX(i,j) = nav.x_ecrv(4,j);
-    vmagY(i,j) = nav.x_ecrv(5,j);
-    vmagZ(i,j) = nav.x_ecrv(6,j);    
+    rmagX(i,j) = nav.rva_err(1,j);
+    rmagY(i,j) = nav.rva_err(2,j);
+    rmagZ(i,j) = nav.rva_err(3,j);
+    
+    vmagX(i,j) = nav.rva_err(4,j);
+    vmagY(i,j) = nav.rva_err(5,j);
+    vmagZ(i,j) = nav.rva_err(6,j);
+    
+    
+%     vmagX(i,j) = nav.x_ecrv(4,j);
+%     vmagY(i,j) = nav.x_ecrv(5,j);
+%     vmagZ(i,j) = nav.x_ecrv(6,j);    
 %     amag(i,j) = mean(nav.x_ecrv(7:9,j));
 end
 
@@ -697,6 +784,14 @@ end %Ni
 
 % get mean, std of all cases at each time step
 for j = 1:length(nav.t)    
+    % r
+    muRx(j) = mean(rmagX(:,j));
+    stdRx(j) = 3*std(rmagX(:,j));
+    muRy(j) = mean(rmagY(:,j));
+    stdRy(j) = 3*std(rmagY(:,j));
+    muRz(j) = mean(rmagZ(:,j));
+    stdRz(j) = 3*std(rmagZ(:,j));
+    
     % v
     muVx(j) = mean(vmagX(:,j));
     stdVx(j) = 3*std(vmagX(:,j));
@@ -712,8 +807,43 @@ end
 % figure(); hold on
 % plot(nav.t,nav.vmag)
 
+% plot r
 ind = randi([1,N],1);
 figure(1); hold on
+subplot(3,1,1); hold on
+    plot(nav.t,rmagX,'Color',0.8+[0 0 0]);
+    p0=plot(nav.t,rmagX(ind,:),'m','LineWidth',1.2);
+    p1=plot(nav.t,stdRx,'b--','LineWidth',1.5);
+    plot(nav.t,-stdRx,'b--','LineWidth',1.5);
+    p2=yline(mean(stdRx),'r--','LineWidth',1.5);
+    yline(-mean(stdRx),'r--','LineWidth',1.5);
+    ylabel('v_x noise (m)')
+subplot(3,1,2); hold on
+    plot(nav.t,rmagY,'Color',0.8+[0 0 0]);
+    plot(nav.t,rmagY(ind,:),'m','LineWidth',1.2);
+    plot(nav.t,stdRy,'b--','LineWidth',1.5);
+    plot(nav.t,-stdRy,'b--','LineWidth',1.5);
+    yline(mean(stdRy),'r--','LineWidth',1.5);
+    yline(-mean(stdRy),'r--','LineWidth',1.5);
+    ylabel('r_y errors (m)')
+subplot(3,1,3); hold on
+    plot(nav.t,rmagZ,'Color',0.8+[0 0 0]);
+    plot(nav.t,rmagZ(ind,:),'m','LineWidth',1.2);
+    plot(nav.t,stdRz,'b--','LineWidth',1.5);
+    plot(nav.t,-stdRz,'b--','LineWidth',1.5);
+    yline(mean(stdRz),'r--','LineWidth',1.5);
+    yline(-mean(stdRz),'r--','LineWidth',1.5);
+    ylabel('r_z errors (m)')
+xlabel('Time (s)','FontSize',14)
+legend([p1,p2],'\mu \pm 3\sigma', ... 
+    '3\sigma Mean', ... 
+    'orientation','horizontal');
+
+
+
+% plot v
+ind = randi([1,N],1);
+figure(2); hold on
 subplot(3,1,1); hold on
     plot(nav.t,vmagX,'Color',0.8+[0 0 0]);
 %     p0=plot(nav.t,muVx,'b','LineWidth',1.5);
@@ -722,8 +852,8 @@ subplot(3,1,1); hold on
     plot(nav.t,-stdVx,'b--','LineWidth',1.5);
     p2=yline(mean(stdVx),'r--','LineWidth',1.5);
     yline(-mean(stdVx),'r--','LineWidth',1.5);
-%     p3=yline(3.7e-3,'k','LineWidth',1.5);
-%     yline(-3.3e-3,'k','LineWidth',1.5);
+    p3=yline(3.7e-3,'k','LineWidth',1.5);
+    yline(-3.3e-3,'k','LineWidth',1.5);
     ylabel('v_x noise (m/s)')
 subplot(3,1,2); hold on
     plot(nav.t,vmagY,'Color',0.8+[0 0 0]);
@@ -733,8 +863,8 @@ subplot(3,1,2); hold on
     plot(nav.t,-stdVy,'b--','LineWidth',1.5);
     yline(mean(stdVy),'r--','LineWidth',1.5);
     yline(-mean(stdVy),'r--','LineWidth',1.5);
-%     yline(3.7e-3,'k','LineWidth',1.5);
-%     yline(-3.3e-3,'k','LineWidth',1.5);
+    yline(3.7e-3,'k','LineWidth',1.5);
+    yline(-3.3e-3,'k','LineWidth',1.5);
 %     legend([p0,p1,p2,p3],'\mu','\mu \pm 3\sigma', ... 
 %         '3\sigma Mean','3\sigma Requirement','location','best');
     ylabel('v_y noise (m/s)')
@@ -746,8 +876,8 @@ subplot(3,1,3); hold on
     plot(nav.t,-stdVz,'b--','LineWidth',1.5);
     yline(mean(stdVz),'r--','LineWidth',1.5);
     yline(-mean(stdVz),'r--','LineWidth',1.5);
-%     yline(3.7e-3,'k','LineWidth',1.5);
-%     yline(-3.3e-3,'k','LineWidth',1.5);
+    yline(3.7e-3,'k','LineWidth',1.5);
+    yline(-3.3e-3,'k','LineWidth',1.5);
 %     legend([p0,p1,p2,p3],'\mu','\mu \pm 3\sigma', ... 
 %         '3\sigma Mean','3\sigma Requirement','location','best');
     ylabel('v_z noise (m/s)')
