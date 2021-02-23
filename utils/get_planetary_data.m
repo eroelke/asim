@@ -57,8 +57,8 @@ switch planet
         p.atm.dens_ref = 65; % surface density, kg/m^3
         p.atm.pres_ref = 9200000; % surface pressure, kg/ms
         p.atm.temp_ref = 100; % reference temperature, K
-        temp = load(['./data/atm_data/atm_venus.mat']);
-        p.atm.table = temp.table; % atmosphere table, multi   
+        temp = load(['./data/atm_data/atm_venus_mc.mat']);
+        p.atm.table = temp.nom_table; % atmosphere table, multi   
         
     case 2 % Earth
         p.planet = uint8(planet);

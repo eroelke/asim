@@ -137,7 +137,7 @@ plot(out2.t_jett(2), out2.g.dej_n.dr_ap_true(out2.idj(2))./1000, ...
 p3_1=plot(out3.t_jett(1), out3.g.dej_n.dr_ap_true(out3.idj(1))./1000, ...
     'x','Color',colors(1,:),'LineWidth',1.5);
 p3_2=plot(out3.t_jett(2), out3.g.dej_n.dr_ap_true(out3.idj(2))./1000, ...
-    'o','Color',colors(1,:),'LineWidth',1.5);
+   'o','Color',colors(1,:),'LineWidth',1.5);
 p3_3=plot(out3.t_jett(3), out3.g.dej_n.dr_ap_true(out3.idj(3))./1000, ...
     '^','Color',colors(1,:),'LineWidth',1.5);
 % p3_1 = xline(out3.t_jett(1),'Color',colors(1,:),'LineStyle','--','LineWidth',1.5);
@@ -623,14 +623,14 @@ keyboard
 %}
 
 %% 2stage Monte Carlo as func of biasing percent
-%{
+% %{
 clearvars -except save_path ;clc
 
-% ha_tgts = [400 2000 10000];
-ha_tgts = [400];
+ha_tgts = [2000];
+% ha_tgts = [400];
 Nz = length(ha_tgts);
 b31 = 10;
-b21s = [3 9];
+b21s = [9];
 % b21s = 3;
 v0 = 11;
 
@@ -653,9 +653,9 @@ for j = 1:length(b21s)
 % biasing = ha_tgts(z) * ([0 1 2 3 4 5] ./ 100) * - 1000;
 
 if (b21s(j) == 3)
-    biasPercents = [0 1 5 10 15 20 25 30 35 40]';
+    biasPercents = [0, 1, 5, 10, 15, 20, 25, 30]';
 elseif (b21s(j) == 9)
-    biasPercents = [0 1 2 3 4 5 10 15 20]';
+    biasPercents = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]';
 end
 biasing = ha_tgts(z) * (biasPercents ./ 100) * - 1000;
 
@@ -695,9 +695,11 @@ sim.ignore_nominal = true;
     
 mc.debug = false;
 mc.flag = true;
-mc.N = 2500;
+mc.N = 1000;
 
 sim.parMode = true;
+sim.nWorkers = 12;
+
 gnc.dtj_lim = 10;
 % gnc.rss_flag = true;
 
@@ -711,6 +713,7 @@ gnc.tj0 = tj0s;
 err = nan(mc.N, length(biasing));
 tj1 = err; tj2 = err;
 tjr1 = err; tjr2 = err;
+dv = err; dv_circ = err;
 
 for k = 1:Nk
 x0.fpa0 = efpas(k);
@@ -720,6 +723,8 @@ gnc.bias(1).tgt_ap = biasing(i);
 out = run_dej_n(x0,gnc,aero,sim,mc);
 % fprintf('%g% done\n',100 * i / length(biasing));
 err(:,i) = out.haf_err;
+dv(:,i) = out.dv;
+dv_circ(:,i) = out.dv_circ;
 tj1(:,i) = out.tjett(:,1);
 tj2(:,i) = out.tjett(:,2);
 tjr1(:,i) = out.tjr(:,1);
@@ -732,8 +737,11 @@ else
     tgt = [num2str(ha_tgts(z)) '_'];
 end
 
-save(['..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\' tgt ... 
-    'v' num2str(v0) '_' num2str(abs(x0.fpa0)) 'deg_b21=' num2str(b21s(j)) '_full.mat'])
+save(['../data/bias/' tgt ... 
+ 'v' num2str(v0) '_' num2str(abs(x0.fpa0)) 'deg_b21=' num2str(b21s(j)) '_full.mat']);
+
+% save(['..\venus_ac\dej_n\HYDRA\2stage_bias\data\mc_bias_val\' tgt ... 
+%     'v' num2str(v0) '_' num2str(abs(x0.fpa0)) 'deg_b21=' num2str(b21s(j)) '_full.mat'])
 fprintf('Finished 2stage bias val MC. '); print_current_time();
 
 % betas = ['b_ijs' num2str(b21) '_' num2str(b31)];
@@ -742,6 +750,8 @@ end %fpas
 end %betas
 
 end %ha_tgts
+
+
 keyboard
 %}
 
