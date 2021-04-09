@@ -40,17 +40,23 @@ cmd = struct( ...
     'area_ref', double(0) );     % area ref, m^2
 
 %% Parameter data structure
+p_ecf = struct( ...
+    'mode', uint8(0), ...  % 0: add density factor
+    'threshold', double(1.3), ... % threshold to use ECF value
+    'tol', double(0.01), ...    % ensemble tolerance (% of estimated density)
+    'pert', logical(false) ... % perturbed atmospheric profile?
+);
+
+
 % atmospheric estimation parameter inputs
 p_atm = struct( ...
     'Kflag', logical(false), ...      % density corrector flag (for monte carlo)
     'K_bounds', double([0.1, 2]), ...     % density corrector range
     'K_gain', double(0.1), ...    % density corrector gain
     'mode', uint8(0), ...   % atmospheric estimation mode (default density factor)
-    'ecf_mode', uint8(0), ...   % 0: add density factor
     'rss_flag', logical(false), ... %flag to save atm rss error
     'mc_ind', double(0), ...     % true atmosphere index (debugging, plotting purposes only)
-    'ecf_threshold', double(1.3),  ... % threshold to use ECF value
-    'ens_tol', double(0.01) ...   % ensemble tolerance (% of estimated density)
+    'ecf', p_ecf ...    % ensemble correlation filter
 );
 
 planet = struct( ... 

@@ -13,6 +13,7 @@ gnc.iters = uint8(1);
 gnc.mode = 4;   %dej_n
 gnc.stage_skip = 1000;
 gnc.atm_mode = 0;   %density factor
+gnc.ecf.pert = false;
 
 sim.planet = 'venus';
 sim.atm_mode = 3;

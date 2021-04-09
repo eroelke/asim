@@ -21,7 +21,7 @@ function [s] = run_ensemble_filter(y0, t0, p, s, dej_n, alt)
 if (p.atm.Kflag && p.atm.mode >= uint8(3))    
     
     % speed up process - cheating
-    if (bitand(p.atm.ecf_mode, 0x80) ~= 0 && s.atm.ind_curr-1 == p.atm.mc_ind)
+    if (bitand(p.atm.ecf.mode, 0x80) ~= 0 && s.atm.ind_curr-1 == p.atm.mc_ind)
         return;
     end
     
@@ -34,12 +34,16 @@ if (p.atm.Kflag && p.atm.mode >= uint8(3))
 %     semilogy(s.atm.atm_hist(:,1)./1000,s.atm.atm_hist(:,2)); hold on
 %     semilogy(p.planet.atm_true(:,1)./1000,p.planet.atm_true(:,2)); hold on
     
-	tol = rho_est*p.atm.ens_tol;
+	tol = rho_est*p.atm.ecf.tol;
     % C compiler does not like loading dynamic
     % string so this is the way to do it...
     switch (p.planet.p_ind)
         case 1 %venus
-            atm = load('./data/atm_data/atm_venus_all.mat');
+            if (p.atm.ecf.pert)
+                atm = load('./data/atm_data/atm_venus_all_pert.mat');
+            else
+                atm = load('./data/atm_data/atm_venus_all.mat');
+            end
         case 2 %earth
             atm = load('./data/atm_data/atm_earth_all.mat');
         otherwise
@@ -49,9 +53,9 @@ if (p.atm.Kflag && p.atm.mode >= uint8(3))
     atms = atm.mcs;
     
 	% cheating to know if its even worth investigating
-    if (bitand(p.atm.ecf_mode, 0x80) ~= 0)
+    if (bitand(p.atm.ecf.mode, 0x80) ~= 0)
         s.atm.ind_curr = p.atm.mc_ind + 1;
-        if (bitand(p.atm.ecf_mode, 0x7F) == uint8(0))   %scaled
+        if (bitand(p.atm.ecf.mode, 0x7F) == uint8(0))   %scaled
             s.atm.atm_curr = [atms(:,1) s.atm.K_dens .*atms(:,s.atm.ind_curr)];
         else   %not scaled
             s.atm.atm_curr = [atms(:,1) atms(:,s.atm.ind_curr)];
@@ -74,7 +78,7 @@ if (p.atm.Kflag && p.atm.mode >= uint8(3))
         if ~isempty(inds)
             break;
         end
-        tol = tol + p.atm.ens_tol;
+        tol = tol + p.atm.ecf.tol;
     end
     
     rss_rho = zeros(length(inds),1);
@@ -158,7 +162,7 @@ if (p.atm.Kflag && p.atm.mode >= uint8(3))
     s.atm.ind_rss(1) = rss_rho(min_rss);
     s.atm.ecf_scores(s.atm.ind_curr) = s.atm.ecf_scores(s.atm.ind_curr) + 1;
     
-    if (p.atm.ecf_mode == uint8(0))
+    if (p.atm.ecf.mode == uint8(0))
         s.atm.atm_curr = [atms(:,1) s.atm.K_dens .*atms(:,s.atm.ind_curr)];
     else
         s.atm.atm_curr = [atms(:,1) atms(:,s.atm.ind_curr)];

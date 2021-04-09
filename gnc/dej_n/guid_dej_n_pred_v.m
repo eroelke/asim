@@ -117,8 +117,7 @@ end % while ~plag
 
 
 % if (guid.p.atm.mc_ind == guid.s.atm.ind_curr - 1)
-% keyboard;
-% 
+% % keyboard;
 % 
 % model = rho_ecf;
 % 
@@ -136,7 +135,7 @@ end % while ~plag
 % set(gca,'FontSize',14)
 % title(['Predictor Initiated At: ' num2str(round(alt(1)/1000,0)) ' km']);
 % plot(K_model, alt./1000,'LineWidth',2);
-% plot(K_truth, alt./1000,'k--','LineWidth',2)
+% plot(K_truth, alt./1000,'k','LineWidth',2)
 % xline(1,'Color',[0 0 0] + 0.4,'LineWidth',1.5)
 % plot(K_truth(1), alt(1)./1000,'b*','LineWidth',1.5)
 % yline(alt(1)/1000)
@@ -144,6 +143,7 @@ end % while ~plag
 % ylabel('Altitude (km)');
 % legend('Hybrid','Truth','location','ne')
 % 
+% keyboard
 % 
 % % figure(); hold on
 % % semilogy(guid.p.planet.atm_true(:,2)); hold on
