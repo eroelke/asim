@@ -348,16 +348,16 @@ if (mc.flag)
     tjr = t_jett;
     idj = t_jett;
     ha = vmag; ha_err = vmag; 
-    rva_err = nan(len,9,N);
+%     rva_err = nan(len,9,N);
 %     ercv = rva_err; x_ercv = ercv;
 %     ncalls = vmag; 
     tj_curr = vmag; K_dens = vmag; K_true = vmag;
     K_model = vmag; rho_model = vmag;
 %     atm_err = vmag;
-    rss_nom = nan(mc.N,1);
+    rss_nom = nan(mc.N,1);    ecf_ind = rss_nom;
     rss_K = vmag; rss_ecf = vmag;
-    ind_curr = vmag;
-    ind_rss = vmag;
+%     ind_curr = vmag;
+%     ind_rss = vmag;
     
     % more preallocation
     haf = nan(N,1);
@@ -467,7 +467,7 @@ if (mc.flag)
         fpa(:,i) = out_mc.traj.gamma_pp.*180/pi;    %deg
         t(:,i) = out_mc.traj.time;                  %s
         rho(:,i) = out_mc.traj.rho;     % kg/m3
-        rva_err(:,:,i) = out_mc.nav.rva_error;
+%         rva_err(:,:,i) = out_mc.nav.rva_error;
 %         ercv(:,:,i) = out_mc.nav.ercv;
 %         x_ercv(:,:,i) = out_mc.nav.x_ercv;
         
@@ -497,6 +497,9 @@ if (mc.flag)
 %                 idjTemp = find(t(:,i) >= t_jett(i,j),1);    % check if jettison final time step
 %                 idj(i,j) = idj;
             end
+            if (j == 1 && ~isnan(idj(i,j)))
+                ecf_ind(i) = out_mc.g.ind_curr(idj(i,j));
+            end
         end
        
         ha_err(:,i) = out_mc.g.(mode).dr_ap./1000;  %km
@@ -520,8 +523,8 @@ if (mc.flag)
         rss_nom(i) = out_mc.g.rss_nom;
         rss_K(:,i) = out_mc.g.rss_K;
         rss_ecf(:,i) = out_mc.g.rss_ens;
-        ind_curr(:,i) = out_mc.g.ind_curr;
-        ind_rss(:,i) = out_mc.g.ind_rss;
+%         ind_curr(:,i) = out_mc.g.ind_curr;
+%         ind_rss(:,i) = out_mc.g.ind_rss;
         
         % calculate apoapsis
         rv = [out_mc.traj.pos_ii(idxend,:), out_mc.traj.vel_ii(idxend,:)]';
@@ -569,8 +572,9 @@ if (mc.flag)
             out.g.atm.rss_nom = rss_nom;    % nominal RSS error
             out.g.atm.rss_K = rss_K;        % scale factor RSS error
             out.g.atm.rss_ecf = rss_ecf;    % ensemble filter RSS error
-            out.g.atm.ind_curr = ind_curr;  % ecf index
-            out.g.atm.ind_rss = ind_rss;
+%             out.g.atm.ind_curr = ind_curr;  % ecf index
+%             out.g.atm.ind_rss = ind_rss;
+            out.g.ecf_ind = ecf_ind;
         case 'pd'
             out.g.dr_ap = ha_err;
         case 'manual'
@@ -587,7 +591,7 @@ if (mc.flag)
     
     % nav
 %     out.g.nav.ecrv0 = ecrv0;
-    out.g.nav.rva_err = rva_err;
+%     out.g.nav.rva_err = rva_err;
 %     out.g.nav.ercv = ercv;
 %     out.g.nav.x_ercv = x_ercv;
     

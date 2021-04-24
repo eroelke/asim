@@ -1,5 +1,5 @@
 
-function histogram_plot(histN, haf_errs, labels, haTgt)
+function histogram_plot(histN, haf_errs, labels, haTgt, lims)
 
 if (size(haf_errs,2) > size(haf_errs,1))
     haf_errs = haf_errs';
@@ -10,12 +10,25 @@ set(gca,'FontSize',16)
 title(['v=11, h_a^* = ' num2str(haTgt) ', EFPA = '])
 N = histN;
 mul = 50;
+n = nan(size(haf_errs));
+e = nan(size(haf_errs,1)+1,size(haf_errs,2));
 for i = 1:size(haf_errs, 2)
-    [n(:,i), e(:,i)] = histcounts(haf_errs(:,i), N);
+    [count, edges] = histcounts(haf_errs(:,i), 'BinWidth',size(haf_errs,1)/N);
+    n(1:length(count),i) = count;
+    e(1:length(edges),i) = edges;
 end
 % xMin = haTgt * (1 - (1-(xmin/haTgt)));
 % xMax = haTgt * (1 - (1-(xmax/haTgt)));
 % xlim([xMin xMax]);
+
+if (nargin == 5)
+    xlim(lims);
+end
+
+% for i = 1:size(haf_errs, 2)
+%     fprintf('index %i has N=%4.2f\n',i,sum(n(:,i)));
+% end
+    
 ymax = mul * ceil(max(max(n))/mul);
 ylim([0 ymax])
 for i = 1:size(haf_errs, 2)

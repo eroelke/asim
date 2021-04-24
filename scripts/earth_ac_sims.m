@@ -1,9 +1,638 @@
-%% Evan Roelke
+ %% Evan Roelke
 % Earth Aerocapture Simulations
 % 
 % clear;clc
 
+p = '..\earth_ac\dej_n\';
+
+
+%% Post Process 'Nominal' Monte Carlo - dispersed GRAM index vs. err
+% %{
+d = load([p 'atm_est\data/entry_trades/2k_62deg_gramIdxTrade.mat']);
+
+inds = 1:1:1000;
+
+err_k = d.out_k.haf_err;
+err_di = d.out_di.haf_err;
+err_ecf = d.out_ecf.haf_err;
+err_ecfh = d.out_ecfh.haf_err;
+err_ecf_p = d.out_ecf_p.haf_err;
+err_ecfh_p = d.out_ecfh_p.haf_err;
+
+mu_k = mean(err_k);             std_k = std(err_k);
+mu_di = mean(err_di);           std_di = std(err_di);
+mu_ecf = mean(err_ecf);         std_ecf = std(err_ecf);
+mu_ecfh = mean(err_ecfh);       std_ecfh = std(err_ecfh);
+mu_ecf_p = mean(err_ecf_p);     std_ecf_p = std(err_ecf_p);
+mu_ecfh_p = mean(err_ecfh_p);   std_ecfh_p = std(err_ecfh_p);
+
+labels = default_atm_labels();
+haf_errs = [err_k err_di err_ecf err_ecfh err_ecf_p err_ecfh_p];
+histogram_plot(500, haf_errs, labels, 2000, [-400 400])
+
+
+% figure(); hold on; grid on
+% title(['EFPA Trade Study, GRAM Index ' num2str(d.mc.mcIndex)])
+% set(gca,'FontSize',14)
+% plot(1:1000, err_k,'k--*','LineWidth',2)
+% plot(1:1000, err_di,'r*','LineWidth',2)
+% plot(1:1000, err_ecf,'b*','LineWidth',2)
+% plot(1:1000, err_ecfh,'g*','LineWidth',2)
+% plot(1:1000, err_ecf_p,'b*','LineWidth',2)
+% plot(1:1000, err_ecfh_p,'g*','LineWidth',2)
+% legend('DSF','DI','ECF','ECFH','location','ne')
+% xlabel('Perturbed GRAM Index')
+% ylabel('Apoapsis Error (km)')
+% xlim([-5.7, -5.35])
+% ylim([-200 500])
+
+
+%}
+
+
+%% 'Nominal' Monte Carlo - dispersed GRAM index vs. error
+%{
+[x0,aero,gnc,sim, mc] = base_earth_ac(true);
+mc.N = 1000;
+mc.ordered = true;
+sim.ignore_nominal = true;
+sim.t_max = 1000;
+mc.sigs = zero_sigs();
+% gnc.rss_flag = true;
+% tvec = (0 : 1/sim.traj_rate : sim.t_max)'; % Trajectory time vector, s
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);    % identical initial nav errors
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);
+% gnc = exp_decay_ecrv(gnc);
+gnc.ecf.p_tol = 0.02;
+
+sim.traj_rate = 100;
+sim.data_rate = 1;
+gnc.guid_rate = 1;
+
+ha_tgts = 2000;
+
+efpas = [-6, -6.2];
+
+Ni = length(efpas);
+Nj = length(ha_tgts);
+% Nk = length(inds);
+
+err_k = nan(Ni,Nj); err_di = err_k; err_ecf = err_k; err_ecfh = err_k; err_ecf_p = err_k; err_ecfh_p = err_k;
+% tj_k = nan(Ni,Nj); tj_di = tj_k; tj_ecf = tj_k; tj_ecfh = tj_k;
+tjr_k = nan(Ni,Nj); tjr_di = tjr_k; tjr_ecf = tjr_k; tjr_ecfh = tjr_k; tjr_ecf_p = tjr_k; tjr_ecfh_p = tjr_k;
+% dv_k = nan(Ni,Nj); dv_di = dv_k; dv_ecf = dv_k; dv_hyb = dv_k;
+dvCirc_k = nan(Ni,Nj); dvCirc_di = dvCirc_k; dvCirc_ecf = dvCirc_k; dvCirc_ecfh = dvCirc_k; dvCirc_ecf_p = dvCirc_k; dvCirc_ecfh_p = dvCirc_k;
+for i = 1:Ni % efpa
+    fprintf('efpa %4.1f deg\n',efpas(i));
+    x0.fpa0 = efpas(i);
+    for j = 1:Nj %tgt
+        gnc.ha_tgt = ha_tgts(j);
+        % dsf
+        gnc.atm_mode = uint8(1);    %dsf
+        out_k = run_dej_n(x0,gnc,aero,sim,mc);
+        err_k = out_k.haf_err;
+        tjr_k = out_k.tjr(:,1);
+        dvCirc_k = out_k.dv;
+        
+        % di
+        gnc.atm_mode = uint8(2);    %di
+        out_di = run_dej_n(x0,gnc,aero,sim,mc);
+        err_di = out_di.haf_err;
+        tjr_di = out_di.tjr(:,1);
+        dvCirc_di = out_di.dv;
+        
+        % ecf free, no scaling
+        gnc.atm_mode = uint8(3);    % ecf
+        gnc.ecf.mode = 1;	% no scaling
+        out_ecf = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator        
+        err_ecf = out_ecf.haf_err;
+        tjr_ecf = out_ecf.tjr(:,1);
+        dvCirc_ecf = out_ecf.dv;
+        
+        % hybrid
+        gnc.atm_mode = uint8(4);  %hyrbid
+        gnc.ecf.mode = 1;	% no scaling
+        out_ecfh = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator        
+        err_ecfh = out_ecfh.haf_err;
+        tjr_ecfh = out_ecfh.tjr(:,1);
+        dvCirc_ecfh = out_ecfh.dv;
+        
+        gnc.ecf.pert = true;
+        
+        % ecf free, no scaling, pert
+        gnc.atm_mode = uint8(3);    % ecf
+        gnc.ecf.mode = 1;	% no scaling
+        out_ecf_p = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator        
+        err_ecf_p = out_ecf_p.haf_err;
+        tjr_ecf_p = out_ecf_p.tjr(:,1);
+        dvCirc_ecf_p = out_ecf_p.dv;
+        % hybrid
+        gnc.atm_mode = uint8(4);  %hyrbid
+        gnc.ecf.mode = 1;	% no scaling
+        out_ecfh_p = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator        
+        err_ecfh_p = out_ecfh_p.haf_err;
+        tjr_ecfh_p = out_ecfh_p.tjr(:,1);
+        dvCirc_ecfh_p = out_ecfh_p.dv;
+        
+%         keyboard;
+        save(['../earth_ac/dej_n/atm_est/data/' ... 
+            'entry_trades/' num2str(gnc.ha_tgt/1000) 'k_' ... 
+            num2str(abs(x0.fpa0*10)) 'deg_gramIdxTrade.mat']);
+
+    end %j - ha tgt
+end %i - efpa
+
+keyboard
+%}
+
+
+
+%%  performance vs. efpa - 'nominal', perturbed
+%{
+clear;clc
+[x0,aero,gnc,sim, mc] = base_earth_ac(true);
+mc.N = 1;
+
+low_ind = 20;
+high_ind = 600;
+
+inds = [low_ind high_ind];
+
+sim.ignore_nominal = true;
+sim.t_max = 1200;
+mc.sigs = zero_sigs();
+gnc.rss_flag = true;
+% tvec = (0 : 1/sim.traj_rate : sim.t_max)'; % Trajectory time vector, s
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);    % identical initial nav errors
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);
+% gnc = exp_decay_ecrv(gnc);
+gnc.ecf.p_tol = 0.02;
+
+sim.traj_rate = 100;
+sim.data_rate = 100;
+gnc.guid_rate = 1;
+
+ha_tgts = [2000];
+efpas = linspace(-7,-5.5, 40);
+Ni = length(efpas);
+Nj = length(ha_tgts);
+Nk = length(inds);
+
+for k = 1:Nk %GRAM ind
+mc.mcIndex = inds(k);
+    
+err_k = nan(Ni,Nj); err_di = err_k; err_ecf = err_k; err_hyb = err_k;
+tj_k = nan(Ni,Nj); tj_di = tj_k; tj_ecf = tj_k; tj_hyb = tj_k;
+tjr_k = nan(Ni,Nj); tjr_di = tjr_k; tjr_ecf = tjr_k; tjr_hyb = tjr_k;
+dv_k = nan(Ni,Nj); dv_di = dv_k; dv_ecf = dv_k; dv_hyb = dv_k;
+dvCirc_k = nan(Ni,Nj); dvCirc_di = dvCirc_k; dvCirc_ecf = dvCirc_k; dvCirc_hyb = dvCirc_k;
+for j = 1:Nj % ha tgt
+    fprintf('ha tgt %4.0f\n',ha_tgts(j));
+    gnc.ha_tgt = ha_tgts(j);
+    for i = 1:Ni %efpa
+        x0.fpa0 = efpas(i);        
+        % dsf
+        gnc.atm_mode = uint8(1);    %dsf
+        out_k = run_dej_n(x0,gnc,aero,sim,mc);
+        [err_k(i,j), tj_k(i,j), tjr_k(i,j), dv_k(i,j), dvCirc_k(i,j)] = ...
+            get_ac_results(out_k);
+        
+        % di
+        gnc.atm_mode = uint8(2);    %di
+        out_di = run_dej_n(x0,gnc,aero,sim,mc);
+        [err_di(i,j), tj_di(i,j), tjr_di(i,j), dv_di(i,j), dvCirc_di(i,j)] = ...
+            get_ac_results(out_di);
+        
+        % ecf free, no scaling
+        gnc.atm_mode = uint8(3);    % ecf
+        gnc.ecf.mode = 1;	% no scaling
+        out_ecf = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator        
+        [err_ecf(i,j), tj_ecf(i,j), tjr_ecf(i,j), dv_ecf(i,j), dvCirc_ecf(i,j)] = ...
+            get_ac_results(out_ecf);
+        
+        % hybrid
+        gnc.atm_mode = uint8(4);  %hyrbid
+        gnc.ecf.mode = 1;	% no scaling
+        out_hyb = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator        
+        [err_hyb(i,j), tj_hyb(i,j), tjr_hyb(i,j), dv_hyb(i,j), dvCirc_hyb(i,j)] = ...
+            get_ac_results(out_hyb);
+        
+    end %i
+end %j ,tgt
+
+save(['..\earth_ac\dej_n\atm_est\data\entry_trades\perturbed' ...
+    'pertGramIdx_' num2str(inds(k)) '.mat']);
+
+end %k
+
+keyboard
+%}
+
+
+
+%% add simulated variations to density profile
+%{
+if ~exist('atm','var')
+    atm = load('./data/atm_data/atm_earth_gram2016.mat');
+    mc = atm.mc;
+    nom = atm.nom_table;
+end
+alt = nom(:,1)./1000;
+N = 1000;
+
+K = nan(N,length(nom(:,2)));
+for i = 1:N
+    dens = mc(i).table(:,2);
+    K(:,i) = dens ./ nom(:,2);
+end
+
+% save('./data/atm_data/atm_venus_K.mat','K');
+
+indices = 1:1000;
+Amax = 0.1;
+max = 150;
+min = 80;
+Knew = nan(1000,1000);
+pert = Knew;
+rss = nan(1000,1);
+A = nan(1000,1); shift = A; period = A;
+for i = 1:1000 %profile
+    A(i) = Amax*rand(1); % random amplitude
+    shift(i) = 2*pi*rand(1);
+    period(i) = (max - min) * randi([1 2]);
+    temp = 0;
+    for j = 1:1000  %alt
+        pert(j,i) = A(i)*sin(2*pi*alt(j)/period(i) + shift(i));
+        Knew(j,i) = K(j,i) + pert(j,i);
+        temp = temp + (Knew(j,i) - nom(j,2))^2;
+    end
+    rss(i) = sqrt(temp);
+%     Knew(:,i) = K(:,i) + pert(:,i);
+end
+
+% v = period ./ 70;
+% lab = 'Period';
+% 
+% figure(); hold on; grid on
+% set(gca,'FontSize',14)
+% xlabel('Perturbed GRAM Index')
+% plot(indices, v, '*')
+% ylabel(lab);
+% yline(mean(v),'linewidth',1.5);
+% yline(mean(v) + 3*std(v),'k--','linewidth',1.5);
+% yline(mean(v) - 3*std(v),'k--','linewidth',1.5);
+
+ind = find(A >= 0.095);
+ind = ind(randi([1 length(ind)]));
+
+figure(); hold on
+set(gca,'FontSize',14)
+plot(pert, alt,'Color',[0 0 0] + 0.4)
+plot(pert(:,ind),alt,'r','linewidth',1.5)
+ylim([nom(end,1)/2000 nom(end,1)/1000]);
+xlabel('K_{pert}')
+ylabel('Altitude (km)')
+
+
+figure(); hold on; grid on
+title(['Amplitude=' num2str(round(A(ind),2)) ',period=2\pi/' num2str(period(ind)) ... 
+    ' km, shift=' num2str(round(shift(ind)/pi,2)) '\pi'])
+set(gca,'FontSize',16)
+plot(K(:,ind),alt,'k','linewidth',1.5)
+plot(Knew(:,ind),alt,'b','linewidth',1.5);
+ylim([nom(end,1)/2000 nom(end,1)/1000]);
+ylabel('Altitude (km)')
+xlabel('Density Variation')
+legend('GRAM','Perturbed GRAM','location','ne')
+
+% perturb densities
+mc_new = mc;
+for i = 1:1000 %profile
+    mc_new(i) = mc(i);
+    for j = 1:1000 %alt
+        rho(j,i) = mc(i).table(j,2);
+        mc_new(i).table(j,2) = Knew(i,j) * mc(i).table(j,2);
+        rho_new(j,i) = mc_new(i).table(j,2);
+    end
+end
+
+% figure();
+% title(['Amplitude=' num2str(round(A(ind),2)) ',period=2\pi/' num2str(period(ind)) ... 
+%     ' km, shift=' num2str(round(shift(ind)/pi,2)) '\pi'])
+% % set(gca,'FontSize',16)
+% semilogy(alt,rho(:,ind),'b','linewidth',1); hold on
+% semilogy(alt,rho_new(:,ind),'k','linewidth',1);
+% ylim([80 150]);
+% ylabel('Altitude (km)')
+% xlabel('Density Variation')
+% legend('GRAM','Perturbed GRAM','location','ne')
+
+% save new profiles
+nom_table = atm.nom_table;
+mc = mc_new;
+save('./data/atm_data/atm_earth_mc_pert.mat','nom_table','mc');
+
+% ECF data array
+atm = load('./data/atm_data/atm_earth_mc_pert.mat');
+alt = atm.nom_table(:,1);
+nom = atm.nom_table;
+mc = atm.mc;
+mcs = nan(1000,1001);
+mcs(:,1) = alt;
+for i = 1:1000 %prof
+    mcs(:,i+1) = mc(i).table(:,2);
+end
+
+rss_error = zeros(1000,1);
+for i = 1:1000 %profile
+    disp = atm.mc(i).table(:,2);
+    % compute rss error to nom
+    rss = 0;
+    for j = 1:1000 %altitude
+        K(j,i) = atm.mc(i).table(j,2) / nom(j);
+        err = (disp(j) - nom(j))^2;
+        rss = rss + err;
+    end
+    rss_err(i) = sqrt(rss);
+end
+
+% 
+save('./data/atm_data/atm_earth_all_pert.mat','mcs');
+
+% keyboard
+%}
+
+
+
+%% performance vs. ha tgt - 'nominal'
+%{
+clear;clc
+[x0,aero,gnc,sim, mc] = base_earth_ac(true);
+mc.N = 1;
+
+low_ind = 130;
+high_ind = 20;
+
+inds = [low_ind high_ind];
+
+% mc.mcIndex = 500;
+% mc.ordered = true;
+sim.ignore_nominal = true;
+sim.t_max = 1000;
+mc.sigs = zero_sigs();
+gnc.rss_flag = true;
+% tvec = (0 : 1/sim.traj_rate : sim.t_max)'; % Trajectory time vector, s
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);    % identical initial nav errors
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);
+% gnc = exp_decay_ecrv(gnc);
+gnc.ecf.p_tol = 0.02;
+
+sim.traj_rate = 100;
+sim.data_rate = 100;
+gnc.guid_rate = 1;
+
+ha_tgts = logspace(3,5,30); ha_tgts = ha_tgts * .4;
+
+efpas = [-5.9, -6.2, -6.7];
+% efpas = -5.5;
+
+Ni = length(efpas);
+Nj = length(ha_tgts);
+Nk = length(inds);
+
+for k = 1:Nk %GRAM ind
+mc.mcIndex = inds(k);
+    
+err_k = nan(Ni,Nj); err_di = err_k; err_ecf = err_k; err_hyb = err_k;
+tj_k = nan(Ni,Nj); tj_di = tj_k; tj_ecf = tj_k; tj_hyb = tj_k;
+tjr_k = nan(Ni,Nj); tjr_di = tjr_k; tjr_ecf = tjr_k; tjr_hyb = tjr_k;
+dv_k = nan(Ni,Nj); dv_di = dv_k; dv_ecf = dv_k; dv_hyb = dv_k;
+dvCirc_k = nan(Ni,Nj); dvCirc_di = dvCirc_k; dvCirc_ecf = dvCirc_k; dvCirc_hyb = dvCirc_k;
+for i = 1:Ni % efpa
+    fprintf('efpa %4.1f deg\n',efpas(i));
+    x0.fpa0 = efpas(i);
+    for j = 1:Nj %tgt
+        gnc.ha_tgt = ha_tgts(j);
+        % dsf
+        gnc.atm_mode = uint8(1);    %dsf
+        out_k = run_dej_n(x0,gnc,aero,sim,mc);
+        [err_k(i,j), tj_k(i,j), tjr_k(i,j), dv_k(i,j), dvCirc_k(i,j)] = ...
+            get_ac_results(out_k);
+        
+        % di
+        gnc.atm_mode = uint8(2);    %di
+        out_di = run_dej_n(x0,gnc,aero,sim,mc);
+        [err_di(i,j), tj_di(i,j), tjr_di(i,j), dv_di(i,j), dvCirc_di(i,j)] = ...
+            get_ac_results(out_di);
+        
+        % ecf free, no scaling
+        gnc.atm_mode = uint8(3);    % ecf
+        gnc.ecf.mode = 1;	% no scaling
+        out_ecf = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator        
+        [err_ecf(i,j), tj_ecf(i,j), tjr_ecf(i,j), dv_ecf(i,j), dvCirc_ecf(i,j)] = ...
+            get_ac_results(out_ecf);
+        
+        % hybrid
+        gnc.atm_mode = uint8(4);  %hyrbid
+        gnc.ecf.mode = 1;	% no scaling
+        out_hyb = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator        
+        [err_hyb(i,j), tj_hyb(i,j), tjr_hyb(i,j), dv_hyb(i,j), dvCirc_hyb(i,j)] = ...
+            get_ac_results(out_hyb);
+        
+    end %j - ha tgt
+end %i - efpa
+
+save(['../earth_ac/dej_n/atm_est/data/entry_trades/' ...
+    num2str(abs(x0.fpa0*10)) 'deg_haTrade_gramIdx_' num2str(inds(k)) '.mat']);
+
+end %k
+%}
+
+
+%% nominal performance vs. haTGt post process
+%{
+%  20 high, 130 low
+% d = load([p 'atm_est\data\entry_trades\67deg_haTrade_gramIdx_20.mat']);
+d = load([p 'atm_est\data\entry_trades\67deg_haTrade_gramIdx_130.mat']);
+
+ind = 1;    %-5.9deg
+% ind = 2;    %-6.2deg
+% ind = 3;    %-6.7deg
+
+figure(); hold on; grid on
+title(['EFPA Trade Study, GRAM Index ' num2str(d.mc.mcIndex)])
+set(gca,'FontSize',14)
+plot(d.ha_tgts, d.err_k(ind,:),'k--','LineWidth',2)
+plot(d.ha_tgts, d.err_di(ind,:),'r','LineWidth',2)
+plot(d.ha_tgts, d.err_ecf(ind,:)','b','LineWidth',2)
+plot(d.ha_tgts, d.err_hyb(ind,:)','g','LineWidth',2)
+legend('DSF','DI','ECF','ECFH','location','ne')
+xlabel('Apoapsis Altitude Target (km)')
+ylabel('Apoapsis Error (km)')
+% xlim([-5.7, -5.35])
+ylim([-200 500])
+
+
+%}
+
+
+
+%%  performance vs. efpa - 'nominal'
+%{
+clear;clc
+[x0,aero,gnc,sim, mc] = base_earth_ac(true);
+mc.N = 1;
+
+low_ind = 130;
+high_ind = 20;
+
+inds = [low_ind high_ind];
+
+sim.ignore_nominal = true;
+sim.t_max = 1200;
+mc.sigs = zero_sigs();
+gnc.rss_flag = true;
+% tvec = (0 : 1/sim.traj_rate : sim.t_max)'; % Trajectory time vector, s
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);    % identical initial nav errors
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);
+% gnc = exp_decay_ecrv(gnc);
+gnc.ecf.p_tol = 0.02;
+
+sim.traj_rate = 100;
+sim.data_rate = 100;
+gnc.guid_rate = 1;
+
+ha_tgts = [2000 10000];
+efpas = linspace(-7,-5.5, 40);
+Ni = length(efpas);
+Nj = length(ha_tgts);
+Nk = length(inds);
+
+for k = 1:Nk %GRAM ind
+mc.mcIndex = inds(k);
+    
+err_k = nan(Ni,Nj); err_di = err_k; err_ecf = err_k; err_hyb = err_k;
+tj_k = nan(Ni,Nj); tj_di = tj_k; tj_ecf = tj_k; tj_hyb = tj_k;
+tjr_k = nan(Ni,Nj); tjr_di = tjr_k; tjr_ecf = tjr_k; tjr_hyb = tjr_k;
+dv_k = nan(Ni,Nj); dv_di = dv_k; dv_ecf = dv_k; dv_hyb = dv_k;
+dvCirc_k = nan(Ni,Nj); dvCirc_di = dvCirc_k; dvCirc_ecf = dvCirc_k; dvCirc_hyb = dvCirc_k;
+for j = 1:Nj % ha tgt
+    fprintf('ha tgt %4.0f\n',ha_tgts(j));
+    gnc.ha_tgt = ha_tgts(j);
+    for i = 1:Ni %efpa
+        x0.fpa0 = efpas(i);        
+        % dsf
+        gnc.atm_mode = uint8(1);    %dsf
+        out_k = run_dej_n(x0,gnc,aero,sim,mc);
+        [err_k(i,j), tj_k(i,j), tjr_k(i,j), dv_k(i,j), dvCirc_k(i,j)] = ...
+            get_ac_results(out_k);
+        
+        % di
+        gnc.atm_mode = uint8(2);    %di
+        out_di = run_dej_n(x0,gnc,aero,sim,mc);
+        [err_di(i,j), tj_di(i,j), tjr_di(i,j), dv_di(i,j), dvCirc_di(i,j)] = ...
+            get_ac_results(out_di);
+        
+        % ecf free, no scaling
+        gnc.atm_mode = uint8(3);    % ecf
+        gnc.ecf.mode = 1;	% no scaling
+        out_ecf = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator        
+        [err_ecf(i,j), tj_ecf(i,j), tjr_ecf(i,j), dv_ecf(i,j), dvCirc_ecf(i,j)] = ...
+            get_ac_results(out_ecf);
+        
+        % hybrid
+        gnc.atm_mode = uint8(4);  %hyrbid
+        gnc.ecf.mode = 1;	% no scaling
+        out_hyb = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator        
+        [err_hyb(i,j), tj_hyb(i,j), tjr_hyb(i,j), dv_hyb(i,j), dvCirc_hyb(i,j)] = ...
+            get_ac_results(out_hyb);
+        
+    end %i
+end %j
+
+save(['../earth_ac/dej_n/atm_est/data/entry_trades/' ...
+    'gramIdx_' num2str(inds(k)) '.mat']);
+
+end %k
+
+keyboard
+%}
+
+%% nominal performance vs. efpa post process
+%{
+% d = load([p 'atm_est\data\entry_trades\gramIdx_20.mat']);
+% d = load([p 'atm_est\data\entry_trades\gramIdx_130.mat']);
+
+d = load(['..\earth_ac\dej_n\atm_est\data\entry_trades\perturbed' ...
+    'pertGramIdx_20.mat']);
+
+ind = 1;    %2000 km tgt
+% ind = 2;  %10000 km tgt
+
+figure(); hold on; grid on
+title(['EFPA Trade Study, GRAM Index ' num2str(d.mc.mcIndex)])
+set(gca,'FontSize',14)
+plot(d.efpas, d.err_k(:,ind),'k--','LineWidth',2)
+plot(d.efpas, d.err_di(:,ind),'r','LineWidth',2)
+plot(d.efpas, d.err_ecf(:,ind)','b','LineWidth',2)
+plot(d.efpas, d.err_hyb(:,ind)','g','LineWidth',2)
+legend('DSF','DI','ECF','ECFH','location','ne')
+xlabel('EFPA (deg)')
+ylabel('Apoapsis Error (km)')
+% xlim([-5.7, -5.35])
+ylim([-200 500])
+
+
+%}
+
+
+%% investigate GRAM indices
+%{
+clear; clc
+atm = load('./data/atm_data/atm_earth_gram2016.mat');
+
+alt = atm.nom_table(:,1);
+nom = atm.nom_table(:,2);
+disp = nan(1000,1000);
+rss_err = nan(1000,1);
+indices = 1:1:1000;
+K = disp;
+for i = 1:1000
+    disp(:,i) = atm.mc(i).table(:,2);
+    % compute rss error to nom
+    rss = 0;
+    for j = 1:1000
+        K(j,i) = atm.mc(i).table(j,2) / nom(j);
+        err = (disp(j,i) - nom(j))^2;
+        rss = rss + err;
+    end
+    rss_err(i) = sqrt(rss);
+end
+
+min_ind = find(rss_err == min(rss_err));
+max_ind = find(rss_err == max(rss_err));
+
+
+figure(); hold on; grid on
+title('EarthGRAM RSS Errors')
+set(gca,'FontSize',14)
+%histogram(rss_err,'NumBins',50)
+plot(indices, rss_err,'*')
+% plot(100, rss_err(100),'k*','LineWidth',2)
+% plot(369,rss_err(369),'r*','LineWidth',2)
+% plot(68,rss_err(68),'b*','LineWidth',2)
+% plot(227,rss_err(227),'g*','LineWidth',2)
+% plot(780,rss_err(780),'y*','LineWidth',2)
+% plot(798,rss_err(798),'c*','LineWidth',2)
+xlabel('GRAM Index')
+ylabel('RSS Error')
+% legend('Range','Truth-100','369','68','227','780','798')
+
+
+%}
+
 %% Basic Lifting Sim
+%{
 clear; clc;
 cd = 1;
 beta1 = 80;
@@ -47,6 +676,7 @@ ylabel('Altitude (km)')
 end
 
 % keyboard
+%}
 
 %% Trade Studies EFPA va Vatm - Jan 2019
 %{
