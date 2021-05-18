@@ -349,15 +349,20 @@ if (mc.flag)
     idj = t_jett;
     ha = vmag; ha_err = vmag; 
 %     rva_err = nan(len,9,N);
-%     ercv = rva_err; x_ercv = ercv;
+%     ercv = rva_err; 
+    x_ercv = nan(len,9,N);
 %     ncalls = vmag; 
     tj_curr = vmag; K_dens = vmag; K_true = vmag;
     K_model = vmag; rho_model = vmag;
 %     atm_err = vmag;
-    rss_nom = nan(mc.N,1);    ecf_ind = rss_nom;
-    rss_K = vmag; rss_ecf = vmag;
+    rss_nom = nan(mc.N,1);    
+    ecf_ind = rss_nom;
+    rss_K = vmag;
+%     rss_ecf = vmag;
+    rss_hist = vmag;
 %     ind_curr = vmag;
-%     ind_rss = vmag;
+    ind_rss = vmag; % rss of ECF chosen gram index
+    rss_true = vmag;
     
     % more preallocation
     haf = nan(N,1);
@@ -469,7 +474,7 @@ if (mc.flag)
         rho(:,i) = out_mc.traj.rho;     % kg/m3
 %         rva_err(:,:,i) = out_mc.nav.rva_error;
 %         ercv(:,:,i) = out_mc.nav.ercv;
-%         x_ercv(:,:,i) = out_mc.nav.x_ercv;
+        x_ercv(:,:,i) = out_mc.nav.x_ercv;
         
 %         out.traj(i).vmag = out_mc.traj.vel_pp_mag./1000;
 %         out.traj(i).alt = out_mc.traj.alt./1000;
@@ -520,11 +525,13 @@ if (mc.flag)
         end
 
         % atmospheric estimation stuff
-        rss_nom(i) = out_mc.g.rss_nom;
+%         rss_nom(i) = out_mc.g.rss_nom;
         rss_K(:,i) = out_mc.g.rss_K;
-        rss_ecf(:,i) = out_mc.g.rss_ens;
-%         ind_curr(:,i) = out_mc.g.ind_curr;
-%         ind_rss(:,i) = out_mc.g.ind_rss;
+%         rss_ecf(:,i) = out_mc.g.rss_ens;
+        rss_hist(:,i) = out_mc.g.rss_hist;
+        ind_curr(:,i) = out_mc.g.ind_curr;
+        ind_rss(:,i) = out_mc.g.ind_rss;
+        rss_true(:,i) = out_mc.g.rss_true;
         
         % calculate apoapsis
         rv = [out_mc.traj.pos_ii(idxend,:), out_mc.traj.vel_ii(idxend,:)]';
@@ -569,11 +576,13 @@ if (mc.flag)
             out.g.tj_curr = tj_curr;
 
             % atmospheric estimation
-            out.g.atm.rss_nom = rss_nom;    % nominal RSS error
+%             out.g.atm.rss_nom = rss_nom;    % nominal RSS error
             out.g.atm.rss_K = rss_K;        % scale factor RSS error
-            out.g.atm.rss_ecf = rss_ecf;    % ensemble filter RSS error
-%             out.g.atm.ind_curr = ind_curr;  % ecf index
-%             out.g.atm.ind_rss = ind_rss;
+%             out.g.atm.rss_ecf = rss_ecf;    % ensemble filter RSS error
+            out.g.atm.rss_hist = rss_hist;  % density hsitory rss error
+            out.g.atm.ind_curr = ind_curr;  % ecf index
+            out.g.atm.ind_rss = ind_rss;
+            out.g.atm.rss_true = rss_true;
             out.g.ecf_ind = ecf_ind;
         case 'pd'
             out.g.dr_ap = ha_err;
@@ -593,7 +602,7 @@ if (mc.flag)
 %     out.g.nav.ecrv0 = ecrv0;
 %     out.g.nav.rva_err = rva_err;
 %     out.g.nav.ercv = ercv;
-%     out.g.nav.x_ercv = x_ercv;
+    out.g.nav.x_ercv = x_ercv;
     
     
 end % monte carlo check

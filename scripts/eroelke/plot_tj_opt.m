@@ -15,10 +15,10 @@ end
 % get MEJ path based on n stages
 switch (n)
     case 2
-        p = '../venus_ac/dej_n/HYDRA/2stage_bias/entry_trades/';
+        p = '../venus_ac/dej_n/npc_hybrid/2stage_bias/entry_trades/';
         bijs = ['b21_' num2str(b21)];
     case 3
-        p = '../venus_ac/dej_n/HYDRA/3stage_bias/entry_trades/';
+        p = '../venus_ac/dej_n/npc_hybrid/3stage_bias/entry_trades/';
         bijs = ['bijs=' num2str(b21(1)) '_' num2str(b21(2)) '_10'];
 end
 
@@ -106,7 +106,7 @@ for i = 1:Ni
 end
 
 colors = get_plot_colors();
-
+colors = colors';
 switch (n)
     case 2
         figTitle = ['v= ' num2str(d1.x0.v0) ', h_a^* = ' num2str(d1.gnc.ha_tgt) ... 

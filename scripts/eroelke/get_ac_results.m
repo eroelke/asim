@@ -3,7 +3,7 @@
 % 
 function [err, tj, tjr, dv, dv_circ] = get_ac_results(out, tol)
 
-if (abs(out.haf_err) < tol)
+if (nargin == 1 || abs(out.haf_err) < tol)
     err = out.haf_err;
     tj = out.tjett(1,1);
     tjr = out.tjr(1,1);

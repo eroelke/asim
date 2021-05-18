@@ -89,61 +89,6 @@ if (guid.p.atm.Kflag)
     guid.s.atm.K_true = guid.s.atm.rho_true / dens_nom;
     
     atm_curr = guid.s.atm.atm_curr;
-    % get rss error of atmospheric estimates
-    if (atm_curr(1,1) ~= 0 && guid.p.atm.rss_flag)
-        guid.s.atm.rss_K = 0;   %init rss
-        guid.s.atm.rss_ens = 0; %init rss
-        
-        atm_true = flip(in.p.atm.table(:,1:2));   % true density profile
-        switch (atm_mode) 
-            case {3,4}  % ensemble filter, hybrid
-                atm_ens = flip(atm_curr);
-            otherwise
-                atm_ens = nan;
-        end
-        
-        h_ind = nan(1,1);
-        h_ind(1) = find(atm_true(:,1) <= 70e3,1,'first');   % get altitude index. also sum's N
-            
-        for i = 1:h_ind
-            % rho_true = lin_interp(atm_true(:,1),atm_true(:,2),alt);
-            % rho_nom = lin_interp(atm_nom(:,1),atm_nom(:,2),alt);
-            % rho_ens = lin_interp(atm_ens(:,1),atm_ens(:,2),alt);
-            
-            guid.s.atm.rss_K = guid.s.atm.rss_K + ...
-                (guid.s.atm.K_dens*atm_nom(i,2) - atm_true(i,2))^2;
-            
-            switch (atm_mode)
-                case {3,4}  %ECF, DI/ECF hybrid
-                    if (atm_ens(1,1) == 0)
-                        % ensemble not done yet, use k_dens
-                        guid.s.atm.rss_ens = guid.s.atm.rss_K;
-                    else
-                        guid.s.atm.rss_ens = guid.s.atm.rss_ens + ...
-                            (atm_ens(i,2) - atm_true(i,2))^2;
-                    end
-                otherwise
-                    guid.s.atm.rss_ens = 0;
-            end
-            
-            % get nominal atm rss err if not done yet (const value)
-            % only needed once
-            if (guid.s.atm.rss_nom == 0)
-                guid.s.atm.rss_nom = guid.s.atm.rss_nom + ...
-                    (atm_nom(i,2) - atm_true(i,2))^2;
-            end
-        end %rss err loop
-        
-        if (guid.s.atm.rss_nom ~= 0)
-            guid.s.atm.rss_nom = sqrt(guid.s.atm.rss_nom)/h_ind;
-        end
-        guid.s.atm.rss_ens = sqrt(guid.s.atm.rss_ens)/h_ind;
-        guid.s.atm.rss_K = sqrt(guid.s.atm.rss_K)/h_ind;
-    else
-        guid.s.atm.rss_nom = nan;
-        guid.s.atm.rss_K = nan;
-        guid.s.atm.rss_ens = nan;
-    end %check save rss
     
     % save model density
     switch (atm_mode)
@@ -165,11 +110,11 @@ if (guid.p.atm.Kflag)
         case {2,3,4}  % density interpolator, ensemble filter, hybrid
             if (guid.s.atm.atm_ind <= 1000 && alt <= guid.s.atm.atm_hist(guid.s.atm.atm_ind,1))
                 % this alt hasnt saved atm data yet
-                T = calcs.T + normrnd(0,in.s.sigs.T_sens);
-                pres = calcs.pres + normrnd(0,in.s.sigs.P_sens);
+%                 T = calcs.T + normrnd(0,in.s.sigs.T_sens);
+%                 pres = calcs.pres + normrnd(0,in.s.sigs.P_sens);
                 
                 % rewrite alt at this step
-                guid.s.atm.atm_hist(guid.s.atm.atm_ind,:) = [alt dens_est T pres];
+                guid.s.atm.atm_hist(guid.s.atm.atm_ind,:) = [alt dens_est];
                 
                 % limit index size of array
                 if (guid.s.atm.atm_ind < 1000)
@@ -181,6 +126,73 @@ if (guid.p.atm.Kflag)
         otherwise
             % do nothing
     end
+    
+    
+    % get rss error of atmospheric estimates
+    guid.s.atm.rss_K = 0;   % init rss of scale factor
+    guid.s.atm.rss_ens = 0; % init rss of ECF
+    guid.s.atm.rss_hist = 0; % init rss of density history
+    if (guid.p.atm.rss_flag)
+        atm_true = flip(in.p.atm.table(:,1:2));   % true density profile
+%         switch (atm_mode) 
+%             case {3,4}  % ensemble filter, hybrid
+%                 atm_ens = flip(atm_curr);
+%             otherwise
+%                 atm_ens = nan;
+%         end
+        
+        % density history rss
+        
+        % loop from atm interfact to current density history index
+        for i = 1:(guid.s.atm.atm_ind - 1) % we just incremented the index
+            guid.s.atm.rss_hist = guid.s.atm.rss_hist + ...
+                (guid.s.atm.atm_hist(i,2) - atm_true(i,2))^2;
+            
+            guid.s.atm.rss_K = guid.s.atm.rss_K + ...
+                (guid.s.atm.K_dens*atm_nom(i,2) - atm_true(i,2))^2;
+        end
+        guid.s.atm.rss_hist = sqrt(guid.s.atm.rss_hist);
+        guid.s.atm.rss_K = sqrt(guid.s.atm.rss_K);
+        guid.s.atm.rss_ens = nan;
+        
+%         h_ind = nan(1,1);
+%         h_ind(1) = find(atm_true(:,1) <= 70e3,1,'first');   % get altitude index. also sum's N
+%         for i = 1:h_ind
+%             % rho_true = lin_interp(atm_true(:,1),atm_true(:,2),alt);
+%             % rho_nom = lin_interp(atm_nom(:,1),atm_nom(:,2),alt);
+%             % rho_ens = lin_interp(atm_ens(:,1),atm_ens(:,2),alt);
+%             
+%             guid.s.atm.rss_K = guid.s.atm.rss_K + ...
+%                 (guid.s.atm.K_dens*atm_nom(i,2) - atm_true(i,2))^2;
+%             
+%             switch (atm_mode)
+%                 case {3,4}  %ECF, DI/ECF hybrid
+%                     if (atm_ens(1,1) == 0)
+%                         % ensemble not done yet, use k_dens
+%                         guid.s.atm.rss_ens = guid.s.atm.rss_K;
+%                     else
+%                         guid.s.atm.rss_ens = guid.s.atm.rss_ens + ...
+%                             (atm_ens(i,2) - atm_true(i,2))^2;
+%                     end
+%                 otherwise
+%                     guid.s.atm.rss_ens = 0;
+%             end
+%             
+%             % get nominal atm rss err if not done yet (const value)
+%             % only needed once
+%         end %rss err loop
+%         
+%         if (guid.s.atm.rss_nom ~= 0)
+%             guid.s.atm.rss_nom = sqrt(guid.s.atm.rss_nom)/h_ind;
+%         end
+%         guid.s.atm.rss_ens = sqrt(guid.s.atm.rss_ens)/h_ind;
+%         guid.s.atm.rss_K = sqrt(guid.s.atm.rss_K)/h_ind;
+    else
+        guid.s.atm.rss_nom = nan;
+        guid.s.atm.rss_K = nan;
+        guid.s.atm.rss_ens = nan;
+    end %check save rss
+    
 else
     guid.s.atm.K_dens = 1;
 end % if Kflag set

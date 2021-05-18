@@ -10,12 +10,12 @@ end
 bijs = cell(Nb,1);
 switch (n)
     case 2
-        p = '../venus_ac/dej_n/HYDRA/2stage_bias/bias_val/';
+        p = '../venus_ac/dej_n/npc_hybrid/2stage_bias/bias_val/';
         for i = 1:Nb
             bijs{i} = ['b21_' num2str(bij(i))];
         end
     case 3
-        p = '../venus_ac/dej_n/HYDRA/3stage_bias/bias_val/';
+        p = '../venus_ac/dej_n/npc_hybrid/3stage_bias/bias_val/';
         for i = 1:Nb
             bijs{i} = ['bijs=' num2str(bij(1)) '_' num2str(bij(2)) '_10'];
         end

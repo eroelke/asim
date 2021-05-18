@@ -1,5 +1,5 @@
 function [bias, err] = load_bias_val_data(tgt, b21, n)
-p = '..\venus_ac\dej_n\HYDRA\2stage_bias\data\mc_bias_val\';
+p = '..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\';
 d2 = [];
 fj = [];
 fj_ind = [];
@@ -20,7 +20,7 @@ if (n == 2)
             bias = 100 * (([d.biasing] ./ 1000) ./ d.gnc.ha_tgt); % percent of tgt
         end
         if (b21 == 3)
-            fj = load('..\venus_ac\dej_n\HYDRA\2stage\data\400\v11_5.4deg_b_ijs3_10.mat');
+            fj = load('..\venus_ac\dej_n\npc_hybrid\2stage\data\400\v11_5.4deg_b_ijs3_10.mat');
         end
         fj_ind = 'out';
     elseif (tgt == 2000)
@@ -60,12 +60,15 @@ err = d.err;
 if ~isempty(d2)
     b2 = 100 * ((d2.biasing ./ 1000) ./ d2.gnc.ha_tgt); % percent of tgt
     bias = [bias b2]';
+    
+    err = [d.err d2.err];
 end
 
 if ~isempty(fj)
-    bias = [0;bias];
+    if (bias(1) ~= 0)
+        bias = [0;bias];
+    end
     err = [fj.(fj_ind).haf_err err];
 end
-
 
 end

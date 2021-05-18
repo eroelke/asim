@@ -110,14 +110,16 @@ s_atm = struct( ...
     'rho_K', double(0), ...   % density estimate from main guidance comp
     'rho_model', double(0), ...  % density estimate from model (DI, ECF)
     'atm_ind', double(1), ...   % index of current density history loc
-    'atm_hist',double(nan(1000,4)), ...  % atmospheric history (alt, rho, T, P)
+    'atm_hist',double(nan(1000,2)), ...  % atmospheric history (alt, rho, T, P)
     'atm_err', double(0), ...   % std error in the total atmosphere
     'rss_nom', double(0), ...   %rss error for nominal atm
-    'rss_K', double(0), ... % rss error for density corrector
+    'rss_K', double(0), ... % rss error for density scale factory
     'rss_ens', double(0), ...    %rss error for ensemble filter
+    'rss_hist', double(0), ...  % rss error for density history
     'atm_curr', zeros(1000,2), ...  % altitude, rho table of current best atm estimate
     'ecf_scores', zeros(1002,1), ...    % score for monte carlo indices
     'ind_rss', double(0), ...   % rss error for current ECF index
+    'rss_true', double(0), ...  % true gram index rss error up to density history
     'ind_curr', double(0) ...  % ensemble filter mc index
 );
 

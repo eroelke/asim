@@ -18,7 +18,8 @@
 % 
 function [s] = run_ensemble_filter(y0, t0, p, s, dej_n, alt)
 %#codegen
-if (p.atm.Kflag && p.atm.mode >= uint8(3))    
+if (p.atm.Kflag && p.atm.mode >= uint8(3) ... 
+    && dej_n.stage == 0)
     
     % speed up process - cheating
     if (bitand(p.atm.ecf.mode, 0x80) ~= 0 && s.atm.ind_curr-1 == p.atm.mc_ind)
@@ -45,7 +46,11 @@ if (p.atm.Kflag && p.atm.mode >= uint8(3))
                 atm = load('./data/atm_data/atm_venus_all.mat');
             end
         case 2 %earth
-            atm = load('./data/atm_data/atm_earth_all.mat');
+            if (p.atm.ecf.pert)
+                atm = load('./data/atm_data/atm_earth_all_pert.mat');
+            else
+                atm = load('./data/atm_data/atm_earth_all.mat');
+            end
         otherwise
             fprintf('Warning: No suitable atmospheric table for ensemble correlation filter.\n');
             return;
@@ -64,6 +69,8 @@ if (p.atm.Kflag && p.atm.mode >= uint8(3))
     end
     
     
+    
+%     % find all indices with density in search range
     h_ind = find(atms(:,1) >= alt,1,'first');   % get alt from nominal profile
     mcs = atms(h_ind,2:end)';    % all MC density values this altitude
     
@@ -82,8 +89,10 @@ if (p.atm.Kflag && p.atm.mode >= uint8(3))
     end
     
     rss_rho = zeros(length(inds),1);
-    rss_true = rss_rho;
+    rss_true = 0;
     
+    
+%     % compute the RSS values
     for k = 1:length(inds)
         atm_curr = [atms(:,1) atms(:,inds(k)+1)];    % monte carlo profile for this index
         for jj = 1:model_ind
@@ -94,11 +103,13 @@ if (p.atm.Kflag && p.atm.mode >= uint8(3))
             
             rho_true = lin_interp(p.planet.atm_true(:,1), p.planet.atm_true(:,2), s.atm.atm_hist(jj,1));
             diff_true = (rho_curr - rho_true)^2;
-            rss_true(k) = rss_true(k) + diff_true;
+            rss_true = rss_true + diff_true;
             
             % pressure rss
             % temp rss
         end
+%         rss_rho(k) = sqrt(rss_rho(k));
+%         rss_true = sqrt(rss_true);
     end % for each atm mc profile
     
     
@@ -159,6 +170,7 @@ if (p.atm.Kflag && p.atm.mode >= uint8(3))
             max(s.atm.ecf_scores),1);
     end
 
+    s.atm.rss_true = rss_true;
     s.atm.ind_rss(1) = rss_rho(min_rss);
     s.atm.ecf_scores(s.atm.ind_curr) = s.atm.ecf_scores(s.atm.ind_curr) + 1;
     

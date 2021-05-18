@@ -62,9 +62,11 @@ function dat = store_dat( calcs, i, ti, y, veh, guid, nav, ctrl, dat, in )
     % atmospheric estimate rss errs
     dat.g.rss_nom = guid.s.atm.rss_nom; %static value, nominal/true profiles never changes
     dat.g.rss_K(i) = guid.s.atm.rss_K;
-    dat.g.rss_ens(i) = guid.s.atm.rss_ens;
+%     dat.g.rss_ens(i) = guid.s.atm.rss_ens;
+    dat.g.rss_hist(i) = guid.s.atm.rss_hist;
     dat.g.ind_curr(i) = guid.s.atm.ind_curr - 1;
     dat.g.ind_rss(i) = guid.s.atm.ind_rss;
+    dat.g.rss_true(i) = guid.s.atm.rss_true;
     % Vehicle data
     dat.veh.area_ref(i) = veh.s.area_ref; % m^2
     
@@ -227,7 +229,13 @@ function dat = store_dat( calcs, i, ti, y, veh, guid, nav, ctrl, dat, in )
             dat.g.dej_n.iter(i) = guid.dej_n.s.iter;
             dat.g.dej_n.A_mag(i) = guid.dej_n.s.A_mag;
             dat.g.dej_n.V_pf_mag(i) = guid.dej_n.s.V_pf_mag;
-            dat.g.dej_n.tj(i) = guid.dej_n.s.tj_curr(guid.dej_n.s.stage+1);
+            % save current jettison time estimate. if we jettisoned all
+            % stages, save final time of last jettison
+            if (guid.dej_n.s.stage == guid.dej_n.p.n_jett && guid.dej_n.s.stage ~= 0)
+                dat.g.dej_n.tj(i) = guid.dej_n.s.tj_curr(guid.dej_n.s.stage);
+            else
+                dat.g.dej_n.tj(i) = guid.dej_n.s.tj_curr(guid.dej_n.s.stage+1);
+            end
             dat.g.dej_n.r_ap(i,:) = guid.dej_n.s.r_ap;
             if isnan(guid.dej_n.s.dr_ap)
                 dat.g.dej_n.dr_ap(i) = nan;

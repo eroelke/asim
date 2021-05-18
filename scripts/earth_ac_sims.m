@@ -1,14 +1,112 @@
  %% Evan Roelke
 % Earth Aerocapture Simulations
 % 
-% clear;clc
+clear;clc
 
 p = '..\earth_ac\dej_n\';
 
 
-%% Post Process 'Nominal' Monte Carlo - dispersed GRAM index vs. err
+%% Monte Carlo Post Process
 % %{
-d = load([p 'atm_est\data/entry_trades/2k_62deg_gramIdxTrade.mat']);
+
+d = load([p '\atm_est\data\mc\mc2500_v10_2k_50.4deg.mat']);
+% d = load([p '\atm_est\data\mc\mc1000_v10_2k_52deg.mat']);
+
+
+errs = get_default_atm_errs(d);
+
+% % capture rate
+% haTgt = d.gnc.ha_tgt;
+% tols = 0:1:50;
+% N = d.mc.N;
+% pc = nan(length(tols),size(errs,2));
+% for i = 1:length(tols)
+%     for j = 1:size(errs,2)
+%         pc(i,j) = 100 * length(find((100*abs(errs(:,j))/haTgt) <= tols(i))) / N;
+%     end
+% end
+% 
+% colors = nan(3,8);
+% colors(:,1) = [0;0;0];
+% colors(:,2:8) = get_plot_colors();
+% 
+% labels = default_atm_labels();
+% 
+% figure(); hold on
+% grid on
+% set(gca,'FontSize',16)
+% title(['v' num2str(d.x0.v0) ', h_a^* = ' num2str(haTgt) ', EFPA = ' num2str(d.x0.fpa0)])
+% for j = 1:size(errs,2)
+%     plot(tols, pc(:,j),'color',colors(:,j),'LineWidth',2.5)
+% end
+% xlim([0 50])
+% legend(labels);
+% xlabel('Tolerance (%)')
+% ylabel('Capture Rate')
+
+
+% % ecf accuracy
+get_ecf_accuracies(d);
+
+%}
+
+
+%% Monte Carlo: pert ON/OFF, nav errors
+%{
+clear;clc
+[x0,aero,gnc,sim, mc] = base_earth_ac(true);
+mc.N = 1000;
+% mc.mcIndex = 1;
+% mc.ordered = true;
+sim.ignore_nominal = true;
+sim.t_max = 1000;
+mc.sigs = default_sigs();
+gnc.rss_flag = true;
+% tvec = (0 : 1/sim.traj_rate : sim.t_max)'; % Trajectory time vector, s
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);    % identical initial nav errors
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);
+gnc = exp_decay_ecrv(gnc);
+gnc.ecf.p_tol = 0.02;
+% mc.debug = true;
+
+x0.fpa0 = -5.2;
+
+gnc.atm_mode = uint8(1);    %dsf
+out_k = run_dej_n(x0,gnc,aero,sim,mc);
+
+gnc.atm_mode = uint8(2);    %di
+out_di = run_dej_n(x0,gnc,aero,sim,mc);
+
+gnc.atm_mode = uint8(3);    % ecf
+gnc.ecf.mode = 1;	% no scaling
+out_ecf = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+
+gnc.atm_mode = uint8(4);    %ecfh
+gnc.ecf.mode = 1;   % no scaling
+out_hyb = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+
+% pert on
+gnc.ecf.pert = true;
+
+gnc.atm_mode = uint8(3);    % ecf
+gnc.ecf.mode = 1;	% no scaling
+out_ecf_p = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+
+% hybrid free, no scaling
+gnc.atm_mode = uint8(4);
+gnc.ecf.mode = 1;   % no scaling
+out_hyb_p = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+
+save(['../earth_ac/dej_n/atm_est/data/mc/mc' ... 
+    num2str(gnc.ha_tgt/1000) 'k_' num2str(abs(x0.fpa0*10)) 'deg.mat'])
+
+%}
+
+
+%% Post Process 'Nominal' Monte Carlo - dispersed GRAM index vs. err
+%{
+% d = load([p 'atm_est\data/entry_trades/v_10_2k_50.4deg_gramIdxTrade.mat']);
+d = load([p 'atm_est\data/entry_trades/v_10_2k_52deg_gramIdxTrade.mat']);
 
 inds = 1:1:1000;
 
@@ -28,7 +126,9 @@ mu_ecfh_p = mean(err_ecfh_p);   std_ecfh_p = std(err_ecfh_p);
 
 labels = default_atm_labels();
 haf_errs = [err_k err_di err_ecf err_ecfh err_ecf_p err_ecfh_p];
-histogram_plot(500, haf_errs, labels, 2000, [-400 400])
+
+histogram_plot(250, haf_errs, labels, 2000, [-100 100])
+
 
 
 % figure(); hold on; grid on
@@ -71,7 +171,7 @@ gnc.guid_rate = 1;
 
 ha_tgts = 2000;
 
-efpas = [-6, -6.2];
+efpas = [-5.04];
 
 Ni = length(efpas);
 Nj = length(ha_tgts);
@@ -135,8 +235,9 @@ for i = 1:Ni % efpa
         dvCirc_ecfh_p = out_ecfh_p.dv;
         
 %         keyboard;
-        save(['../earth_ac/dej_n/atm_est/data/' ... 
-            'entry_trades/' num2str(gnc.ha_tgt/1000) 'k_' ... 
+        save(['../earth_ac/dej_n/atm_est/data/entry_trades/perturbed/' ... 
+            'v' num2str(round(x0.v0,0)) '_' ...
+            num2str(gnc.ha_tgt/1000) 'k_' ... 
             num2str(abs(x0.fpa0*10)) 'deg_gramIdxTrade.mat']);
 
     end %j - ha tgt
@@ -173,7 +274,7 @@ sim.data_rate = 100;
 gnc.guid_rate = 1;
 
 ha_tgts = [2000];
-efpas = linspace(-7,-5.5, 40);
+efpas = linspace(-6,-4.8, 40);
 Ni = length(efpas);
 Nj = length(ha_tgts);
 Nk = length(inds);
@@ -220,8 +321,10 @@ for j = 1:Nj % ha tgt
     end %i
 end %j ,tgt
 
-save(['..\earth_ac\dej_n\atm_est\data\entry_trades\perturbed' ...
-    'pertGramIdx_' num2str(inds(k)) '.mat']);
+save(['..\earth_ac\dej_n\atm_est\data\entry_trades\perturbed\' ...
+    num2str(gnc.ha_tgt / 1000) 'k_' ...
+    'v' num2str(round(x0.v0,0)) ...
+    'efpaTrade_GramIdx_' num2str(inds(k)) '.mat']);
 
 end %k
 
@@ -558,13 +661,14 @@ end %k
 keyboard
 %}
 
+
 %% nominal performance vs. efpa post process
 %{
 % d = load([p 'atm_est\data\entry_trades\gramIdx_20.mat']);
 % d = load([p 'atm_est\data\entry_trades\gramIdx_130.mat']);
 
-d = load(['..\earth_ac\dej_n\atm_est\data\entry_trades\perturbed' ...
-    'pertGramIdx_20.mat']);
+d = load(['..\earth_ac\dej_n\atm_est\data\entry_trades\' ...
+    '2k_v10_efpaTrade_GramIdx_600.mat']);
 
 ind = 1;    %2000 km tgt
 % ind = 2;  %10000 km tgt

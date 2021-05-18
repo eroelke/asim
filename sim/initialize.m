@@ -111,10 +111,12 @@ dat.g.K_dens = ldat1;   % density corrector
 dat.g.K_true = ldat1;   % true density variation
 dat.g.K_model = ldat1;  % model's density variation
 dat.g.rho_model = ldat1;  % model density val
-dat.g.atm_hist = nan(1000,4); % internal atmosphere model
+dat.g.atm_hist = nan(1000,2); % internal atmosphere model
 dat.g.rss_nom = nan(1,1);  % nominal atm rss error (static)
 dat.g.rss_K = ldat1;  % density factor rss err
 dat.g.rss_ens = ldat1;    % ensemble rss err
+dat.g.rss_hist = ldat1;
+dat.g.rss_true = ldat1;
 dat.g.ind_curr = ldat1;     % ensemble current mc index
 dat.g.ind_rss = ldat1;
 

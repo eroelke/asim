@@ -6,7 +6,7 @@
 % 
 % Written by: Evan Roelke, Oct 2019
 % 
-function [rho,T,P] = calc_rho_interp(alt, atm_model, rho_K)
+function [rho] = calc_rho_interp(alt, atm_model, rho_K)
 %#codegen
 
 % find first non-NaN density value
@@ -25,17 +25,17 @@ if (alt >= atm_model(idend,1))
     if (~isempty(ind))
         if (ind == 1)
             rho_model = atm_model(1,2);
-            T = atm_model(1,3);
-            P = atm_model(1,4);
+%             T = atm_model(1,3);
+%             P = atm_model(1,4);
         else
             rho_model = lin_interp(atm_model(ind-1:ind,1),atm_model(ind-1:ind,2),alt);
-            T = lin_interp(atm_model(ind-1:ind,1),atm_model(ind-1:ind,3),alt);
-            P = lin_interp(atm_model(ind-1:ind,1),atm_model(ind-1:ind,4),alt);
+%             T = lin_interp(atm_model(ind-1:ind,1),atm_model(ind-1:ind,3),alt);
+%             P = lin_interp(atm_model(ind-1:ind,1),atm_model(ind-1:ind,4),alt);
         end
     else
         rho_model = nan;
-        T = nan;
-        P = nan;
+%         T = nan;
+%         P = nan;
     end
     
     % save density estimate
@@ -48,7 +48,7 @@ else
     % use density corrector
     rho = rho_K;
     rho_model = nan;
-    T = nan;
-    P = nan;
+%     T = nan;
+%     P = nan;
 end
 end %calc_rho_interp.m

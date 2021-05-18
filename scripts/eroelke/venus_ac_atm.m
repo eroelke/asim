@@ -4,15 +4,255 @@
 clear;clc;
 p = '..\venus_ac\dej_n\atmospheric_estimation\';
 
-%% Monte Carlo: perturbed GRAM ON/FF, no nav errors
+%% Monte Carlo Post Process
 % %{
+
+if (~exist('d', 'var'))
+    d = load([p 'data/mc/mc2500_2k_54deg_guid0.5navON_2.mat']);
+%     d = load([p 'data/mc/mc1k_55deg.mat']);
+    
+%     d = load([p 'data/mc/mc2500_2k_54deg_guid05_navON_new.mat']);
+%     d = d.d;
+
+%     d = load('C:\Users\Evan Roelke\Documents\research\venus_ac\dej_n\atmospheric_estimation\data\entry_trades\2k_54deg_gramIdxTrade.mat');
+%     d = load('C:\Users\Evan Roelke\Documents\research\venus_ac\dej_n\atmospheric_estimation\data\entry_trades\2k_55deg_gramIdxTrade.mat');
+end
+
+errs = get_default_atm_errs(d);
+% % histogram
+% labels = default_atm_labels();
+% haf_errs = [err_k err_di err_ecf err_ecfh err_ecf_p err_ecfh_p];
+% histogram_plot(200, haf_errs, labels, 2000, [-200 200])
+
+% % err vs tj
+% figure(); hold on
+% set(gca,'FontSize',14)
+% plot(d.out_k.tjr(:,1), abs(err_k),'b+')
+% plot(d.out_di.tjr(:,1), abs(err_di),'r^')
+% plot(d.out_ecf.tjr(:,1), abs(err_ecf),'g*')
+% % plot(d.out_hyb.tjr(:,1), abs(err_ecfh),'m*')
+% 
+% ylim([0 500])
+% xlabel('t/t_f')
+% ylabel('|\Delta r_a| (km)')
+% legend('DSF','DI','ECF')
+
+
+% % capture rate
+haTgt = 2000;
+tols = 0:1:100;
+N = d.mc.N;
+pc = nan(length(tols),size(errs,2));
+for i = 1:length(tols)
+    for j = 1:size(errs,2)
+        pc(i,j) = 100 * length(find((100*abs(errs(:,j))/haTgt) <= tols(i))) / N;
+    end
+end
+
+colors = nan(3,8);
+colors(:,1) = [0;0;0];
+colors(:,2:8) = get_plot_colors();
+
+labels = default_atm_labels();
+
+figure(); hold on
+grid on
+set(gca,'FontSize',16)
+title(['v' num2str(d.x0.v0) ', h_a^* = ' num2str(haTgt) ', EFPA = ' num2str(d.x0.fpa0)])
+for j = 1:size(errs,2)
+    plot(tols, pc(:,j),'color',colors(:,j),'LineWidth',2.5)
+end
+xlim([0 100])
+legend(labels);
+xlabel('Tolerance (%)')
+ylabel('Capture Rate')
+
+
+% % ecf inds
+count = 0; count_p = 0; h_count = 0; h_count_p = 0;
+for i = 1:d.mc.N
+    if (d.out_ecf.g.ecf_ind(i) == d.out_ecf.g.mc_inds(i))
+        count = count + 1;
+        ecf_err(count) = d.out_ecf.haf_err(i);
+    end
+    
+    if (d.out_ecf_p.g.ecf_ind(i) == d.out_ecf_p.g.mc_inds(i))
+        count_p = count_p + 1;
+        ecf_p_err(count_p) = d.out_ecf_p.haf_err(i);
+    end
+%     
+    if (d.out_hyb.g.ecf_ind(i) == d.out_hyb.g.mc_inds(i))
+        h_count = h_count + 1;
+        hyb_err(h_count) = d.out_hyb.haf_err(i);
+    end
+%     
+%     if (d.out_hyb_p.g.ecf_ind(i) == d.out_hyb_p.g.mc_inds(i))
+%         h_count_p = h_count_p + 1;
+%         hyb_err_p(h_count_p) = d.out_hyb_p.haf_err(i);
+%     end
+end
+
+%}
+
+%% Post Process- Box Plots
+%{
+
+d = load([p 'data/mc/mc2500_2k_54deg_guid05_navON.mat']);
+
+errs = [d.out_k.haf_err, d.out_di.haf_err, d.out_ecf.haf_err, d.out_hyb.haf_err, d.out_ecf_p.haf_err, d.out_hyb_p.haf_err];
+
+
+g1 = repmat({'DSF'},size(errs,1),1);
+g2 = repmat({'DI'},size(errs,1),1);
+g3 = repmat({'ECF'},size(errs,1),1);
+g4 = repmat({'ECFH'},size(errs,1),1);
+g5 = repmat({'ECF-P'},size(errs,1),1);
+g6 = repmat({'ECFH-P'},size(errs,1),1);
+g = [g1;g2;g3;g4;g5;g6];
+
+boxplot(errs,g);
+grid on
+set(gca,'FontSize',14)
+ylabel('Apoapsis Error (km)')
+
+%}
+
+%% Post Process 'Nominal' Monte Carlo - dispersed GRAM index vs. err
+%{
+d = load([p 'data/entry_trades/2k_54deg_gramIdxTrade.mat']);
+% d = load([p 'data/entry_trades/2k_55deg_gramIdxTrade.mat']);
+
+inds = 1:1:1000;
+
+haf_errs = get_default_atm_errs(d);
+labels = default_atm_labels();
+
+histogram_plot(250, haf_errs, labels, 2000, [-100 100])
+
+% figure(); hold on; grid on
+% title(['EFPA Trade Study, GRAM Index ' num2str(d.mc.mcIndex)])
+% set(gca,'FontSize',14)
+% plot(1:1000, err_k,'k--*','LineWidth',2)
+% plot(1:1000, err_di,'r*','LineWidth',2)
+% plot(1:1000, err_ecf,'b*','LineWidth',2)
+% plot(1:1000, err_ecfh,'g*','LineWidth',2)
+% plot(1:1000, err_ecf_p,'b*','LineWidth',2)
+% plot(1:1000, err_ecfh_p,'g*','LineWidth',2)
+% legend('DSF','DI','ECF','ECFH','location','ne')
+% xlabel('Perturbed GRAM Index')
+% ylabel('Apoapsis Error (km)')
+% xlim([-5.7, -5.35])
+% ylim([-200 500])
+
+
+%}
+
+%% 'Nominal' Monte Carlo - dispersed GRAM index vs. error
+%{
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
 mc.N = 1000;
-% mc.mcIndex = 1;
 mc.ordered = true;
 sim.ignore_nominal = true;
 sim.t_max = 1000;
-mc.sigs = default_sigs();
+mc.sigs = zero_sigs();
+% gnc.rss_flag = true;
+% tvec = (0 : 1/sim.traj_rate : sim.t_max)'; % Trajectory time vector, s
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);    % identical initial nav errors
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);
+% gnc = exp_decay_ecrv(gnc);
+gnc.ecf.p_tol = 0.02;
+
+sim.traj_rate = 100;
+sim.data_rate = 1;
+gnc.guid_rate = 0.5;
+
+ha_tgts = 2000;
+
+% efpas = [-5.35];
+efpas = -5.4;
+
+Ni = length(efpas);
+Nj = length(ha_tgts);
+% Nk = length(inds);
+
+err_k = nan(Ni,Nj); err_di = err_k; err_ecf = err_k; err_ecfh = err_k; err_ecf_p = err_k; err_ecfh_p = err_k;
+% tj_k = nan(Ni,Nj); tj_di = tj_k; tj_ecf = tj_k; tj_ecfh = tj_k;
+tjr_k = nan(Ni,Nj); tjr_di = tjr_k; tjr_ecf = tjr_k; tjr_ecfh = tjr_k; tjr_ecf_p = tjr_k; tjr_ecfh_p = tjr_k;
+% dv_k = nan(Ni,Nj); dv_di = dv_k; dv_ecf = dv_k; dv_hyb = dv_k;
+dvCirc_k = nan(Ni,Nj); dvCirc_di = dvCirc_k; dvCirc_ecf = dvCirc_k; dvCirc_ecfh = dvCirc_k; dvCirc_ecf_p = dvCirc_k; dvCirc_ecfh_p = dvCirc_k;
+for i = 1:Ni % efpa
+    fprintf('efpa %4.1f deg\n',efpas(i));
+    x0.fpa0 = efpas(i);
+    for j = 1:Nj %tgt
+        gnc.ha_tgt = ha_tgts(j);
+        % dsf
+        gnc.atm_mode = uint8(1);    %dsf
+        out_k = run_dej_n(x0,gnc,aero,sim,mc);
+        err_k = out_k.haf_err;
+        tjr_k = out_k.tjr(:,1);
+        dvCirc_k = out_k.dv;
+        
+        % di
+        gnc.atm_mode = uint8(2);    %di
+        out_di = run_dej_n(x0,gnc,aero,sim,mc);
+        err_di = out_di.haf_err;
+        tjr_di = out_di.tjr(:,1);
+        dvCirc_di = out_di.dv;
+        
+        % ecf free, no scaling
+        gnc.atm_mode = uint8(3);    % ecf
+        gnc.ecf.mode = 1;	% no scaling
+        out_ecf = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator        
+        err_ecf = out_ecf.haf_err;
+        tjr_ecf = out_ecf.tjr(:,1);
+        dvCirc_ecf = out_ecf.dv;
+        
+        % hybrid
+        gnc.atm_mode = uint8(4);  %hyrbid
+        gnc.ecf.mode = 1;	% no scaling
+        out_ecfh = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator        
+        err_ecfh = out_ecfh.haf_err;
+        tjr_ecfh = out_ecfh.tjr(:,1);
+        dvCirc_ecfh = out_ecfh.dv;
+        
+        gnc.ecf.pert = true;
+        
+        % ecf free, no scaling, pert
+        gnc.atm_mode = uint8(3);    % ecf
+        gnc.ecf.mode = 1;	% no scaling
+        out_ecf_p = run_dej_n(x0,gnc,aero,sim,mc);        
+        err_ecf_p = out_ecf_p.haf_err;
+        tjr_ecf_p = out_ecf_p.tjr(:,1);
+        dvCirc_ecf_p = out_ecf_p.dv;
+        
+        % hybrid
+        gnc.atm_mode = uint8(4);  %hyrbid
+        gnc.ecf.mode = 1;	% no scaling
+        out_ecfh_p = run_dej_n(x0,gnc,aero,sim,mc);     
+        err_ecfh_p = out_ecfh_p.haf_err;
+        tjr_ecfh_p = out_ecfh_p.tjr(:,1);
+        dvCirc_ecfh_p = out_ecfh_p.dv;
+        
+%         keyboard;
+        save(['../venus_ac/dej_n/atmospheric_estimation/data/entry_trades/' ...
+            num2str(gnc.ha_tgt/1000) 'k_' num2str(abs(x0.fpa0*10)) 'deg_gramIdxTrade.mat']);
+
+    end %j - ha tgt
+end %i - efpa
+
+keyboard
+%}
+
+%% Monte Carlo: perturbed GRAM ON/FF, no nav errors
+%{
+clear;clc;
+[x0,aero,gnc,sim, mc] = base_venus_ac(true);
+mc.N = 1;
+mc.mcIndex = 400;
+mc.ordered = true;
+sim.ignore_nominal = true;
+sim.t_max = 1000;
+mc.sigs = zero_sigs();%default_sigs();
 gnc.rss_flag = true;
 % tvec = (0 : 1/sim.traj_rate : sim.t_max)'; % Trajectory time vector, s
 % gnc = exp_decay_ecrv(gnc, mc.N, sim, true);    % identical initial nav errors
@@ -21,19 +261,21 @@ gnc.rss_flag = true;
 gnc.ecf.p_tol = 0.02;
 % mc.debug = true;
 
-gnc.atm_mode = uint8(1);    %dsf
-out_k = run_dej_n(x0,gnc,aero,sim,mc);
+efpas = -5.4;
 
-gnc.atm_mode = uint8(2);    %di
-out_di = run_dej_n(x0,gnc,aero,sim,mc);
+% gnc.atm_mode = uint8(1);    %dsf
+% out_k = run_dej_n(x0,gnc,aero,sim,mc);
+% 
+% gnc.atm_mode = uint8(2);    %di
+% out_di = run_dej_n(x0,gnc,aero,sim,mc);
 
-gnc.atm_mode = uint8(3);    % ecf
-gnc.ecf.mode = 1;	% no scaling
-out_ecf = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+% gnc.atm_mode = uint8(3);    % ecf
+% gnc.ecf.mode = 1;	% no scaling
+% out_ecf = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 
-gnc.atm_mode = uint8(4);
-gnc.ecf.mode = 1;   % no scaling
-out_hyb = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+% gnc.atm_mode = uint8(4);
+% gnc.ecf.mode = 1;   % no scaling
+% out_hyb = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 
 gnc.ecf.pert = true;
 
@@ -47,19 +289,20 @@ gnc.atm_mode = uint8(4);
 gnc.ecf.mode = 1;   % no scaling
 out_hyb_p = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 
-save(['../venus_ac/dej_n/atmospheric_estimation/data/mc/mc' ... 
-    num2str(gnc.ha_tgt/1000) 'k_' num2str(abs(x0.fpa0*10)) 'deg_' ... 
-    'navOFF_pertBOTH.mat'])
+% save(['../venus_ac/dej_n/atmospheric_estimation/data/mc/' ... 
+%     num2str(gnc.ha_tgt/1000) 'k_' num2str(abs(x0.fpa0*10)) 'deg_' ... 
+%     'navOFF_pertBOTH.mat'])
+
 
 %}
 
 %% Monte Carlo: pert ON/OFF, nav errors
-% %{
+%{
 clear;clc
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
 mc.N = 1000;
 % mc.mcIndex = 1;
-mc.ordered = true;
+% mc.ordered = true;
 sim.ignore_nominal = true;
 sim.t_max = 1000;
 mc.sigs = default_sigs();
@@ -70,6 +313,8 @@ gnc.rss_flag = true;
 gnc = exp_decay_ecrv(gnc);
 gnc.ecf.p_tol = 0.02;
 % mc.debug = true;
+
+x0.fpa0 = -5.5;
 
 gnc.atm_mode = uint8(1);    %dsf
 out_k = run_dej_n(x0,gnc,aero,sim,mc);
@@ -98,8 +343,7 @@ gnc.ecf.mode = 1;   % no scaling
 out_hyb_p = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 
 save(['../venus_ac/dej_n/atmospheric_estimation/data/mc/mc' ... 
-    num2str(gnc.ha_tgt/1000) 'k_' num2str(abs(x0.fpa0*10)) 'deg_' ... 
-    'navON_pertBOTH.mat'])
+    num2str(gnc.ha_tgt/1000) 'k_' num2str(abs(x0.fpa0*10)) 'deg.mat'])
 
 %}
 
@@ -113,7 +357,7 @@ low_ind = 12;   %rss 19 (non-pert is ~5)
 mid_ind = 500;  %rss ~44
 high_ind = 998;   %rss ~97 (non-pert is ~20)
 
-inds = [low_ind, mid_ind, high_ind];
+inds = [mid_ind, high_ind];
 % inds = mid_ind;
 
 % mc.mcIndex = 500;
@@ -133,7 +377,7 @@ sim.data_rate = 100;
 gnc.guid_rate = 1;
 
 ha_tgts = 2000;
-efpas = linspace(-5.8,-5.2, 50);
+efpas = linspace(-5.7,-5.2, 25);
 Ni = length(efpas);
 Nj = length(ha_tgts);
 Nk = length(inds);
@@ -629,8 +873,8 @@ histogram_plot(mc.N / 5, [out_k.haf_err, out_di.haf_err, ...
 
 %% Uniqueness of GRAM
 %{
-% atm = load('./data/atm_data/atm_venus_mc.mat');
-atm = load('./data/atm_data/atm_venus_mc_pert.mat');
+atm = load('./data/atm_data/atm_venus_mc.mat');
+% atm = load('./data/atm_data/atm_venus_mc_pert.mat');
 
 alt = atm.nom_table(:,1);
 nom = atm.nom_table(:,2);
@@ -651,6 +895,8 @@ end
 
 min_ind = find(rss_err == min(rss_err));
 max_ind = find(rss_err == max(rss_err));
+
+save('../venus_ac/atmosphere/gram_rss_errors.mat');
 
 
 figure(); hold on; grid on
@@ -673,25 +919,27 @@ ylabel('RSS Error')
 %% DI/ECF hybrid - mc
 %{
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
-mc.N = 500;
+mc.N = 1;
+mc.mcIndex = randi([1 1000]);
 sim.ignore_nominal = true;
 mc.sigs = default_sigs();
 gnc.rss_flag = true;
+sim.parMode = 0;
 % gnc.pred_mode = 1;  % verbose
-gnc = exp_decay_ecrv(gnc);
+% gnc = exp_decay_ecrv(gnc);
+% 
+% gnc.atm_mode = uint8(1);    %dsf
+% out_k = run_dej_n(x0,gnc,aero,sim,mc);
+% 
+% gnc.atm_mode = uint8(2);    %di
+% out_di = run_dej_n(x0,gnc,aero,sim,mc);
 
-gnc.atm_mode = uint8(1);    %dsf
-out_k = run_dej_n(x0,gnc,aero,sim,mc);
-
-gnc.atm_mode = uint8(2);    %di
-out_di = run_dej_n(x0,gnc,aero,sim,mc);
-
-gnc.atm_mode = uint8(4);    %hybrid
+gnc.atm_mode = uint8(3);    %hybrid
 gnc.ecf.p_tol = 0.1;
 out_ecf = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 
 
-save('../venus_ac/dej_n/atmospheric_estimation/data/hybrid/mc_test.mat');
+% save('../venus_ac/dej_n/atmospheric_estimation/data/hybrid/mc_test.mat');
 
 for i = 1:mc.N
     if ~isnan(out_ecf.idj(i,1))
@@ -701,24 +949,24 @@ for i = 1:mc.N
     end
 end
 
-figure(); hold on; grid on
-histogram(ind_j, 'NumBins',200)
-xline(100);
-
-figure(); hold on; grid on
-set(gca,'FontSize',14)
-plot(ind_j, out_ecf.haf_err,'+','LineWidth',1.5)
-xlabel('GRAM Index at Jettison')
-ylabel('Apoapsis Error (km)')
-
-figure(); hold on; grid on
-set(gca,'FontSize',14)
-plot(out_ecf.traj.t, out_ecf.g.atm.ind_curr,'LineWidth',1.2)
-p1=plot(out_ecf.tjett(:,1), ind_j,'k*')
-yline(100);
-xlabel('Time (s)')
-ylabel('GRAM Index')
-legend([p1],'Jettison')
+% figure(); hold on; grid on
+% histogram(ind_j, 'NumBins',200)
+% xline(100);
+% 
+% figure(); hold on; grid on
+% set(gca,'FontSize',14)
+% plot(ind_j, out_ecf.haf_err,'+','LineWidth',1.5)
+% xlabel('GRAM Index at Jettison')
+% ylabel('Apoapsis Error (km)')
+% 
+% figure(); hold on; grid on
+% set(gca,'FontSize',14)
+% plot(out_ecf.traj.t, out_ecf.g.atm.ind_curr,'LineWidth',1.2)
+% p1=plot(out_ecf.tjett(:,1), ind_j,'k*')
+% yline(100);
+% xlabel('Time (s)')
+% ylabel('GRAM Index')
+% legend([p1],'Jettison')
 %}
 
 %% DI/ECF hybrid - hybrid sigma v vs. performance
@@ -914,7 +1162,7 @@ out = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 %% ensemble correlation filter - 'nominal'
 %{
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
-mc.mcIndex = randi([1 1000]);
+mc.mcIndex = randi([1 100]);
 mc.N = 1;
 sim.ignore_nominal = true;
 mc.sigs = zero_sigs();
@@ -925,25 +1173,83 @@ gnc.pred_mode = 1;  % verbose
 
 gnc.atm_mode = uint8(3);    %ecf
 % gnc.ecf.pert = true;
-gnc.ecf.p_tol = 0.05;
-gnc.ecf.mode = 0x81;
-mc.debug = true;
+gnc.ecf.p_tol = 0.02;
+gnc.ecf.mode = 1;
+% mc.debug = true;
 out = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+
+% calc rss errors of index up to min altitude
+atm = load('./data/atm_data/atm_venus_mc.mat');
+min_h_ind = find(out.traj.alt == min(out.traj.alt));
+alt = atm.nom_table(:,1);
+nom = flip(atm.nom_table(:,2));
+mc_prof = flip(atm.mc(mc.mcIndex).table(:,2));
+% disp = nan(1000,1000);
+rss_err_nom = zeros(1000,1);
+rss_err_mc = rss_err_nom;
+indices = 1000;
+for i = 1:1000 %profile
+    disp = flip(atm.mc(i).table(:,2));
+
+    % compute rss error to nom
+    temp1 = 0;
+    temp2 = 0;
+    for j = 1:min_h_ind %alt
+        err_nom = (disp(j) - nom(j))^2;
+        err_mc = (disp(j) - mc_prof(j))^2;
+        temp1 = temp1 + err_nom;
+        temp2 = temp2 + err_mc;
+    end
+    rss_err_nom(i) = sqrt(temp1);
+    rss_err_mc(i) = sqrt(temp2);
+end
+
+% get rss error of ECF gram index each time step
+rss = zeros(length(out.traj.t),1);
+rss2 = rss;
+for i = 1:length(out.traj.t)
+    if isnan(out.g.atm.ind_curr(i))
+        rss(i) = 0;
+        rss2(i) = 0;
+    else
+        rss(i) = rss_err_nom(out.g.atm.ind_curr(i));
+        rss2(i) = rss_err_mc(out.g.atm.ind_curr(i));
+    end
+    
+%     ind_rss(i) = out.g.atm.ind_rss(i) / out.g.atm.rss_hist(i);
+end
+
+colors = get_plot_colors();
 
 figure(); hold on
 grid on
 set(gca,'FontSize',14)
-yline(mc.mcIndex,'k--','LineWidth',1.5);
 xline(out.tjett(1),'k--','LineWidth',1.5)
 yyaxis left
-plot(out.traj.t,out.g.atm.ind_curr - 1,'LineWidth',1.5)
+plot(out.traj.t,out.g.atm.ind_curr,'LineWidth',1.5)
+yline(mc.mcIndex,'k--','linewidth',1.5)
 ylabel('GRAM Index');
 yyaxis right
-plot(out.traj.t,out.g.ha_err,'LineWidth',1.5)
-ylabel('Apoapsis Error (km)');
-ylim([-500 500])
+plot(out.traj.t, rss,'LineWidth',1.5)
+yline(rss(mc.mcIndex),'--','color',colors(:,1),'LineWidth',1.5);
+ylabel('Gram Index Total RSS Error');
+% plot(out.traj.t,out.g.ha_err,'LineWidth',1.5)
+% ylabel('Apoapsis Error (km)');
+% ylim([-500 500])
 xlim([0 300])
 xlabel('Time (s)')
+
+
+% figure(); hold on; grid on
+% set(gca,'FontSize',14)
+% yyaxis left
+% plot(out.traj.t, rss,'LineWidth',1.5)
+% ylabel('Gram Index Total RSS Error');
+% yyaxis right
+% plot(out.traj.t, out.g.atm.ind_rss, 'linewidth',2)
+% xlabel('Time (s)')
+% ylabel('ECF Minimum RSS Error (kg/m^3)')
+
 %}
 
 %% ensemble correlation filter - 'mc'
@@ -1133,7 +1439,7 @@ legend(['Perfect Nav, \Delta r_a = ' num2str(round(out_nom.haf_err,3)) ' km'], .
 %% nav error - mc
 %{
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
-mc.mcIndex = 1:1000;
+mc.mcIndex = 100;
 mc.N = length(mc.mcIndex);
 sim.ignore_nominal = true;
 mc.sigs = sigs_zero();
@@ -1142,15 +1448,13 @@ gnc_nom = gnc;
 
 % no nav errors
 % mc.debug = true;
-out_nom = run_dej_n(x0,gnc_nom,aero,sim,mc);
+% out_nom = run_dej_n(x0,gnc_nom,aero,sim,mc);
 
 % nav errors - exp decay ecrv
 gnc = exp_decay_ecrv(gnc);
 % mc.debug = true;
 % sim.traj_rate = 1;
-out_ecrv = run_dej_n(x0,gnc,aero,sim,mc);
-
-
+out = run_dej_n(x0,gnc,aero,sim,mc);
 
 for j = 1:mc.N
     for i = 1:length(out_nom.traj.t)
@@ -1193,7 +1497,7 @@ P0 = diag([sx0^2, sy0^2, sz0^2, svx0^2, svy0^2, svz0^2]);   %covariance matrix
 P0(7:9,7:9) = eye(3)*(9.81*.05*1e-6 / 3)^2;  %.05 micro-gs
 
 ecrv0(1:3) = rSig;
-ecrv0(4:6) = vSig;
+ecrv0(4:6) = 0.1 / 3;%vSig;
 ecrv0(7:9) = P0(7,7);
 ecrv0 = ecrv0';
 
@@ -1201,6 +1505,7 @@ ecrv0 = ecrv0';
 p.P_SS = P0;
 tau = [100 200 200 1000];  %ecrv, tau_r, tau_v, tau_a
 % figure(1); hold on
+fprintf('Simulating Hybrid ECRV Errors\n');
 for i = 1:N
 nav = simulate_nav(2, 0, 400, 1/p.rate, ...
     tau, p.P_SS, normrnd(0,ecrv0));
@@ -1214,19 +1519,22 @@ nav = simulate_nav(2, 0, 400, 1/p.rate, ...
 % get vector norms each time step
 for j = 1:length(nav.t)
     
-    rmagX(i,j) = nav.rva_err(1,j);
-    rmagY(i,j) = nav.rva_err(2,j);
-    rmagZ(i,j) = nav.rva_err(3,j);
+%     rmagX(i,j) = nav.rva_err(1,j);
+%     rmagY(i,j) = nav.rva_err(2,j);
+%     rmagZ(i,j) = nav.rva_err(3,j);
+%     
+%     vmagX(i,j) = nav.rva_err(4,j);
+%     vmagY(i,j) = nav.rva_err(5,j);
+%     vmagZ(i,j) = nav.rva_err(6,j);
     
-    vmagX(i,j) = nav.rva_err(4,j);
-    vmagY(i,j) = nav.rva_err(5,j);
-    vmagZ(i,j) = nav.rva_err(6,j);
     
+    rmagX(i,j) = nav.x_ecrv(1,j);
+    rmagY(i,j) = nav.x_ecrv(2,j);
+    rmagZ(i,j) = nav.x_ecrv(3,j);
     
-%     vmagX(i,j) = nav.x_ecrv(4,j);
-%     vmagY(i,j) = nav.x_ecrv(5,j);
-%     vmagZ(i,j) = nav.x_ecrv(6,j);    
-%     amag(i,j) = mean(nav.x_ecrv(7:9,j));
+    vmagX(i,j) = nav.x_ecrv(4,j);
+    vmagY(i,j) = nav.x_ecrv(5,j);
+    vmagZ(i,j) = nav.x_ecrv(6,j);
 end
 
 end %Ni
@@ -1307,8 +1615,8 @@ subplot(3,1,1); hold on
     plot(nav.t,-stdVx,'b--','LineWidth',1.5);
     p2=yline(mean(stdVx),'r--','LineWidth',1.5);
     yline(-mean(stdVx),'r--','LineWidth',1.5);
-    p3=yline(3.7e-3,'k','LineWidth',1.5);
-    yline(-3.3e-3,'k','LineWidth',1.5);
+%     p3=yline(3.7e-3,'k','LineWidth',1.5);
+%     yline(-3.3e-3,'k','LineWidth',1.5);
     ylabel('v_x noise (m/s)')
 subplot(3,1,2); hold on
     plot(nav.t,vmagY,'Color',0.8+[0 0 0]);
@@ -1318,8 +1626,8 @@ subplot(3,1,2); hold on
     plot(nav.t,-stdVy,'b--','LineWidth',1.5);
     yline(mean(stdVy),'r--','LineWidth',1.5);
     yline(-mean(stdVy),'r--','LineWidth',1.5);
-    yline(3.7e-3,'k','LineWidth',1.5);
-    yline(-3.3e-3,'k','LineWidth',1.5);
+%     yline(3.7e-3,'k','LineWidth',1.5);
+%     yline(-3.3e-3,'k','LineWidth',1.5);
 %     legend([p0,p1,p2,p3],'\mu','\mu \pm 3\sigma', ... 
 %         '3\sigma Mean','3\sigma Requirement','location','best');
     ylabel('v_y noise (m/s)')
@@ -1331,8 +1639,8 @@ subplot(3,1,3); hold on
     plot(nav.t,-stdVz,'b--','LineWidth',1.5);
     yline(mean(stdVz),'r--','LineWidth',1.5);
     yline(-mean(stdVz),'r--','LineWidth',1.5);
-    yline(3.7e-3,'k','LineWidth',1.5);
-    yline(-3.3e-3,'k','LineWidth',1.5);
+%     yline(3.7e-3,'k','LineWidth',1.5);
+%     yline(-3.3e-3,'k','LineWidth',1.5);
 %     legend([p0,p1,p2,p3],'\mu','\mu \pm 3\sigma', ... 
 %         '3\sigma Mean','3\sigma Requirement','location','best');
     ylabel('v_z noise (m/s)')
