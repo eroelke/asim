@@ -4,18 +4,127 @@
 clear;clc;
 p = '..\venus_ac\dej_n\atmospheric_estimation\';
 
-%% Monte Carlo Post Process
-% %{
+%% Monte Carlo nav error scaling post-process
+% ${
 
+d100 = load([p 'data/mc/mc500_54deg_navScale_100.mat']);
+d80 = load([p 'data/mc/mc500_54deg_navScale_80.mat']);
+d60 = load([p 'data/mc/mc500_54deg_navScale_60.mat']);
+d40 = load([p 'data/mc/mc500_54deg_navScale_40.mat']);
+
+scales = d100.scales(1:4);
+labels = {'out_k','out_di','out_ecf','out_hyb'};
+names = {'DSF','DI','ECF','ECFH'};
+percentile = 99.9;
+Ni = length(labels);
+for i = 1:Ni
+   mus(:,i) =  [nanmean(d100.(labels{i}).haf_err), ... 
+       nanmean(d80.(labels{i}).haf_err), ... 
+    nanmean(d60.(labels{i}).haf_err), ... 
+    nanmean(d40.(labels{i}).haf_err)]';
+    
+    stds(:,i) = [nanstd(d100.(labels{i}).haf_err(find(abs(d100.(labels{i}).haf_err) <= prctile(d100.(labels{i}).haf_err, percentile)))), ... 
+       nanstd(d80.(labels{i}).haf_err(find(abs(d80.(labels{i}).haf_err) <= prctile(d80.(labels{i}).haf_err, percentile)))), ... 
+    nanstd(d60.(labels{i}).haf_err(find(abs(d60.(labels{i}).haf_err) <= prctile(d60.(labels{i}).haf_err, percentile)))), ... 
+    nanstd(d40.(labels{i}).haf_err(find(abs(d40.(labels{i}).haf_err) <= prctile(d40.(labels{i}).haf_err, percentile))))]';
+
+    iqrs(:,i) = [iqr(d100.(labels{i}).haf_err), ... 
+       iqr(d80.(labels{i}).haf_err), ... 
+    iqr(d60.(labels{i}).haf_err), ... 
+    iqr(d40.(labels{i}).haf_err)]';
+end
+
+colors = get_plot_colors(true);
+
+
+figure(); hold on; grid on
+set(gca,'FontSize',16)
+for i = 1:Ni
+    plot(scales * 100, stds(:,i),'color',colors(:,i), 'linewidth',2);
+end
+set ( gca, 'xDir', 'reverse' )
+legend(names,'location','nw')
+ylabel('Apoapsis Error \sigma (km)');
+xlabel('Navigation Error Scale (%)')
+
+%}
+
+%% Monte Carlo: nav error scaling
+% %{
+clear;clc
+[x0,aero,gnc,sim, mc] = base_venus_ac(true);
+mc.N = 500;
+% mc.mcIndex = 1;
+% mc.ordered = true;
+sim.ignore_nominal = true;
+sim.t_max = 1000;
+mc.sigs = default_sigs();
+gnc.rss_flag = true;
+% tvec = (0 : 1/sim.traj_rate : sim.t_max)'; % Trajectory time vector, s
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);    % identical initial nav errors
+% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);
+gnc = exp_decay_ecrv(gnc);
+ecrv0 = gnc.nav.ercv0;
+P0 = gnc.nav.P_SS;
+gnc.ecf.p_tol = 0.02;
+% mc.debug = true;
+
+scales = flip(0:0.2:1);
+
+x0.fpa0 = -5.4;
+
+for i = 1:length(scales)
+gnc.nav.ercv0 = ecrv0 .* scales(i);
+gnc.nav.P_SS = P0 .* scales(i);
+
+gnc.atm_mode = uint8(1);    %dsf
+out_k = run_dej_n(x0,gnc,aero,sim,mc);
+
+gnc.atm_mode = uint8(2);    %di
+out_di = run_dej_n(x0,gnc,aero,sim,mc);
+
+gnc.atm_mode = uint8(3);    % ecf
+gnc.ecf.mode = 1;	% no scaling
+out_ecf = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+
+gnc.atm_mode = uint8(4);    %ecfh
+gnc.ecf.mode = 1;   % no scaling
+out_hyb = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+
+% % pert on
+% gnc.ecf.pert = true;
+% 
+% gnc.atm_mode = uint8(3);    % ecf
+% gnc.ecf.mode = 1;	% no scaling
+% out_ecf_p = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+% 
+% % hybrid free, no scaling
+% gnc.atm_mode = uint8(4);
+% gnc.ecf.mode = 1;   % no scaling
+% out_hyb_p = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+
+save(['../venus_ac/dej_n/atmospheric_estimation/data/mc/mc' ... 
+    num2str(mc.N) '_' num2str(abs(x0.fpa0*10)) 'deg_navScale_' ... 
+    num2str(scales(i)*100) '.mat'])
+
+end
+
+
+%}
+
+
+
+%% Monte Carlo Post Process
+%{
 if (~exist('d', 'var'))
-    d = load([p 'data/mc/mc2500_2k_54deg_guid0.5navON_2.mat']);
+%     d = load([p 'data/mc/mc2500_54deg.mat']);
 %     d = load([p 'data/mc/mc1k_55deg.mat']);
     
 %     d = load([p 'data/mc/mc2500_2k_54deg_guid05_navON_new.mat']);
 %     d = d.d;
 
-%     d = load('C:\Users\Evan Roelke\Documents\research\venus_ac\dej_n\atmospheric_estimation\data\entry_trades\2k_54deg_gramIdxTrade.mat');
-%     d = load('C:\Users\Evan Roelke\Documents\research\venus_ac\dej_n\atmospheric_estimation\data\entry_trades\2k_55deg_gramIdxTrade.mat');
+    d = load([p '\data\mc\old\mc2500_2k_54deg_guid05_navON.mat']);
+
 end
 
 errs = get_default_atm_errs(d);
@@ -40,7 +149,7 @@ errs = get_default_atm_errs(d);
 
 % % capture rate
 haTgt = 2000;
-tols = 0:1:100;
+tols = 0:0.1:100;
 N = d.mc.N;
 pc = nan(length(tols),size(errs,2));
 for i = 1:length(tols)
@@ -62,35 +171,14 @@ title(['v' num2str(d.x0.v0) ', h_a^* = ' num2str(haTgt) ', EFPA = ' num2str(d.x0
 for j = 1:size(errs,2)
     plot(tols, pc(:,j),'color',colors(:,j),'LineWidth',2.5)
 end
-xlim([0 100])
+xlim([0 10])
 legend(labels);
 xlabel('Tolerance (%)')
 ylabel('Capture Rate')
 
 
 % % ecf inds
-count = 0; count_p = 0; h_count = 0; h_count_p = 0;
-for i = 1:d.mc.N
-    if (d.out_ecf.g.ecf_ind(i) == d.out_ecf.g.mc_inds(i))
-        count = count + 1;
-        ecf_err(count) = d.out_ecf.haf_err(i);
-    end
-    
-    if (d.out_ecf_p.g.ecf_ind(i) == d.out_ecf_p.g.mc_inds(i))
-        count_p = count_p + 1;
-        ecf_p_err(count_p) = d.out_ecf_p.haf_err(i);
-    end
-%     
-    if (d.out_hyb.g.ecf_ind(i) == d.out_hyb.g.mc_inds(i))
-        h_count = h_count + 1;
-        hyb_err(h_count) = d.out_hyb.haf_err(i);
-    end
-%     
-%     if (d.out_hyb_p.g.ecf_ind(i) == d.out_hyb_p.g.mc_inds(i))
-%         h_count_p = h_count_p + 1;
-%         hyb_err_p(h_count_p) = d.out_hyb_p.haf_err(i);
-%     end
-end
+get_ecf_accuracies(d);
 
 %}
 
@@ -243,64 +331,11 @@ end %i - efpa
 keyboard
 %}
 
-%% Monte Carlo: perturbed GRAM ON/FF, no nav errors
-%{
-clear;clc;
-[x0,aero,gnc,sim, mc] = base_venus_ac(true);
-mc.N = 1;
-mc.mcIndex = 400;
-mc.ordered = true;
-sim.ignore_nominal = true;
-sim.t_max = 1000;
-mc.sigs = zero_sigs();%default_sigs();
-gnc.rss_flag = true;
-% tvec = (0 : 1/sim.traj_rate : sim.t_max)'; % Trajectory time vector, s
-% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);    % identical initial nav errors
-% gnc = exp_decay_ecrv(gnc, mc.N, sim, true);
-% gnc = exp_decay_ecrv(gnc);
-gnc.ecf.p_tol = 0.02;
-% mc.debug = true;
-
-efpas = -5.4;
-
-% gnc.atm_mode = uint8(1);    %dsf
-% out_k = run_dej_n(x0,gnc,aero,sim,mc);
-% 
-% gnc.atm_mode = uint8(2);    %di
-% out_di = run_dej_n(x0,gnc,aero,sim,mc);
-
-% gnc.atm_mode = uint8(3);    % ecf
-% gnc.ecf.mode = 1;	% no scaling
-% out_ecf = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
-
-% gnc.atm_mode = uint8(4);
-% gnc.ecf.mode = 1;   % no scaling
-% out_hyb = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
-
-gnc.ecf.pert = true;
-
-% ecf free, no scaling
-gnc.atm_mode = uint8(3);    % ecf
-gnc.ecf.mode = 1;	% no scaling
-out_ecf_p = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
-
-% hybrid free, no scaling
-gnc.atm_mode = uint8(4);
-gnc.ecf.mode = 1;   % no scaling
-out_hyb_p = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
-
-% save(['../venus_ac/dej_n/atmospheric_estimation/data/mc/' ... 
-%     num2str(gnc.ha_tgt/1000) 'k_' num2str(abs(x0.fpa0*10)) 'deg_' ... 
-%     'navOFF_pertBOTH.mat'])
-
-
-%}
-
 %% Monte Carlo: pert ON/OFF, nav errors
 %{
 clear;clc
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
-mc.N = 1000;
+mc.N = 2500;
 % mc.mcIndex = 1;
 % mc.ordered = true;
 sim.ignore_nominal = true;
@@ -314,7 +349,7 @@ gnc = exp_decay_ecrv(gnc);
 gnc.ecf.p_tol = 0.02;
 % mc.debug = true;
 
-x0.fpa0 = -5.5;
+x0.fpa0 = -5.4;
 
 gnc.atm_mode = uint8(1);    %dsf
 out_k = run_dej_n(x0,gnc,aero,sim,mc);
@@ -343,7 +378,7 @@ gnc.ecf.mode = 1;   % no scaling
 out_hyb_p = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 
 save(['../venus_ac/dej_n/atmospheric_estimation/data/mc/mc' ... 
-    num2str(gnc.ha_tgt/1000) 'k_' num2str(abs(x0.fpa0*10)) 'deg.mat'])
+    num2str(mc.N) '_' num2str(abs(x0.fpa0*10)) 'deg.mat'])
 
 %}
 
