@@ -4,8 +4,129 @@
 clear;clc;
 p = '..\venus_ac\dej_n\atmospheric_estimation\';
 
+%% Monte Carlo 2Stage
+% %{
+[x0,aero,gnc,sim, mc] = base_venus_ac(true);
+
+b31 = 10;
+% b21s = [3 5 7 9];
+b21s = [9];
+
+x0.v0 = 11;
+efpas = [-5.4];
+Nk = length(efpas);
+
+ha_tgts = [2000];
+gnc.ha_tol = 10;
+gnc.n = 2;
+gnc = exp_decay_ecrv(gnc);
+gnc.ecf.p_tol = 0.02;
+
+tj0s = [100 170];
+% gnc.guid_rate = 0.5;
+rates = [0.5];
+gnc.npc_mode = uint8(2);
+
+mc.sigs = default_sigs();
+
+for j = 1:length(b21s)
+b21 = b21s(j);
+aero.m = [150 60 20];
+aero.rcs(1) = 1;
+aero.rcs(2) = sqrt( (aero.m(2) * aero.rcs(1)^2) / ...
+    (aero.m(1) * b21) );
+aero.rcs(3) = sqrt( (aero.m(3) * aero.rcs(1)^2) / ...
+    (aero.m(1) * b31) );
+
+if (aero.rcs(2) > aero.rcs(1)) || (aero.rcs(3) > aero.rcs(2))
+    error('Impossible Geometry')
+end
+
+b = nan(3,1);   %betas
+br = nan(2,1);  %beta ratios
+for i = 1:3
+    b(i) = aero.m(i) / (aero.cds(1) * pi * aero.rcs(i)^2);
+end
+for i = 1:2
+    br(i) = b(i+1)/b(i);
+end
+br21 = b(2)/b(1);
+br32 = b(3)/b(2);
+br31 = b(3)/b(1);
+
+aero.rn = 0.1;
+aero.cds = [1.05 1.05 1.05];
+aero.cls = [0 0 0];
+
+sim.traj_rate = 200;
+sim.planet = 'venus';
+sim.efpa_flag = false;
+
+% mc.debug = true;
+
+mc.flag = true;
+sim.parMode = true;
+gnc.dtj_lim = 10;
+% gnc.rss_flag = true;
+
+% x0.fpa0 = fpas;
+fprintf('2stage, b2/b1 = %2.0f, ha* = %4.0f. ',br21, gnc.ha_tgt); print_current_time();
+gnc.force_jett = true;
+gnc.comp_curr = false;
+
+sim.nWorkers = 10;
+
+for zz = 1:length(rates)
+gnc.guid_rate = rates(zz);
+for jj = 1:length(ha_tgts)
+    gnc.ha_tgt = ha_tgts(jj);
+for k = 1:Nk
+    x0.fpa0 = efpas(k);
+    gnc.tj0 = tj0s;
+    
+    gnc.atm_mode = uint8(1);    %dsf
+    out_k = run_dej_n(x0,gnc,aero,sim,mc);
+
+    gnc.atm_mode = uint8(2);    %di
+    out_di = run_dej_n(x0,gnc,aero,sim,mc);
+
+    gnc.atm_mode = uint8(3);    % ecf
+    gnc.ecf.mode = 1;	% no scaling
+    out_ecf = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+
+    gnc.atm_mode = uint8(4);    %ecfh
+    gnc.ecf.mode = 1;   % no scaling
+    out_hyb = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+
+    % pert on
+    gnc.ecf.pert = true;
+
+    gnc.atm_mode = uint8(3);    % ecf
+    gnc.ecf.mode = 1;	% no scaling
+    out_ecf_p = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+
+    % hybrid free, no scaling
+    gnc.atm_mode = uint8(4);
+    gnc.ecf.mode = 1;   % no scaling
+    out_hyb_p = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
+
+    
+    betas = ['b_ijs' num2str(b21) '_' num2str(b31)];
+
+    save(['../data/atm_est/n2_2k_v' num2str(x0.v0)  ... 
+        '_' num2str(abs(x0.fpa0)*10) 'deg_' betas '.mat'])
+end %fpas
+end %ha_tgts
+end %b21s
+end %rates
+fprintf('Finished 2stage sims. '); print_current_time();
+
+keyboard;
+%}
+
+
 %% Monte Carlo nav error scaling post-process
-% ${
+%{
 
 d100 = load([p 'data/mc/mc500_54deg_navScale_100.mat']);
 d80 = load([p 'data/mc/mc500_54deg_navScale_80.mat']);
@@ -50,10 +171,10 @@ xlabel('Navigation Error Scale (%)')
 %}
 
 %% Monte Carlo: nav error scaling
-% %{
+%{
 clear;clc
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
-mc.N = 500;
+mc.N = 1000;
 % mc.mcIndex = 1;
 % mc.ordered = true;
 sim.ignore_nominal = true;
@@ -69,7 +190,7 @@ P0 = gnc.nav.P_SS;
 gnc.ecf.p_tol = 0.02;
 % mc.debug = true;
 
-scales = flip(0:0.2:1);
+scales = flip(0:0.2:1.2);
 
 x0.fpa0 = -5.4;
 
@@ -103,7 +224,7 @@ out_hyb = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 % gnc.ecf.mode = 1;   % no scaling
 % out_hyb_p = run_dej_n(x0,gnc,aero,sim,mc);    %perfect nav, interpolator
 
-save(['../venus_ac/dej_n/atmospheric_estimation/data/mc/mc' ... 
+save(['../data/atm_est/mc/mc' ... 
     num2str(mc.N) '_' num2str(abs(x0.fpa0*10)) 'deg_navScale_' ... 
     num2str(scales(i)*100) '.mat'])
 
