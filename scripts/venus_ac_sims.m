@@ -1721,7 +1721,7 @@ legend('Actual Variation','Variation Estimate','location','se')
 %%%%%%%%%%%%%%%%%%%%%%% 1-STAGE JETTISON %%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Manual - investigate circularization delta-v
-% %{
+%{
 clear;clc
 
 tj0s = 115:0.5:135;

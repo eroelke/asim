@@ -268,9 +268,11 @@ for i = 1:gnc.n
             out.idj(i) = out.idxend;
         end
         out.t_jett(i) = out.traj.time(out.idj(i));
+        out.tjr(i) = out.t_jett(i) / out.traj.time(out.idxend);
     else
         out.t_jett(i) = nan;
         out.idj(i) = nan;
+        out.tjr(i) = nan;
     end
 end
 out.betas = round(beta,3);
