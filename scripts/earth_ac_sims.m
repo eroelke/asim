@@ -1,48 +1,51 @@
  %% Evan Roelke
 % Earth Aerocapture Simulations
 % 
-clear;clc
 
+clear;clc
 p = '..\earth_ac\dej_n\';
 
 
 %% Monte Carlo Post Process
-% %{
+%{
 
-d = load([p '\atm_est\data\mc\mc2500_v10_2k_50.4deg.mat']);
-% d = load([p '\atm_est\data\mc\mc1000_v10_2k_52deg.mat']);
+% d = load([p '\atm_est\data\mc\' 'mc2k_50.4deg.mat']);
+d = load([p '\atm_est\data\mc\mc1000_v10_2k_52deg.mat']);
+
+
+latex_table(d);
 
 
 errs = get_default_atm_errs(d);
 
-% % capture rate
-% haTgt = d.gnc.ha_tgt;
-% tols = 0:1:50;
-% N = d.mc.N;
-% pc = nan(length(tols),size(errs,2));
-% for i = 1:length(tols)
-%     for j = 1:size(errs,2)
-%         pc(i,j) = 100 * length(find((100*abs(errs(:,j))/haTgt) <= tols(i))) / N;
-%     end
-% end
-% 
-% colors = nan(3,8);
-% colors(:,1) = [0;0;0];
-% colors(:,2:8) = get_plot_colors();
-% 
-% labels = default_atm_labels();
-% 
-% figure(); hold on
-% grid on
-% set(gca,'FontSize',16)
-% title(['v' num2str(d.x0.v0) ', h_a^* = ' num2str(haTgt) ', EFPA = ' num2str(d.x0.fpa0)])
-% for j = 1:size(errs,2)
-%     plot(tols, pc(:,j),'color',colors(:,j),'LineWidth',2.5)
-% end
-% xlim([0 50])
-% legend(labels);
-% xlabel('Tolerance (%)')
-% ylabel('Capture Rate')
+% capture rate
+haTgt = d.gnc.ha_tgt;
+tols = 0:1:50;
+N = d.mc.N;
+pc = nan(length(tols),size(errs,2));
+for i = 1:length(tols)
+    for j = 1:size(errs,2)
+        pc(i,j) = 100 * length(find((100*abs(errs(:,j))/haTgt) <= tols(i))) / N;
+    end
+end
+
+colors = nan(3,8);
+colors(:,1) = [0;0;0];
+colors(:,2:8) = get_plot_colors();
+
+labels = default_atm_labels();
+
+figure(); hold on
+grid on
+set(gca,'FontSize',16)
+title(['v' num2str(d.x0.v0) ', h_a^* = ' num2str(haTgt) ', EFPA = ' num2str(d.x0.fpa0)])
+for j = 1:size(errs,2)
+    plot(tols, pc(:,j),'color',colors(:,j),'LineWidth',2.5)
+end
+xlim([0 10])
+legend(labels);
+xlabel('Tolerance (%)')
+ylabel('Capture Rate')
 
 
 % % ecf accuracy
@@ -735,52 +738,83 @@ ylabel('RSS Error')
 
 %}
 
-%% Basic Lifting Sim
+
+%% Visualize lift/drag trajectory modifications
 %{
 clear; clc;
 cd = 1;
-beta1 = 80;
-b21 = 12;
-plotTraj = true;
 
-[x0,aero,gnc,mc,sim] = BaseInputs();
+LDs = [0 0.05 0.1 0.15 0.2];
+betas = [50;100;125;250;500;];
+
+
+[x0,aero,gnc,sim,mc] = base_earth_ac(true);
 x0.v0 = 13;
 x0.fpa0 = -5.6;
 mc.flag = false;
 x0.az0 = 0;
-aero.m = [250 75];
-aero.rcs(1) = sqrt(aero.m(1) / (cd * pi * beta1)); %1.231162606;
-aero.rcs(2) = sqrt(aero.m(2) / (cd * pi * beta1*b21));
-aero.cds(1:2) = [cd cd];
-aero.cls(1:2) = [0 0];
+aero.rcs = 1.5;
+aero.cds = cd;
+aero.cls = 0;
 sim.efpa_flag = false;
 mc.debug = false;
 gnc.atm_mode = uint8(1);    %exponential atm
-gnc.guid_rate = 1;
-gnc.mode = 4;   %dej
+gnc.guid_rate = 0;
+gnc.mode = 0;   %dej
+gnc.n = 0;
 gnc.ha_tgt = 42164;
-sim.traj_rate = 250;
+sim.traj_rate = 100;
 sim.data_rate = 10;
 sim.atm_mode = 1;
 sim.t_max = 500;
-gnc.tj0 = 100;
+gnc.tj0 = 125;
 gnc.dtj_lim = 10;
-sim.h_min = 25;
-
+sim.h_max = 125;
+sim.h_min = 0;
 sim.debug = false;
-out = run_dej_n(x0,gnc,aero,sim,mc);
-fprintf('tj: %g s\ndh_a: %g km\n',out.t_jett, out.haf_err);
 
-if (plotTraj == true)
+% drag
+% labels = cell(length(betas),1);
+% for i = 1:length(betas)
+%     aero.m = betas(i) * aero.cds(1) * pi * aero.rcs(1)^2;
+%     out(i) = run_dej_n(x0,gnc,aero,sim,mc);
+%     
+%     labels{i} = ['\beta = ' num2str(betas(i)) ' kg/m^2'];
+% end
+% 
+% 
+% figure(); hold on; grid on;
+% title(['v0=' num2str(x0.v0) ', fpa=' num2str(x0.fpa0)]);
+% set(gca,'FontSize',16);
+% for i = 1:length(betas)
+%     plot(out(i).traj.vel_pp_mag./1000,out(i).traj.alt./1000,'LineWidth',2)
+% end
+% xlabel('Velocity (km/s)')
+% ylabel('Altitude (km)')
+% legend(labels,'location','nw');
+
+
+% lift
+Ni = length(LDs);
+labels = cell(Ni,1);
+for i = 1:Ni
+    aero.cls = aero.cds * LDs(i);
+    out(i) = run_dej_n(x0,gnc,aero,sim,mc);
+    labels{i} = ['L/D = ' num2str(LDs(i))];
+end
 figure(); hold on; grid on;
-set(gca,'FontSize',14);
-plot(out.traj.vel_pp_mag./1000,out.traj.alt./1000,'LineWidth',2)
+title(['v0=' num2str(x0.v0) ', fpa=' num2str(x0.fpa0)]);
+set(gca,'FontSize',16);
+for i = 1:Ni
+    plot(out(i).traj.vel_pp_mag./1000,out(i).traj.alt./1000,'LineWidth',2)
+end
 xlabel('Velocity (km/s)')
 ylabel('Altitude (km)')
-end
+legend(labels,'location','nw');
 
 % keyboard
 %}
+
 
 %% Trade Studies EFPA va Vatm - Jan 2019
 %{

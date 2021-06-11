@@ -55,12 +55,16 @@ switch guid.p.dm_mode
             guid.dej_n.s.dr_f(jett_ind) = guid.dej_n.s.dr_curr; %save current best error estimate
             guid.dej_n.s.dr_curr = nan; %reset current error
             
+%             % save ECF index this stage
+%             guid.dej_n.s.mc_inds(jett_ind) = 
+            
             % reset jettison time update limit
             guid.dej_n.s.hydra.dtj_lim = guid.dej_n.p.hydra.dtj_lim;
             guid.dej_n.s.hydra.dtj_lim_count = 0;
             
             %fix successive stage jettison times
-            if (guid.dej_n.s.tj_curr(jett_ind+1) <= guid.dej_n.s.tj_curr(jett_ind) )
+            if (guid.dej_n.s.stage < guid.dej_n.p.n_jett &&  ... 
+                    guid.dej_n.s.tj_curr(jett_ind+1) <= guid.dej_n.s.tj_curr(jett_ind) )
                 guid.dej_n.s.tj_curr(jett_ind+1) = t+guid.dej_n.s.hydra.dtj_lim; %some arbitrary future time
             end
         end

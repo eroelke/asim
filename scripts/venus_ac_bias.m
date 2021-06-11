@@ -106,7 +106,7 @@ sim.efpa_flag = false;
 outSEJ = run_dej_n(x0,gnc,aero,sim,mc);
 
 %n3 control
-[aero, bijs] = get_n3_betas(3, 5, 10);
+[aero, bijs] = get_n3_betas(aero, 3, 5, 10);
 gnc.n = 3;
 gnc.guid_rate = 0.1;
 gnc.npc_mode = uint8(2);    %multi
@@ -118,74 +118,70 @@ sim.efpa_flag = false;
 
 out3 = run_dej_n(x0,gnc,aero,sim,mc);
 
-colors = get_plot_colors();
+colors = get_plot_colors()';
 % time vs. guidance apoapsis estimate
-figure(); hold on
-grid on;
+% figure(); hold on
+% grid on;
+% set(gca,'FontSize',16)
+% title('-500km, -100 km bias, 2k target, v=11')
+% set(gca,'FontSize',16)
+% p3=plot(out3.traj.time, out3.g.dej_n.dr_ap_true./1000,'Color',colors(1,:),'LineWidth',2);
+% p2=plot(out2.traj.time, out2.g.dej_n.dr_ap_true./1000,'Color',colors(2,:),'LineWidth',2);
+% p1=plot(outSEJ.traj.time, outSEJ.g.dej_n.dr_ap./1000,'Color',colors(3,:),'LineWidth',2);
+% plot(outSEJ.t_jett(1), outSEJ.g.dej_n.dr_ap(outSEJ.idj(1))./1000, ... 
+%     'x','Color',colors(3,:),'LineWidth',1.5);
+% plot(out2.t_jett(1), out2.g.dej_n.dr_ap_true(out2.idj(1))./1000, ...
+%     'x','Color',colors(2,:),'LineWidth',1.5);
+% plot(out2.t_jett(2), out2.g.dej_n.dr_ap_true(out2.idj(2))./1000, ...
+%     'o','Color',colors(2,:),'LineWidth',1.5);
+% p3_1=plot(out3.t_jett(1), out3.g.dej_n.dr_ap_true(out3.idj(1))./1000, ...
+%     'x','Color',colors(1,:),'LineWidth',1.5);
+% p3_2=plot(out3.t_jett(2), out3.g.dej_n.dr_ap_true(out3.idj(2))./1000, ...
+%    'o','Color',colors(1,:),'LineWidth',1.5);
+% p3_3=plot(out3.t_jett(3), out3.g.dej_n.dr_ap_true(out3.idj(3))./1000, ...
+%     '^','Color',colors(1,:),'LineWidth',1.5);
+% % p3_1 = xline(out3.t_jett(1),'Color',colors(1,:),'LineStyle','--','LineWidth',1.5);
+% % p3_2 = xline(out3.t_jett(2),'Color',colors(1,:),'LineStyle','-.','LineWidth',1.5);
+% % p3_3 = xline(out3.t_jett(3),'Color',colors(1,:),'LineStyle',':','LineWidth',1.5);
+% % p2_1 = xline(out2.t_jett(1),'Color',colors(2,:),'LineStyle','--','LineWidth',1.5);
+% % p2_2 = xline(out2.t_jett(2),'Color',colors(2,:),'LineStyle','-.','LineWidth',1.5);
+% % p1_1 = xline(
+% yline(-100,'Color',[0 0 0] + 0.5,'LineWidth',1.5);
+% yline(-500,'Color',[0 0 0] + 0.5,'LineWidth',1.5);
+% legend([p3, p2, p1 p3_1, p3_2, p3_3], ... 
+%     '$\beta_{i+1}/\beta_i = \{3, 5, 10\}$', ... 
+%     '$\beta_{i+1}/\beta_i = \{3, 10\}$', ...
+%     '$\beta_2/\beta_1 = 3 (0\% Bias)$', ... 
+%     'Jettison 1','Jettison 2','Jettison 3', ...
+%     'Interpreter','latex', ...
+%     'location','ne')
+% ylabel('Apoapsis Error Estimate (km)')
+% xlabel('Time (s)')
+% 
+% keyboard;
+
+% time vs. jettison time estimate
+figure(); hold on; grid on;
 set(gca,'FontSize',16)
 title('-500km, -100 km bias, 2k target, v=11')
 set(gca,'FontSize',16)
-p3=plot(out3.traj.time, out3.g.dej_n.dr_ap_true./1000,'Color',colors(1,:),'LineWidth',2);
-p2=plot(out2.traj.time, out2.g.dej_n.dr_ap_true./1000,'Color',colors(2,:),'LineWidth',2);
-p1=plot(outSEJ.traj.time, outSEJ.g.dej_n.dr_ap./1000,'Color',colors(3,:),'LineWidth',2);
-plot(outSEJ.t_jett(1), outSEJ.g.dej_n.dr_ap(outSEJ.idj(1))./1000, ... 
+p3=plot(out3.traj.time(1:out3.idj(3)), out3.g.dej_n.tj(1:out3.idj(3)),'Color',colors(1,:),'LineWidth',2);
+plot(out3.traj.time(out3.idj(3):end), out3.g.dej_n.tj(out3.idj(3):end),'--','Color',colors(1,:),'LineWidth',2);
+p2=plot(out2.traj.time(1:out2.idj(2)), out2.g.dej_n.tj(1:out2.idj(2)),'Color',colors(2,:),'LineWidth',2);
+plot(out2.traj.time(out2.idj(2):end), out2.g.dej_n.tj(out2.idj(2):end),'--','Color',colors(2,:),'LineWidth',2);
+p1=plot(outSEJ.traj.time(1:outSEJ.idj(1)), outSEJ.g.dej_n.tj(1:outSEJ.idj(1)),'Color',colors(3,:),'LineWidth',2);
+plot(outSEJ.traj.time(outSEJ.idj(1):end), outSEJ.g.dej_n.tj(outSEJ.idj(1):end),'--','Color',colors(3,:),'LineWidth',2);
+plot(outSEJ.t_jett(1), outSEJ.t_jett(1), ... 
     'x','Color',colors(3,:),'LineWidth',1.5);
-plot(out2.t_jett(1), out2.g.dej_n.dr_ap_true(out2.idj(1))./1000, ...
+plot(out2.t_jett(1), out2.t_jett(1), ...
     'x','Color',colors(2,:),'LineWidth',1.5);
-plot(out2.t_jett(2), out2.g.dej_n.dr_ap_true(out2.idj(2))./1000, ...
+plot(out2.t_jett(2), out2.t_jett(2), ...
     'o','Color',colors(2,:),'LineWidth',1.5);
-p3_1=plot(out3.t_jett(1), out3.g.dej_n.dr_ap_true(out3.idj(1))./1000, ...
+p3_1=plot(out3.t_jett(1), out3.t_jett(1), ...
     'x','Color',colors(1,:),'LineWidth',1.5);
-p3_2=plot(out3.t_jett(2), out3.g.dej_n.dr_ap_true(out3.idj(2))./1000, ...
-   'o','Color',colors(1,:),'LineWidth',1.5);
-p3_3=plot(out3.t_jett(3), out3.g.dej_n.dr_ap_true(out3.idj(3))./1000, ...
-    '^','Color',colors(1,:),'LineWidth',1.5);
-% p3_1 = xline(out3.t_jett(1),'Color',colors(1,:),'LineStyle','--','LineWidth',1.5);
-% p3_2 = xline(out3.t_jett(2),'Color',colors(1,:),'LineStyle','-.','LineWidth',1.5);
-% p3_3 = xline(out3.t_jett(3),'Color',colors(1,:),'LineStyle',':','LineWidth',1.5);
-% p2_1 = xline(out2.t_jett(1),'Color',colors(2,:),'LineStyle','--','LineWidth',1.5);
-% p2_2 = xline(out2.t_jett(2),'Color',colors(2,:),'LineStyle','-.','LineWidth',1.5);
-% p1_1 = xline(
-yline(-100,'Color',[0 0 0] + 0.5,'LineWidth',1.5);
-yline(-500,'Color',[0 0 0] + 0.5,'LineWidth',1.5);
-legend([p3, p2, p1 p3_1, p3_2, p3_3], ... 
-    '$\beta_{i+1}/\beta_i = \{3, 5, 10\}$', ... 
-    '$\beta_{i+1}/\beta_i = \{3, 10\}$', ...
-    '$\beta_2/\beta_1 = 3 (0\% Bias)$', ... 
-    'Jettison 1','Jettison 2','Jettison 3', ...
-    'Interpreter','latex', ...
-    'location','ne')
-ylabel('Apoapsis Error Estimate (km)')
-xlabel('Time (s)')
-
-keyboard;
-
-% time vs. jettison time difference
-figure(); hold on
-grid on;
-set(gca,'FontSize',16)
-title('-500km, -100 km bias, 2k target, v=11')
-set(gca,'FontSize',16)
-p3=plot(out3.traj.time, out3.g.dej_n.tj ./out3.traj.time(out3.idxend),'Color',colors(1,:),'LineWidth',2);
-p2=plot(out2.traj.time, out2.g.dej_n.tj./out2.traj.time(out2.idxend),'Color',colors(2,:),'LineWidth',2);
-p1=plot(outSEJ.traj.time, outSEJ.g.dej_n.tj./outSEJ.traj.time(outSEJ.idxend),'Color',colors(3,:),'LineWidth',2);
-% p3_1 = xline(out3.t_jett(1),'Color',colors(1,:),'LineStyle','--','LineWidth',1.5);
-% p3_2 = xline(out3.t_jett(2),'Color',colors(1,:),'LineStyle','-.','LineWidth',1.5);
-% p3_3 = xline(out3.t_jett(3),'Color',colors(1,:),'LineStyle',':','LineWidth',1.5);
-% p2_1 = xline(out2.t_jett(1),'Color',colors(2,:),'LineStyle','--','LineWidth',1.5);
-% p2_2 = xline(out2.t_jett(2),'Color',colors(2,:),'LineStyle','-.','LineWidth',1.5);
-% p1_1 = xline(outSEJ.t_jett(1),'Color',colors(3,:),'LineStyle','--','LineWidth',1.5);
-plot(outSEJ.t_jett(1), outSEJ.t_jett(1)/outSEJ.traj.time(outSEJ.idxend), ... 
-    'x','Color',colors(3,:),'LineWidth',1.5);
-plot(out2.t_jett(1), out2.t_jett(1)/out2.traj.time(out2.idxend), ...
-    'x','Color',colors(2,:),'LineWidth',1.5);
-plot(out2.t_jett(2), out2.t_jett(2)/out2.traj.time(out2.idxend), ...
-    'o','Color',colors(2,:),'LineWidth',1.5);
-p3_1=plot(out3.t_jett(1), out3.t_jett(1)/out3.traj.time(out3.idxend), ...
-    'x','Color',colors(1,:),'LineWidth',1.5);
-p3_2=plot(out3.t_jett(2), out3.t_jett(2)/out3.traj.time(out3.idxend), ...
+p3_2=plot(out3.t_jett(2), out3.t_jett(2), ...
     'o','Color',colors(1,:),'LineWidth',1.5);
-p3_3=plot(out3.t_jett(3), out3.t_jett(3)/out3.traj.time(out3.idxend), ...
+p3_3=plot(out3.t_jett(3), out3.t_jett(3), ...
     '^','Color',colors(1,:),'LineWidth',1.5);
 legend([p3, p2, p1, p3_1, p3_2, p3_3], ... 
     '$\beta_{i+1}/\beta_i = \{3, 5, 10\}$', ... 
@@ -195,9 +191,10 @@ legend([p3, p2, p1, p3_1, p3_2, p3_3], ...
     'Jettison 2', ...
     'Jettison 3', ...
     'Interpreter','latex', ...
-    'location','ne')
-ylabel('t_j^{est}/t_f')
+    'location','nw')
+ylabel('t_j^{est} (s)')
 xlabel('Time (s)')
+xlim([0 200])
 
 keyboard;
 
@@ -347,7 +344,7 @@ keyboard
 % plot_tj_vs_bias(2, 400, 5.6, 3, 5);
 % plot_tj_vs_bias(2, 400, 5.6, 3, 5);
 
-% plot_tj_vs_bias(2, 2000, 5.4, 3, 5);
+plot_tj_vs_bias(2, 2000, 5.4, 3, 5);
 % plot_tj_vs_bias(2, 2000, 5.4, 9, 5);
 
 % plot_tj_vs_bias(2, 2000, 5.6, 3, 5);
@@ -359,13 +356,13 @@ keyboard
 %{
 clearvars -except save_path ;clc
 
-Nfpa = 50;
+Nfpa = 10;
 
 % ha_tgts = [400 2000 10000];
-ha_tgts = [400 2000];
+ha_tgts = [2000];
 Nz = length(ha_tgts);
 b31 = 10;
-b21s = [3 9];
+b21s = [9];
 % b21s = 2;
 v0 = 11;
 
@@ -383,7 +380,7 @@ x0.v0 = v0;
 %     -5.46:-0.02:-5.8];
 % efpas = -5.4;
 
-efpas =linspace(-5.35 ,-5.85, Nfpa);
+efpas =linspace(-5.4 ,-5.7, Nfpa);
 % efpas = -5.4;
 Nk = length(efpas);
 
@@ -423,11 +420,11 @@ aero.rn = 0.1;
 aero.cds = [1.05 1.05 1.05];
 aero.cls = [0 0 0];
 
-sim.traj_rate = 100;
+sim.traj_rate = 25;
 sim.data_rate = 1;
 sim.planet = 'venus';
 sim.efpa_flag = false;
-    
+
 mc.debug = false;
 mc.flag = false;
 
@@ -444,6 +441,7 @@ gnc.comp_curr = false;
 gnc.tj0 = tj0s;
 tjr = nan(length(biasing),Nk,gnc.n);
 tj = tjr;
+tr0 = nan(length(biasing),Nk,1);
 err = nan(length(biasing),Nk);
 
 for k = 1:Nk
@@ -454,6 +452,8 @@ for i = 1:length(biasing)
 gnc.bias(1).tgt_ap = biasing(i);
 out = run_dej_n(x0,gnc,aero,sim,mc);
 
+
+tr0(i,k) = out.traj.time(find(out.g.dej_n.dr_ap ~= 0,1))/(out.idxend / sim.data_rate);
 tj(i,k,:) = out.t_jett';
 tjr(i,k,:) = out.idj/(out.idxend / sim.data_rate);
 err(i,k) = out.haf_err;
@@ -623,7 +623,7 @@ keyboard
 %}
 
 %% 2stage Monte Carlo as func of biasing percent
-% %{
+%{
 clearvars -except save_path ;clc
 
 ha_tgts = [2000];
@@ -740,7 +740,7 @@ end
 save(['../data/bias/' tgt ... 
  'v' num2str(v0) '_' num2str(abs(x0.fpa0)) 'deg_b21=' num2str(b21s(j)) '_full.mat']);
 
-% save(['..\venus_ac\dej_n\HYDRA\2stage_bias\data\mc_bias_val\' tgt ... 
+% save(['..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\' tgt ... 
 %     'v' num2str(v0) '_' num2str(abs(x0.fpa0)) 'deg_b21=' num2str(b21s(j)) '_full.mat'])
 fprintf('Finished 2stage bias val MC. '); print_current_time();
 
@@ -756,21 +756,21 @@ keyboard
 %}
 
 %% Biasing Monte Carlo mean/std trends
-% %{
+%{
 clear;clc
 % kk -> biasing1
 % zz -> biasing2
 
 % b21 = 3;
-% tgt = 400;
+% tgt = 2000;
 % if ~exist('bias','var')
 %     [bias,err] = load_bias_val_data(tgt, b21, 2);
 % end
 
-b21 = 9;
+b21 = 3;
 tgt = 2000;
-% p = '..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\';
 p = '..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\withdv\';
+% p = '..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\';
 % d = load([p 'mc2500_400_v11_5.4deg_b21=3.mat']);
 % d2 = load([p '400_v11_5.4deg_b21=3_set2.mat']);
 
@@ -782,25 +782,22 @@ end
 
 d = load([p tgt_str '_v11_5.4deg_b21=' num2str(b21) '_full.mat']);
 
-fj = load(['..\venus_ac\dej_n\npc_hybrid\2stage\' ... 
-    'data\' num2str(tgt_str) '\v11_5.4deg_b_ijs' num2str(b21) '_10.mat']);
-fj_ind = 'out';
+% fj = load(['..\venus_ac\dej_n\npc_hybrid\2stage\' ... 
+%     'data\' num2str(tgt_str) '\v11_5.4deg_b_ijs' num2str(b21) '_10.mat']);
+% fj_ind = 'out';
 
 bias1 = 100 * (([d.biasing] ./ 1000) ./ d.gnc.ha_tgt);
 if exist('d2','var')
     bias2 = 100 * (([d2.biasing] ./ 1000) ./ d2.gnc.ha_tgt);
 % bias = [bias2 bias1(4:end)]';
     bias = [bias1 bias2]';
+    err = [d.err d2.err(1:1000,:)];
 else
     bias = bias1';
+    err = d.err;
 end
+dv_circ = d.dv_circ;
 Ni = length(bias);
-
-tols = 0:0.1:20;
-Nj = length(tols);
-pc = nan(Ni, Nj);
-j1s = pc; j2s = pc;
-pcFJ = nan(Nj,1);
 
 % preallocate
 meanHa = nan(Ni,1); stdHa = meanHa;
@@ -818,19 +815,19 @@ for i = 1:Ni
 %             d.dv_circ(j,i) = nan;
 %         end
 %     end
-    meanHa(i) = nanmean(d.err(:,i));
-    stdHa(i) = nanstd(d.err(:,i));
+    meanHa(i) = nanmean(err(:,i));
+    stdHa(i) = nanstd(err(:,i));
     
-    meanDv(i) = nanmean(d.dv(:,i));
-    stdDv(i) = nanstd(d.dv(:,i));
+%     meanDv(i) = nanmean(d.dv(:,i));
+%     stdDv(i) = nanstd(d.dv(:,i));
+%     
+    meanDvCirc(i) = nanmean(dv_circ(:,i));
+    stdDvCirc(i) = nanstd(dv_circ(:,i));
     
-    meanDvCirc(i) = nanmean(d.dv_circ(:,i));
-    stdDvCirc(i) = nanstd(d.dv_circ(:,i));
-    
-    nCrashes(i) = length(find(d.err(:,i) <= -(tgt + 150)));
-    if (nCrashes(i) > 0)
-        fprintf('Crash! Index %i\n',i);
-    end
+%     nCrashes(i) = length(find(d.err(:,i) <= -(tgt + 150)));
+%     if (nCrashes(i) > 0)
+%         fprintf('Crash! Index %i\n',i);
+%     end
 end
 
 % meanHa(1) = mean(fj.(fj_ind).haf_err);
@@ -849,81 +846,329 @@ entries{2} = 'Biased Jettison';
 % colors = get_plot_colors();
 
 % mean & std apoapsis vs. biasing
-figure(); hold on
-grid on
-title(['Mean ha vs. bias, b21 = ' num2str(b21) ', ha_{tgt} = ' num2str(tgt)]);
-set(gca,'FontSize',16);
-yyaxis left
-% plot(bias, ones(Ni,1) * mean(fj.out.haf_err),'--','LineWidth',2);
-plot(bias, ones(Ni,1) * meanHa(1),'--','LineWidth',2);
-plot(bias, meanHa,'-o','LineWidth',2);
-xlabel('Stage 1 Bias (% of Tgt)');
-ylabel('Mean Apoapsis Error (km)');
-yyaxis right
-% plot(bias, ones(Ni,1) * std(fj.out.haf_err),'--','LineWidth',2);
-plot(bias, ones(Ni,1) * stdHa(1),'--','LineWidth',2);
-plot(bias, stdHa,'-o','LineWidth',2);
-ylabel('Apoapsis 1\sigma (km)');
-legend(entries,'location','best');
+% figure(); hold on
+% grid on
+% title(['Mean ha vs. bias, b21 = ' num2str(b21) ', ha_{tgt} = ' num2str(tgt)]);
+% set(gca,'FontSize',16);
+% yyaxis left
+% % plot(bias, ones(Ni,1) * mean(fj.out.haf_err),'--','LineWidth',2);
+% plot(bias, ones(Ni,1) * meanHa(1),'--','LineWidth',2);
+% plot(bias, meanHa,'-o','LineWidth',2);
+% xlabel('Stage 1 Bias (% of Tgt)');
+% ylabel('Mean Apoapsis Error (km)');
+% yyaxis right
+% % plot(bias, ones(Ni,1) * std(fj.out.haf_err),'--','LineWidth',2);
+% plot(bias, ones(Ni,1) * stdHa(1),'--','LineWidth',2);
+% plot(bias, stdHa,'-o','LineWidth',2);
+% ylabel('Apoapsis 1\sigma (km)');
+% legend(entries,'location','best');
+% 
+% % mean & std dv vs. biasing
+% figure(); hold on
+% grid on
+% title(['\Delta v_{circ} vs. bias, b21 = ' num2str(b21) ', ha_{tgt} = ' num2str(tgt)]);
+% set(gca,'FontSize',16);
+% yyaxis left
+% % plot(b1, ones(Ni,1) * meanHa(1),'--','LineWidth',2);
+% plot(bias, ones(Ni,1) * meanDvCirc(1),'--','LineWidth',2);
+% plot(bias, meanDvCirc,'-o','LineWidth',2);
+% xlabel('Stage 1 Bias (% of Tgt)')
+% ylabel('Mean Circularization \Delta v (m/s)')
+% yyaxis right
+% % plot(b1, ones(Ni,1) * stdHa(1),'--','LineWidth',2);
+% plot(bias, ones(Ni,1) * stdDvCirc(1),'--','LineWidth',2);
+% plot(bias, stdDvCirc,'-o','LineWidth',2);
+% ylabel('Circularization \Delta v 1\sigma (m/s)');
+% legend(entries,'location','best');
 
-% mean & std dv vs. biasing
+colors = get_plot_colors();
+
+% means
 figure(); hold on
 grid on
 title(['\Delta v_{circ} vs. bias, b21 = ' num2str(b21) ', ha_{tgt} = ' num2str(tgt)]);
 set(gca,'FontSize',16);
-yyaxis left
-% plot(b1, ones(Ni,1) * meanHa(1),'--','LineWidth',2);
-plot(bias, ones(Ni,1) * meanDvCirc(1),'--','LineWidth',2);
-plot(bias, meanDvCirc,'-o','LineWidth',2);
 xlabel('Stage 1 Bias (% of Tgt)')
-ylabel('Mean Circularization \Delta v (m/s)')
+% apoapsis mean
+yyaxis left
+yline(0,'color',colors(:,1))
+yline(meanHa(1),'--','Color',colors(:,1),'alpha',1,'LineWidth',2);
+plot(bias, meanHa,'-o','LineWidth',2);
+ylabel('Mean Apoapsis Error (km)');
+% dv mean
 yyaxis right
-% plot(b1, ones(Ni,1) * stdHa(1),'--','LineWidth',2);
-plot(bias, ones(Ni,1) * stdDvCirc(1),'--','LineWidth',2);
-plot(bias, stdDvCirc,'-o','LineWidth',2);
-ylabel('Circularization \Delta v 1\sigma (m/s)');
+yline(meanDvCirc(1),'--','Color',colors(:,2),'alpha',1,'LineWidth',2);
+plot(bias, meanDvCirc,'-o','LineWidth',2);
+ylabel('Mean Circularization \Delta v (m/s)')
+%
 legend(entries,'location','best');
+
+% stds
+figure(); hold on
+grid on
+title(['\Delta v_{circ} vs. bias, b21 = ' num2str(b21) ', ha_{tgt} = ' num2str(tgt)]);
+set(gca,'FontSize',16);
+xlabel('Stage 1 Bias (% of Tgt)')
+% apoapsis mean
+yyaxis left
+yline(stdHa(1),'--','Color',colors(:,1),'alpha',1,'LineWidth',2);
+plot(bias, stdHa,'-o','LineWidth',2);
+ylabel('Apoapsis Error 1\sigma (km)');
+% dv mean
+yyaxis right
+yline(stdDvCirc(1),'--','Color',colors(:,2),'alpha',1,'LineWidth',2);
+plot(bias, stdDvCirc,'-o','LineWidth',2);
+ylabel('Circularization \Delta v 1\sigma (m/s)')
+%
+legend(entries,'location','best');
+
+
+
+% % box plots
+figure(); hold on; grid on
+set(gca,'FontSize',16)
+boxplot(err, 'labels', bias)
+set(gca,'xdir','reverse')
+xlabel('Stage 1 Bias (% of Tgt)')
+ylabel('Apoapsis Error (km)');
 
 %}
 
-%% Biasing MC mean/std 400km trend investigations
+%% Biasing method apoapsis error + dv mean/std trends
+%{
+clear;clc
+
+b21 = 3;
+tgt = 2000;
+p = '..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\withdv\';
+
+if (tgt < 1000)
+    tgt_str = num2str(tgt);
+else
+    tgt_str = [num2str(tgt/1000) 'k'];
+end
+
+d = load([p tgt_str '_v11_5.4deg_b21=' num2str(b21) '_full.mat']);
+
+bias = 100 * (([d.biasing] ./ 1000) ./ d.gnc.ha_tgt);
+Ni = length(bias);
+% remove middle points
+% bias(2) = nan;
+% bias(4) = nan;
+% bias(6) = nan;
+% bias(8) = nan;
+% bias(10) = nan;
+bias(end-3) = nan;
+bias(end-1) = nan;
+% bias = bias(~isnan(bias));
+
+
+
+% preallocate
+meanHa = nan(Ni,1); stdHa = meanHa;
+meanDv = meanHa; stdDv = meanHa;
+meanDvCirc = meanHa; stdDvCirc = meanHa;
+nCrashes = nan(Ni,1);
+
+entries = cell(2, 1);
+for i = 1:Ni
+    
+    if (isnan(bias(i)))
+        continue;
+    end
+%     for j = 1:size(d.err,1)
+%         if (abs(d.err(j,i)) > prctile(d.err(:,i),99.9))
+%             d.err(j,i) = nan;
+%             d.dv(j,i) = nan;
+%             d.dv_circ(j,i) = nan;
+%         end
+%     end
+    
+    meanHa(i) = nanmean(d.err(:,i));
+    stdHa(i) = nanstd(d.err(:,i));
+    
+%     meanDv(i) = nanmean(d.dv(:,i));
+%     stdDv(i) = nanstd(d.dv(:,i));
+    
+    meanDvCirc(i) = nanmean(d.dv_circ(:,i));
+    stdDvCirc(i) = nanstd(d.dv_circ(:,i));
+end
+
+entries{1} = 'Free Jettison (0% Bias)';
+entries{2} = 'Biased Jettison';
+% for i = 1:Ni
+%     entries{i + 1} = ['Stage 1 Bias: ' num2str(b1(i)) '% of Tgt'];
+% end
+
+colors = get_plot_colors();
+
+bias = bias(~isnan(bias));
+meanHa = meanHa(~isnan(meanHa));
+stdHa = stdHa(~isnan(stdHa));
+meanDvCirc = meanDvCirc(~isnan(meanDvCirc));
+stdDvCirc = stdDvCirc(~isnan(stdDvCirc));
+
+% means
+figure(); hold on
+grid on
+title(['\Delta v_{circ} vs. bias, b21 = ' num2str(b21) ', ha_{tgt} = ' num2str(tgt)]);
+set(gca,'FontSize',16);
+xlabel('Stage 1 Bias (% of Tgt)')
+% apoapsis mean
+yyaxis left
+yline(meanHa(1),'--','Color',colors(:,1),'alpha',1,'LineWidth',2);
+plot(bias, meanHa,'-o','LineWidth',2);
+ylabel('Mean Apoapsis Error (km)');
+% dv mean
+yyaxis right
+yline(meanDvCirc(1),'--','Color',colors(:,2),'alpha',1,'LineWidth',2);
+plot(bias, meanDvCirc,'-o','LineWidth',2);
+ylabel('Mean Circularization \Delta v (m/s)')
+%
+legend(entries,'location','best');
+
+% stds
+figure(); hold on
+grid on
+title(['\Delta v_{circ} vs. bias, b21 = ' num2str(b21) ', ha_{tgt} = ' num2str(tgt)]);
+set(gca,'FontSize',16);
+xlabel('Stage 1 Bias (% of Tgt)')
+% apoapsis mean
+yyaxis left
+yline(stdHa(1),'--','Color',colors(:,1),'alpha',1,'LineWidth',2);
+plot(bias, stdHa,'-o','LineWidth',2);
+ylabel('Apoapsis Error 1\sigma (km)');
+% dv mean
+yyaxis right
+yline(stdDvCirc(1),'--','Color',colors(:,2),'alpha',1,'LineWidth',2);
+plot(bias, stdDvCirc,'-o','LineWidth',2);
+ylabel('Circularization \Delta v 1\sigma (m/s)')
+%
+legend(entries,'location','best');
+
+
+%}
+
+%% Biasing MC mean/std trend investigations
 %{
 clear;clc
 % kk -> biasing1
 % zz -> biasing2
 
-d = load('..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\400_v11_5.4deg_b21=3.mat');
-fj = load('..\venus_ac\dej_n\npc_hybrid\2stage\data\400\v11_5.4deg_b_ijs3_10.mat');
-fj_ind = 'out';
-Ni = length(d.biasing);
+b21 = 3;
+tgt = 2000;
+p = '..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_bias_val\withdv\';
 
-pcBias = ((d.biasing/1000) ./ d.gnc.ha_tgt) .* 100; %percent of target
+if (tgt < 1000)
+    tgt_str = num2str(tgt);
+else
+    tgt_str = [num2str(tgt/1000) 'k'];
+end
 
-errNew = nan(1000,Ni);
-for i = 1:1000
-    for j = 1:Ni
-        if (abs(d.err(i,j)) < 1000)
-            errNew(i,j) = d.err(i,j);
+d = load([p tgt_str '_v11_5.4deg_b21=' num2str(b21) '_full.mat']);
+
+bias1 = 100 * (([d.biasing] ./ 1000) ./ d.gnc.ha_tgt);
+if exist('d2','var')
+    bias2 = 100 * (([d2.biasing] ./ 1000) ./ d2.gnc.ha_tgt);
+% bias = [bias2 bias1(4:end)]';
+    bias = [bias1 bias2]';
+else
+    bias = bias1';
+end
+% Nj = length(bias);
+
+% tols = 0:0.1:20;
+% Nj = length(tols);
+% pc = nan(Ni, Nj);
+% j1s = pc; j2s = pc;
+% pcFJ = nan(Nj,1);
+
+Ni = d.mc.N;
+inds = [7 8 9];
+Nj = length(inds);
+
+% preallocate
+tjr1 = nan(Ni,Nj); tjr2 = tjr1;
+err1 = tjr1; err2 = tjr2;
+
+entries = cell(2, 1);
+jetts = zeros(2, Nj);
+for j = 1:Nj %indices in question
+    for i = 1:Ni
+        if (~isnan(d.tj2(i, inds(j))))
+            err1(i,j) = nan;
+            err2(i,j) = d.err(i, inds(j));
+            
+            tjr1(i,j) = nan;
+            tjr2(i,j) = d.tjr2(i,inds(j));
+            
+%             if (out.tjett(i,2) < 0.99 * out.traj.t(out.idxend(i),i))
+%                 tj(i,2) = out.tjett(i,2);
+%                 ttf(i,2) = tj(i,2)/out.traj.t(out.idxend(i),i);
+%                 %                     jetts(2) = jetts(2) + 1;
+%             end
+            jetts(2,j) = jetts(2,j) + 1;
+        else
+            err2(i,i) = nan;
+            err1(i,j) = d.err(i, inds(j));
+            tjr1(i,j) = d.tjr1(i,inds(j));
+            tjr2(i,j) = nan;
+            
+%             if (out.tjett(i,1) < 0.99 * out.traj.t(out.idxend(i),i))
+%                 tj(i,1) = out.tjett(i,1);
+%                 ttf(i,1) = tj(i,1)/out.traj.t(out.idxend(i),i);
+%                 %                     jetts(1) = jetts(1) + 1;
+%             end
+            jetts(1,j) = jetts(1,j) + 1;
         end
-    end
-end
+    end %i, mc index
+    
+%     figure(); hold on; grid on
+%     set(gca,'FontSize',14)
+%     title(['Bias=' num2str(bias(inds(j))) '%'])
+% %     plot(tjr2(:,j), err2(:,j),'b+','linewidth',2);
+% %     p1=plot(tjr1(:,j), err1(:,j),'r+','linewidth',2);
+% %     xlabel('Normalized Jettison Time')
+%     plot(1:1000, err2(:,j),'b+','linewidth',2);
+%     p1=plot(1:1000, err1(:,j),'r+','linewidth',2);
+%     xlabel('GRAM Index')
+%     ylim([-300 300])
+%     ylabel('Apoapsis Error (km)')
+    
+end %j - bias index
 
-for i = 1:Ni
-for j = 1:d.mc.N
-    sigma(i,j) = nanstd(d.err(1:j,i));
-end
-end
 
-% std convergence
-figure(); hold on
-for i=1:Ni
-    plot(sigma(i,:));
-end
-
-for i = 1:Ni
-    dej_scatter_plot_bias(d.tjr1(:,i), d.tjr2(:,i), ... 
-        d.err(:,i), 2, d.gnc.ha_tgt, d.b21, pcBias(i));
-end
+% 
+% 
+% 
+% 
+% pcBias = ((d.biasing/1000) ./ d.gnc.ha_tgt) .* 100; %percent of target
+% 
+% errNew = nan(1000,Ni);
+% for i = 1:1000
+%     for j = 1:Ni
+%         if (abs(d.err(i,j)) < 1000)
+%             errNew(i,j) = d.err(i,j);
+%         end
+%     end
+% end
+% 
+% for i = 1:Ni
+% for j = 1:d.mc.N
+%     sigma(i,j) = nanstd(d.err(1:j,i));
+% end
+% end
+% 
+% % std convergence
+% figure(); hold on
+% for i=1:Ni
+%     plot(sigma(i,:));
+% end
+% 
+% for i = 1:Ni
+%     dej_scatter_plot_bias(d.tjr1(:,i), d.tjr2(:,i), ... 
+%         d.err(:,i), 2, d.gnc.ha_tgt, d.b21, pcBias(i));
+% end
 %}
 
 %% Biasing Percent Monte Carlo post-process
@@ -1122,21 +1367,21 @@ keyboard
 %% capture rate vs b21 post process
 %{
 clear;clc
-% p = '..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_b21\';
-p = '..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc2k_b21\';
+p = '..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_b21\';
+% p = '..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc2k_b21\';
 
 % % -5.4deg
-d0 = load(['..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_b21\2k_v11_5.4deg_bias=0%.mat']);
-d1 = load([p '2k_v11_5.4deg_bias=1%.mat']);
-d10 = load([p '2k_v11_5.4deg_bias=10%.mat']);
-d20 = load([p '2k_v11_5.4deg_bias=20%.mat']);
-d30 = load([p '2k_v11_5.4deg_bias=30%.mat']);
+% d0 = load(['..\venus_ac\dej_n\npc_hybrid\2stage_bias\data\mc_b21\2k_v11_5.4deg_bias=0%.mat']);
+% d1 = load([p '2k_v11_5.4deg_bias=1%.mat']);
+% d10 = load([p '2k_v11_5.4deg_bias=10%.mat']);
+% d20 = load([p '2k_v11_5.4deg_bias=20%.mat']);
+% d30 = load([p '2k_v11_5.4deg_bias=30%.mat']);
 % 
-% d0 = load([p '400_v11_5.4deg_bias=0%.mat']);
-% d1 = load([p '400_v11_5.4deg_bias=1%.mat']);
-% d10 = load([p '400_v11_5.4deg_bias=10%.mat']);
-% d20 = load([p '400_v11_5.4deg_bias=20%.mat']);
-% d30 = load([p '400_v11_5.4deg_bias=30%.mat']);
+d0 = load([p '400_v11_5.4deg_bias=0%.mat']);
+d1 = load([p '400_v11_5.4deg_bias=1%.mat']);
+d10 = load([p '400_v11_5.4deg_bias=10%.mat']);
+d20 = load([p '400_v11_5.4deg_bias=20%.mat']);
+d30 = load([p '400_v11_5.4deg_bias=30%.mat']);
 
 % % -5.6deg
 % d0 = load([p '2k_v11_5.6deg_bias=0%.mat']);
@@ -1155,7 +1400,7 @@ d30 = load([p '2k_v11_5.4deg_bias=30%.mat']);
 % plot_bias_scatter(d1, 2);
 
 
-
+colors = get_plot_colors();
 
 % % % % all bias percents
 tols = [1 10];
@@ -1164,95 +1409,175 @@ Nj = length(d1.b21s);
 pc1 = nan(Ni,Nj); pc0 = pc1;
 pc10 = pc1; pc20 = pc1; pc30 = pc1;
 entries = cell(Nj,1);
-for i = 1:Ni
-    for j = 1:Nj
-        pc0(i,j) = get_percent_captured(d0.err(:,j), d0.gnc.ha_tgt, tols(i), d0.mc.N);
-        pc1(i,j) = get_percent_captured(d1.err(:,j), d1.gnc.ha_tgt, tols(i), d1.mc.N);
-        pc10(i,j) = get_percent_captured(d10.err(:,j), d10.gnc.ha_tgt, tols(i), d10.mc.N);
-        pc20(i,j) = get_percent_captured(d20.err(:,j), d20.gnc.ha_tgt, tols(i), d20.mc.N);
-        pc30(i,j) = get_percent_captured(d30.err(:,j), d30.gnc.ha_tgt, tols(i), d30.mc.N);
-        
-        [pc0_1(j), pc0_2(j)] = ...
-            count_jettisons(d0.tj1(:,j), d0.tj2(:,j));
-        
-        [pc1_1(j), pc1_2(j)] = ...
-            count_jettisons(d1.tj1(:,j), d1.tj2(:,j));
-        
-        [pc10_1(j), pc10_2(j)] = ...
-            count_jettisons(d10.tj1(:,j), d10.tj2(:,j));
-        
-        [pc20_1(j), pc20_2(j)] = ...
-            count_jettisons(d20.tj1(:,j), d20.tj2(:,j));
-        
-        [pc30_1(j), pc30_2(j)] = ...
-            count_jettisons(d30.tj1(:,j), d30.tj2(:,j));
-    end
-    entries{i} = [num2str(tols(i)) '% Tolerance'];
-end
 
+% for i = 1:Ni
+%     for j = 1:Nj
+%         pc0(i,j) = get_percent_captured(d0.err(:,j), d0.gnc.ha_tgt, tols(i), d0.mc.N);
+%         pc1(i,j) = get_percent_captured(d1.err(:,j), d1.gnc.ha_tgt, tols(i), d1.mc.N);
+%         pc10(i,j) = get_percent_captured(d10.err(:,j), d10.gnc.ha_tgt, tols(i), d10.mc.N);
+%         pc20(i,j) = get_percent_captured(d20.err(:,j), d20.gnc.ha_tgt, tols(i), d20.mc.N);
+%         pc30(i,j) = get_percent_captured(d30.err(:,j), d30.gnc.ha_tgt, tols(i), d30.mc.N);
+%         
+%         [pc0_1(j), pc0_2(j)] = ...
+%             count_jettisons(d0.tj1(:,j), d0.tj2(:,j));
+%         
+%         [pc1_1(j), pc1_2(j)] = ...
+%             count_jettisons(d1.tj1(:,j), d1.tj2(:,j));
+%         
+%         [pc10_1(j), pc10_2(j)] = ...
+%             count_jettisons(d10.tj1(:,j), d10.tj2(:,j));
+%         
+%         [pc20_1(j), pc20_2(j)] = ...
+%             count_jettisons(d20.tj1(:,j), d20.tj2(:,j));
+%         
+%         [pc30_1(j), pc30_2(j)] = ...
+%             count_jettisons(d30.tj1(:,j), d30.tj2(:,j));
+%     end   
+%     entries{i} = [num2str(tols(i)) '% Tolerance'];
+% end
 
-% specific tols
-colors = get_plot_colors();
-
-figure(); hold on
-set(gca,'FontSize',16)
-title(['h_a^* Tol, ' num2str(d0.gnc.ha_tgt) ' km tgt, ' num2str(d0.x0.fpa0) 'deg']);
-
-p0=plot(d0.b21s, pc0(1,:),'-o','Color',colors(1,:),'LineWidth',2);
-p1=plot(d1.b21s, pc1(1,:),'-o','Color',colors(2,:),'LineWidth',2);
-p10=plot(d10.b21s, pc10(1,:),'-o','Color',colors(3,:),'LineWidth',2);
-p20=plot(d20.b21s, pc20(1,:),'-o','Color',colors(4,:),'LineWidth',2);
-p30=plot(d30.b21s, pc30(1,:),'-o','Color',colors(5,:),'LineWidth',2);
-
-p0_2=plot(d0.b21s, pc0(2,:),'--o','Color',colors(1,:),'LineWidth',2);
-plot(d1.b21s, pc1(2,:),'--o','Color',colors(2,:),'LineWidth',2);
-plot(d10.b21s, pc10(2,:),'--o','Color',colors(3,:),'LineWidth',2);
-plot(d20.b21s, pc20(2,:),'--o','Color',colors(4,:),'LineWidth',2);
-plot(d30.b21s, pc30(2,:),'--o','Color',colors(5,:),'LineWidth',2);
-
-legend([p0 p1 p10 p20 p30 p0_2], ...
-    '0% Bias 1% Tol','1% Bias','10% Bias','20% Bias', ... 
-    '30% Bias', ... 
-    '0% Bias, 10% Tol', ...
-    'location','sw')
-% legend([p0 p0_2], ...
-%     '1% Tol','10% Tol', ...
-%     'location','sw')
-xlabel('\beta_2/\beta_1');
-ylabel('Percent Captured (%)');
-xlim([1.1 9.9])
-xticks(d1.b21s)
-xticklabels({'1.1','2','3','4','5','6','7','8','9','9.9'})
-
-
-% percent 2nd jett
-colors = get_plot_colors();
-figure(); hold on
-set(gca,'FontSize',16)
-title(['h_a^* Tol, ' num2str(d0.gnc.ha_tgt) ' km tgt, ' num2str(d0.x0.fpa0) 'deg']);
-p0=plot(d0.b21s, pc0_2,'-o','Color',colors(1,:),'LineWidth',2);
-p1=plot(d1.b21s, pc1_2,'-o','Color',colors(2,:),'LineWidth',2);
-p10=plot(d10.b21s, pc10_2,'-o','Color',colors(3,:),'LineWidth',2);
-p20=plot(d20.b21s, pc20_2,'-o','Color',colors(4,:),'LineWidth',2);
-p30=plot(d30.b21s, pc30_2,'-o','Color',colors(5,:),'LineWidth',2);
-
+% % specific tols
+% colors = get_plot_colors();
+% 
+% figure(); hold on
+% set(gca,'FontSize',16)
+% title(['h_a^* Tol, ' num2str(d0.gnc.ha_tgt) ' km tgt, ' num2str(d0.x0.fpa0) 'deg']);
+% 
 % p0=plot(d0.b21s, pc0(1,:),'-o','Color',colors(1,:),'LineWidth',2);
 % p1=plot(d1.b21s, pc1(1,:),'-o','Color',colors(2,:),'LineWidth',2);
 % p10=plot(d10.b21s, pc10(1,:),'-o','Color',colors(3,:),'LineWidth',2);
 % p20=plot(d20.b21s, pc20(1,:),'-o','Color',colors(4,:),'LineWidth',2);
 % p30=plot(d30.b21s, pc30(1,:),'-o','Color',colors(5,:),'LineWidth',2);
+% 
+% p0_2=plot(d0.b21s, pc0(2,:),'--o','Color',colors(1,:),'LineWidth',2);
+% plot(d1.b21s, pc1(2,:),'--o','Color',colors(2,:),'LineWidth',2);
+% plot(d10.b21s, pc10(2,:),'--o','Color',colors(3,:),'LineWidth',2);
+% plot(d20.b21s, pc20(2,:),'--o','Color',colors(4,:),'LineWidth',2);
+% plot(d30.b21s, pc30(2,:),'--o','Color',colors(5,:),'LineWidth',2);
+% 
+% legend([p0 p1 p10 p20 p30 p0_2], ...
+%     '0% Bias 1% Tol','1% Bias','10% Bias','20% Bias', ... 
+%     '30% Bias', ... 
+%     '0% Bias, 10% Tol', ...
+%     'location','sw')
+% % legend([p0 p0_2], ...
+% %     '1% Tol','10% Tol', ...
+% %     'location','sw')
+% xlabel('\beta_2/\beta_1');
+% ylabel('Percent Captured (%)');
+% xlim([1.1 9.9])
+% xticks(d1.b21s)
+% xticklabels({'1.1','2','3','4','5','6','7','8','9','9.9'})
+% 
+% 
+% % percent 2nd jett
+% figure(); hold on
+% set(gca,'FontSize',16)
+% title(['h_a^* Tol, ' num2str(d0.gnc.ha_tgt) ' km tgt, ' num2str(d0.x0.fpa0) 'deg']);
+% p0=plot(d0.b21s, pc0_2,'-o','Color',colors(1,:),'LineWidth',2);
+% p1=plot(d1.b21s, pc1_2,'-o','Color',colors(2,:),'LineWidth',2);
+% p10=plot(d10.b21s, pc10_2,'-o','Color',colors(3,:),'LineWidth',2);
+% p20=plot(d20.b21s, pc20_2,'-o','Color',colors(4,:),'LineWidth',2);
+% p30=plot(d30.b21s, pc30_2,'-o','Color',colors(5,:),'LineWidth',2);
+% 
+% % p0=plot(d0.b21s, pc0(1,:),'-o','Color',colors(1,:),'LineWidth',2);
+% % p1=plot(d1.b21s, pc1(1,:),'-o','Color',colors(2,:),'LineWidth',2);
+% % p10=plot(d10.b21s, pc10(1,:),'-o','Color',colors(3,:),'LineWidth',2);
+% % p20=plot(d20.b21s, pc20(1,:),'-o','Color',colors(4,:),'LineWidth',2);
+% % p30=plot(d30.b21s, pc30(1,:),'-o','Color',colors(5,:),'LineWidth',2);
+% 
+% legend([p0 p1 p10 p20 p30], ...
+%     '0% Bias','1% Bias','10% Bias','20% Bias', ... 
+%     '30% Bias', ... 
+%     'location','sw')
+% xlabel('\beta_2/\beta_1');
+% ylabel('Percent Stage 2 Jettison (%)');
+% xlim([1.1 9.9])
+% xticks(d1.b21s)
+% xticklabels({'1.1','2','3','4','5','6','7','8','9','9.9'})
 
+
+meanHa0 = nan(Nj,1); meanHa1 = meanHa0; meanHa10 = meanHa0; meanHa20 = meanHa0; meanHa30 = meanHa0;
+stdHa0 = nan(Nj,1); stdHa1 = stdHa0; stdHa10 = stdHa0; stdHa20 = stdHa0; stdHa30 = stdHa0;
+for j = 1:Nj
+    meanHa0(j) = nanmean(d0.err(:,j));
+    stdHa0(j) = nanstd(d0.err(:,j));
+    
+    meanHa1(j) = nanmean(d1.err(:,j));
+    stdHa1(j) = nanstd(d1.err(:,j));
+    
+    meanHa10(j) = nanmean(d10.err(:,j));
+    stdHa10(j) = nanstd(d10.err(:,j));
+    
+    meanHa20(j) = nanmean(d20.err(:,j));
+    stdHa20(j) = nanstd(d20.err(:,j));
+    
+    meanHa30(j) = nanmean(d30.err(:,j));
+    stdHa30(j) = nanstd(d30.err(:,j));
+end
+
+% plot mean dra vs. b21
+figure(); hold on; grid on
+title(['\Delta r_a Mean, ' num2str(d0.gnc.ha_tgt) ' km tgt, ' num2str(d0.x0.fpa0) 'deg']);
+set(gca,'FontSize',16)
+p0=plot(d0.b21s, meanHa0,'-o','color',colors(:,1),'linewidth',2);
+p1=plot(d1.b21s, meanHa1,'-o','color',colors(:,2),'linewidth',2);
+p10=plot(d10.b21s,meanHa10,'-o','color',colors(:,3),'linewidth',2);
+p20=plot(d10.b21s,meanHa20,'-o','color',colors(:,4),'linewidth',2);
+p30=plot(d10.b21s,meanHa30,'-o','color',colors(:,5),'linewidth',2);
+% ylim([-200 200])
+xlim([1.1,9.9])
+yline(0,'--','linewidth',1.5)
+xlabel('\beta_2/\beta_1')
+ylabel('Mean \Delta r_a (km)')
 legend([p0 p1 p10 p20 p30], ...
     '0% Bias','1% Bias','10% Bias','20% Bias', ... 
     '30% Bias', ... 
     'location','sw')
-xlabel('\beta_2/\beta_1');
-ylabel('Percent Stage 2 Jettison (%)');
-xlim([1.1 9.9])
-xticks(d1.b21s)
-xticklabels({'1.1','2','3','4','5','6','7','8','9','9.9'})
+xticks(d0.b21s);
+
+% plot std dra vs. b21
+figure(); hold on; grid on
+title(['\Delta r_a 1\sigma, ' num2str(d0.gnc.ha_tgt) ' km tgt, ' num2str(d0.x0.fpa0) 'deg']);
+set(gca,'FontSize',16)
+p0=plot(d0.b21s, stdHa0,'-o','color',colors(:,1),'linewidth',2);
+p1=plot(d1.b21s, stdHa1,'-o','color',colors(:,2),'linewidth',2);
+p10=plot(d10.b21s,stdHa10,'-o','color',colors(:,3),'linewidth',2);
+p20=plot(d10.b21s,stdHa20,'-o','color',colors(:,4),'linewidth',2);
+p30=plot(d10.b21s,stdHa30,'-o','color',colors(:,5),'linewidth',2);
+% ylim([-200 200])
+xlim([1.1,9.9])
+xlabel('\beta_2/\beta_1')
+ylabel('\Delta r_a 1\sigma (km)')
+legend([p0 p1 p10 p20 p30], ...
+    '0% Bias','1% Bias','10% Bias','20% Bias', ... 
+    '30% Bias', ... 
+    'location','sw')
+xticks(d0.b21s);
 
 
+% both mean, std
+figure(); hold on; grid on
+title(['\Delta r_a stats, ' num2str(d0.gnc.ha_tgt) ' km tgt, ' num2str(d0.x0.fpa0) 'deg']);
+set(gca,'FontSize',16)
+yyaxis left
+    p0=plot(d0.b21s, meanHa0,'-o','linewidth',2);
+    p10=plot(d10.b21s,meanHa10,'-.+','linewidth',2);
+    p30=plot(d10.b21s,meanHa30,'--^','linewidth',2);
+    ylabel('\Delta r_a Mean (km)')
+    yline(0,'color',colors(:,1),'linewidth',1)
+yyaxis right
+    plot(d0.b21s, stdHa0,'-o','linewidth',2);
+    plot(d10.b21s,stdHa10,'-.+','linewidth',2);
+    plot(d10.b21s,stdHa30,'--^','linewidth',2);
+    ylabel('\Delta r_a 1\sigma (km)')
+xlim([1.1,9.9])
+xlabel('\beta_2/\beta_1')
+ylim([100 300])
+legend([p0 p10 p30], ...
+    '0% Bias','10% Bias','30% Bias', ... 
+    'location','sw')
+xticks(d0.b21s);
 
 % % % % single bias percentage
 % tols = 0:1:100;
@@ -1426,8 +1751,6 @@ plot_tj_vs_bias(3, 400, -5.6, [9 9.5], 1, inds, true, 1);
 
 plot_tj_vs_bias(3, 2000, -5.6, [3 5], 1, inds, true, 1);
 plot_tj_vs_bias(3, 2000, -5.6, [9 9.5], 1, inds, true, 0);
-
-
 
 
 d = load('..\venus_ac\dej_n\npc_hybrid\3stage_bias\bias_val\2k_v11_5.4deg_bijs=3_5_10.mat');

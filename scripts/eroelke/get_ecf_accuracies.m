@@ -16,9 +16,18 @@ pc_found_h = nan(d.mc.N,1);
 for i = 1:d.mc.N
     
     % percent of accurate cases over trajctory up to jettison
-    pc_found(i) = 100 * length(find(out_ecf.g.atm.ind_curr(1:out_ecf.idj(i,1)+1,i) == out_ecf.g.mc_inds(i))) / (out_ecf.idj(i,1)+1);
-    pc_found_p(i) = 100 * length(find(out_ecf_p.g.atm.ind_curr(1:out_ecf_p.idj(i,1)+1,i) == out_ecf_p.g.mc_inds(i))) / (out_ecf_p.idj(i,1)+1);
-    pc_found_h(i) = 100 * length(find(out_hyb.g.atm.ind_curr(1:out_hyb.idj(i,1)+1,i) == out_hyb.g.mc_inds(i))) / (out_hyb.idj(i,1)+1);
+    if (~isnan(out_ecf.idj(i,1)))
+        idj = out_ecf.idj(i,1)+1;
+        pc_found(i) = 100 * length(find(out_ecf.g.atm.ind_curr(1:idj,i) == out_ecf.g.mc_inds(i))) / idj;
+    end
+    if (~isnan(out_ecf_p.idj(i,1)))
+        idj = out_ecf_p.idj(i,1)+1;
+        pc_found_p(i) = 100 * length(find(out_ecf_p.g.atm.ind_curr(1:idj,i) == out_ecf_p.g.mc_inds(i))) / idj;
+    end
+    if (~isnan(out_hyb.idj(i,1)))
+        idj = out_hyb.idj(i,1)+1;
+        pc_found_h(i) = 100 * length(find(out_hyb.g.atm.ind_curr(1:idj,i) == out_hyb.g.mc_inds(i))) / idj;
+    end
     
     % accuracy at jettison
     if (out_ecf.g.ecf_ind(i) == out_ecf.g.mc_inds(i))
