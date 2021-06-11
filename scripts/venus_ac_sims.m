@@ -2038,27 +2038,125 @@ keyboard;
 %}
 
 %% Nominal NPC
-%{
+% %{
 clear;clc
 [x0,aero,gnc,sim,mc] = base_venus_ac(false);
+b21 = 5;
+
+aero.m(2) = b21 * aero.m(1) * ((aero.rcs(2)^2)/(aero.rcs(1)^2));
 gnc.guid_rate = 0.5;
 gnc.ha_tol = 5;
 gnc.tj0 = 90;
 gnc.hydra_flag = true;
 gnc.dtj_lim = 10;
 mc.flag = false;
-sim.traj_rate = 100;
-sim.data_rate = 1;
+sim.traj_rate = 20;
+sim.data_rate = 20;
 gnc.npc_mode = uint8(1);
 gnc.ha_tgt = 2000;
+sim.h_min = 0;
 % mc.flag = true;
 % mc.debug = true;
 % sim.debug = true;
 % mc.sigs = zero_sigs;
-x0.fpa0 = -5.4;
+x0.fpa0 = -5.6;
+% guided
 out = run_dej_n(x0,gnc,aero,sim,mc);
 
-keyboard
+% beta1
+gnc1 = gnc;
+gnc1.guid_rate = 0;
+gnc1.tj0 = 10000000;
+% sim.efpa_flag = true;
+out1 = run_dej_n(x0,gnc1,aero,sim,mc);
+
+% beta2
+gnc2 = gnc1;
+aero2 = aero;
+aero2.m(1) = aero2.m(2);
+aero2.rcs(1) = aero2.rcs(2);
+% sim.efpa_flag = true;
+out2 = run_dej_n(x0,gnc2,aero2,sim,mc);
+
+% % trajectory
+% figure(); hold on
+% set(gca,'FontSize',16)
+% grid on
+% plot(out1.traj.vel_pp_mag./1000, out1.traj.alt./1000, 'k--','linewidth',2)
+% plot(out2.traj.vel_pp_mag./1000, out2.traj.alt./1000, 'k-.','linewidth',2)
+% plot(out.traj.vel_pp_mag./1000, out.traj.alt./1000,'b','linewidth',2)
+% plot(out.traj.vel_pp_mag(out.idj)/1000, out.traj.alt(out.idj)/1000,'b*','linewidth',2)
+% xlabel('Planet Relative Velocity (km/s)')
+% ylabel('Altitude (km)')
+% legend(['\beta_1 Trajectory, \gamma = ' num2str(round(out1.traj.gamma_pp(1)*180/pi,2))], ...
+%     ['\beta_2 Trajectory, \gamma = ' num2str(round(out2.traj.gamma_pp(1)*180/pi,2))], ...
+%     ['\beta_2/\beta_1 = ' num2str(b21) ' Trajectory, \gamma = ' num2str(round(out.traj.gamma_pp(1)*180/pi,2))], ...
+%     'Jettison Event', ...
+%     'location','best')
+ keyboard;
+% g load
+figure(); hold on
+set(gca,'FontSize',16)
+grid on
+plot(out1.traj.vel_pp_mag./1000, out1.traj.g_loading, 'k--','linewidth',2)
+plot(out2.traj.vel_pp_mag./1000, out2.traj.g_loading, 'k-.','linewidth',2)
+plot(out.traj.vel_pp_mag./1000, out.traj.g_loading,'b','linewidth',2)
+xline(out.traj.vel_pp_mag(out.idj)./1000,'k--','linewidth',2)
+% plot(out.traj.vel_pp_mag(out.idj)/1000, out.traj.g_loading(out.idj-1),'b*','linewidth',2)
+xlabel('Planet Relative Velocity (km/s)')
+ylabel('G-Loading (Earth g''s)')
+legend(['\beta_1 Trajectory'], ...
+    ['\beta_2 Trajectory'], ...
+    ['\beta_2/\beta_1 = ' num2str(b21) ' Trajectory'], ...
+    'Jettison Event', ...
+    'location','best')
+ylim([0 10])
+
+% heat rate
+figure(); hold on
+set(gca,'FontSize',16)
+grid on
+% plot(out1.traj.vel_pp_mag./1000, out1.traj.g_loading, 'k--','linewidth',2)
+% plot(out2.traj.vel_pp_mag./1000, out2.traj.g_loading, 'k-.','linewidth',2)
+plot(out.traj.vel_pp_mag./1000, out.traj.heat_rate ./ 10000,'b','linewidth',2)
+% xline(out.traj.vel_pp_mag(out.idj)./1000,'k--','linewidth',2)
+plot(out.traj.vel_pp_mag(out.idj)/1000, out.traj.heat_rate(out.idj) ./ 10000,'b*','linewidth',2)
+xlabel('Planet Relative Velocity (km/s)')
+ylabel('Heat Rate  (W/cm^2)')
+legend(['\beta_2/\beta_1 = ' num2str(b21) ' Trajectory, \gamma = ' num2str(round(out.traj.gamma_pp(1)*180/pi,2))], ...
+    'Jettison Event', ...
+    'location','best')
+
+% mass, area ref
+for i = 1:out.idxend
+    if out.traj.mass(i) == aero.m(1)
+        betas(i) = out.betas(1);
+    else
+        betas(i) = out.betas(2);
+    end
+end
+figure(); hold on
+set(gca,'FontSize',16)
+grid on
+yyaxis left
+plot(out.traj.vel_pp_mag./1000, out.traj.mass,'linewidth',2)
+ylabel('Mass (kg)')
+yyaxis right
+plot(out.traj.vel_pp_mag(1:out.idxend)./1000, betas,'linewidth',2)
+ylabel('\beta (kg/m^2)')
+xlabel('Planet Relative Velocity (km/s)')
+xline(out.traj.vel_pp_mag(out.idj)./1000,'k--','linewidth',2)
+legend(['\beta_2/\beta_1 = ' num2str(b21) ' Trajectory, \gamma = ' num2str(round(out.traj.gamma_pp(1)*180/pi,2))], ...
+    'Jettison Event', ...
+    'location','best')
+
+% FPA
+figure(); hold on
+set(gca,'FontSize',16)
+grid on;
+plot(out.traj.vel_pp_mag./1000,out.traj.gamma_pp * 180/pi,'b','linewidth',2)
+
+% keyboard
 %}
 
 %% NPC Monte Carlo - compare bisection, hybrid
@@ -2136,7 +2234,7 @@ plot(out_h.traj.fpa(1,:),out_h.haf_err,'*')
 % histogram for bisection vs. HYDRA - 10k, 0.1 and 1 hz
 clear;clc;
 % dat = load('..\venus_ac\dej_n\HYDRA\1stage\data\10k\v11_5.4deg_0.1hz.mat');
-dat = load('..\venus_ac\dej_n\HYDRA\1stage\data\10k\v11_5.4deg_1hz.mat');
+dat = load('..\venus_ac\dej_n\npc_hybrid\1stage\data\10k\v11_5.4deg_1hz.mat');
 
 width = 200/10000;
 figure(); hold on
@@ -2153,6 +2251,19 @@ xlim([5000/10000, 15000/10000])
 legend('Bisection Method','HYDRA Method','location','ne')
 
 keyboard;
+
+
+width = 500/10000;
+figure(); hold on
+title('NPC-Bisection Method, 1 Hz, 10000 km Target')
+set(gca,'FontSize',16)
+h1 = histogram(dat.out_b.haf/10000, 'FaceColor','r');
+h2 = histogram(dat.out_h.haf/10000, 'FaceColor','b');
+xlabel('Apoapsis Altitude (10^4 km)')
+ylabel('Occurrence');
+h1.BinWidth = width;
+h2.BinWidth = width;
+legend('Bisection Method','HYDRA Method','location','ne')
 %}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

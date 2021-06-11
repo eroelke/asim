@@ -259,6 +259,7 @@ out.haf_err = round((haf - gnc.ha_tgt),5);    %km
 out.dv = round(dv,5);
 out.dv_circ = round(dv_circ, 5);
 out.idxend = idxend;
+if (gnc.n > 0)
 for i = 1:gnc.n
     idj = find(out.g.(mode).stage == i,1) +1;   % to handle additional jettison data point
     if ~isempty(idj)
@@ -274,6 +275,7 @@ for i = 1:gnc.n
         out.idj(i) = nan;
         out.tjr(i) = nan;
     end
+end
 end
 out.betas = round(beta,3);
 out.beta_ratios = round(beta_ratio,3);

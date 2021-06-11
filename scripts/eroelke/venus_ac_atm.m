@@ -2,36 +2,48 @@
 %   atmospheric estimation code/sims for venus aerocapture
 % 
 clear;clc;
-p = '..\venus_ac\dej_n\atmospheric_estimation\';
+p = '..\venus_ac\dej_n\atm_est\';
 
 %% Monte Carlo nav error scaling post-process
-% ${
+% %{
 
-d100 = load([p 'data/mc/mc500_54deg_navScale_100.mat']);
-d80 = load([p 'data/mc/mc500_54deg_navScale_80.mat']);
-d60 = load([p 'data/mc/mc500_54deg_navScale_60.mat']);
-d40 = load([p 'data/mc/mc500_54deg_navScale_40.mat']);
+d120 = load([p 'data/mc/nav_scaling/mc1000_54deg_navScale_120.mat']);
+d100 = load([p 'data/mc/nav_scaling/mc1000_54deg_navScale_100.mat']);
+d80 = load([p 'data/mc/nav_scaling/mc1000_54deg_navScale_80.mat']);
+d60 = load([p 'data/mc/nav_scaling/mc1000_54deg_navScale_60.mat']);
+d40 = load([p 'data/mc/nav_scaling/mc1000_54deg_navScale_40.mat']);
+d20 = load([p 'data/mc/nav_scaling/mc1000_54deg_navScale_20.mat']);
+d0 = load([p 'data/mc/nav_scaling/mc1000_54deg_navScale_0.mat']);
 
-scales = d100.scales(1:4);
+
+scales = d100.scales;
 labels = {'out_k','out_di','out_ecf','out_hyb'};
 names = {'DSF','DI','ECF','ECFH'};
 percentile = 99.9;
 Ni = length(labels);
 for i = 1:Ni
-   mus(:,i) =  [nanmean(d100.(labels{i}).haf_err), ... 
+   mus(:,i) =  [nanmean(d120.(labels{i}).haf_err), ... 
+       nanmean(d100.(labels{i}).haf_err), ... 
        nanmean(d80.(labels{i}).haf_err), ... 
-    nanmean(d60.(labels{i}).haf_err), ... 
-    nanmean(d40.(labels{i}).haf_err)]';
+        nanmean(d60.(labels{i}).haf_err), ... 
+        nanmean(d40.(labels{i}).haf_err), ...
+        nanmean(d20.(labels{i}).haf_err), ...
+        nanmean(d0.(labels{i}).haf_err) ...
+    ]';
     
-    stds(:,i) = [nanstd(d100.(labels{i}).haf_err(find(abs(d100.(labels{i}).haf_err) <= prctile(d100.(labels{i}).haf_err, percentile)))), ... 
-       nanstd(d80.(labels{i}).haf_err(find(abs(d80.(labels{i}).haf_err) <= prctile(d80.(labels{i}).haf_err, percentile)))), ... 
-    nanstd(d60.(labels{i}).haf_err(find(abs(d60.(labels{i}).haf_err) <= prctile(d60.(labels{i}).haf_err, percentile)))), ... 
-    nanstd(d40.(labels{i}).haf_err(find(abs(d40.(labels{i}).haf_err) <= prctile(d40.(labels{i}).haf_err, percentile))))]';
+    stds(:,i) =  [nanstd(d120.(labels{i}).haf_err), ... 
+       nanstd(d100.(labels{i}).haf_err), ... 
+       nanstd(d80.(labels{i}).haf_err), ... 
+        nanstd(d60.(labels{i}).haf_err), ... 
+        nanstd(d40.(labels{i}).haf_err), ...
+        nanstd(d20.(labels{i}).haf_err), ...
+        nanstd(d0.(labels{i}).haf_err) ...
+    ]';
 
-    iqrs(:,i) = [iqr(d100.(labels{i}).haf_err), ... 
-       iqr(d80.(labels{i}).haf_err), ... 
-    iqr(d60.(labels{i}).haf_err), ... 
-    iqr(d40.(labels{i}).haf_err)]';
+%     iqrs(:,i) = [iqr(d100.(labels{i}).haf_err), ... 
+%        iqr(d80.(labels{i}).haf_err), ... 
+%     iqr(d60.(labels{i}).haf_err), ... 
+%     iqr(d40.(labels{i}).haf_err)]';
 end
 
 colors = get_plot_colors(true);
@@ -46,11 +58,23 @@ set ( gca, 'xDir', 'reverse' )
 legend(names,'location','nw')
 ylabel('Apoapsis Error \sigma (km)');
 xlabel('Navigation Error Scale (%)')
+xlim([40 120]);
+
+
+% check std vs sim count
+for i = 1:d100.mc.N
+    stds_dsf(i) = nanstd(d100.out_k.haf_err(1:i));
+    stds_di(i) = nanstd(d100.out_di.haf_err(1:i));
+    stds_ecf(i) = nanstd(d100.out_ecf.haf_err(1:i));
+    stds_hyb(i) = nanstd(d100.out_hyb.haf_err(1:i));
+end
+
+
 
 %}
 
 %% Monte Carlo: nav error scaling
-% %{
+%{
 clear;clc
 [x0,aero,gnc,sim, mc] = base_venus_ac(true);
 mc.N = 500;
@@ -112,18 +136,15 @@ end
 
 %}
 
-
-
 %% Monte Carlo Post Process
 %{
 if (~exist('d', 'var'))
 %     d = load([p 'data/mc/mc2500_54deg.mat']);
-%     d = load([p 'data/mc/mc1k_55deg.mat']);
+    d = load([p 'data/mc/mc1k_55deg.mat']);
     
-%     d = load([p 'data/mc/mc2500_2k_54deg_guid05_navON_new.mat']);
-%     d = d.d;
 
-    d = load([p '\data\mc\old\mc2500_2k_54deg_guid05_navON.mat']);
+%     d = load([p '\data\mc\old\mc2500_2k_54deg_guid05_navON_new.mat']);
+%     d = d.d;
 
 end
 

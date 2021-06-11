@@ -14,13 +14,13 @@ clear; clc;
 
     % addpath('./venusGRAM/jul2018')
 
-    path = './tools/GRAM/data/';
+    p = './data/gram_data/';
     name = 'venus_out';
     ext = '.txt';
-    out = importdata([path name '0_0' ext],' ');
-    tpres = importdata([path name '_TP_0_0' ext],' ');
-    winds = importdata([path name '_winds_0_0' ext],' ');
-    density = importdata([path name '_rho_0_0'  ext],' ');
+    out = importdata([p name '0_0' ext],' ');
+    tpres = importdata([p name '_TP_0_0' ext],' ');
+    winds = importdata([p name '_winds_0_0' ext],' ');
+    density = importdata([p name '_rho_0_0'  ext],' ');
 %     perturb = importdata([path name ''  ext],' ');
 
 %     out = importdata('./tools/GRAM/earthGRAM/special.txt');
@@ -35,11 +35,12 @@ clear; clc;
 %     body = ['Earth, ' name];
 
 
-%     n = 1000;       %number of data tables to make
-    n =  10;
+    n = 1000;       %number of data tables to make
+%     n =  10;
     h0 = 0; % km
-    hf = 200; % km, final altitude
-    dh = 0.1; % km, altitude increments
+    hf = 150; % km, final altitude
+%     dh = 0.1; % km, altitude increments
+    dh = hf/n;
     hn = (hf-h0)/dh + 1;    %number of lines
 
     % get nominal data
@@ -222,19 +223,19 @@ end
 
 %% Plots
 % Density
-% figure; hold on; box on; grid on;
-% set(gca,'FontSize',14)
-% title(['Density Variation at ' body],'FontSize',10);
-% % plot(nom.dens,nom.alt,'--k','LineWidth',2);
-% % plot(atm.dens(:,1),nom.alt);
-% p1=plot( (atm.dens)./nom.dens,nom.alt,'b');
-% p2=plot( (nom.dens + 3.*sDens )./nom.dens,nom.alt,'k','LineWidth',2);
-% p3=plot( (nom.dens - 3.*sDens )./nom.dens,nom.alt,'k','LineWidth',2);
-% xlabel('Density Variation (Perturbed/Mean)')
-% ylabel('Altitude (km)')
-% ylim([70 nom.alt(1)])
-% % xlim([-1 1])
-% legend([p1(1),p3],'Density Variation','\pm3\sigma Variation','location','ne')
+figure; hold on; box on; grid on;
+set(gca,'FontSize',14)
+title(['Density Variation at ' body],'FontSize',10);
+% plot(nom.dens,nom.alt,'--k','LineWidth',2);
+% plot(atm.dens(:,1),nom.alt);
+p1=plot( (atm.dens)./nom.dens,nom.alt,'b');
+p2=plot( (nom.dens + 3.*sDens )./nom.dens,nom.alt,'k','LineWidth',2);
+p3=plot( (nom.dens - 3.*sDens )./nom.dens,nom.alt,'k','LineWidth',2);
+xlabel('Density Variation (Perturbed/Mean)')
+ylabel('Altitude (km)')
+ylim([70 nom.alt(1)])
+% xlim([-1 1])
+legend([p1(1),p3],'Density Variation','\pm3\sigma Variation','location','ne')
 % % 
 % % % Temperature
 % figure; hold on; box on; grid on;
